@@ -1,0 +1,22 @@
+{
+  "x": {
+    "type": "int",
+    "value": 42
+  },
+  "i": {
+    "type": "int",
+    "value": 3
+  },
+  "sum": {
+    "type": "int",
+    "value": 150
+  },
+  "arr": {
+    "type": "arr[int]",
+    "value": [10, 20, 30, 40, 50]
+  },
+  "nums": {
+    "type": "arr[int]",
+    "value": [1, 2, 3, 4, 5, 6, 7, 8]
+  }
+}

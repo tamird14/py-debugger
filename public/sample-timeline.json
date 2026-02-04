@@ -1,0 +1,32 @@
+[
+  {
+    "i": { "type": "int", "value": 0 },
+    "j": { "type": "int", "value": 4 },
+    "sum": { "type": "int", "value": 0 },
+    "arr": { "type": "arr[int]", "value": [64, 34, 25, 12, 22] }
+  },
+  {
+    "i": { "type": "int", "value": 1 },
+    "j": { "type": "int", "value": 3 },
+    "sum": { "type": "int", "value": 64 },
+    "arr": { "type": "arr[int]", "value": [34, 64, 25, 12, 22] }
+  },
+  {
+    "i": { "type": "int", "value": 2 },
+    "j": { "type": "int", "value": 2 },
+    "sum": { "type": "int", "value": 98 },
+    "arr": { "type": "arr[int]", "value": [25, 34, 64, 12, 22] }
+  },
+  {
+    "i": { "type": "int", "value": 3 },
+    "j": { "type": "int", "value": 1 },
+    "sum": { "type": "int", "value": 123 },
+    "arr": { "type": "arr[int]", "value": [12, 25, 34, 64, 22] }
+  },
+  {
+    "i": { "type": "int", "value": 4 },
+    "j": { "type": "int", "value": 0 },
+    "sum": { "type": "int", "value": 135 },
+    "arr": { "type": "arr[int]", "value": [12, 22, 25, 34, 64] }
+  }
+]
