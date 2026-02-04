@@ -6,10 +6,15 @@ export interface CellPosition {
 }
 
 // Variable dictionary types
-export type VariableType = 'int' | 'arr[int]';
+export type VariableType = 'int' | 'float' | 'arr[int]';
 
 export interface IntVariable {
   type: 'int';
+  value: number;
+}
+
+export interface FloatVariable {
+  type: 'float';
   value: number;
 }
 
@@ -18,7 +23,7 @@ export interface ArrayVariable {
   value: number[];
 }
 
-export type Variable = IntVariable | ArrayVariable;
+export type Variable = IntVariable | FloatVariable | ArrayVariable;
 
 export interface VariableDictionary {
   [name: string]: Variable;
@@ -129,8 +134,8 @@ export function resolvePositionComponent(
   }
   // Variable binding
   const variable = variables[component.varName];
-  if (variable && variable.type === 'int') {
-    return Math.max(0, Math.min(49, variable.value)); // Clamp to grid bounds
+  if (variable && (variable.type === 'int' || variable.type === 'float')) {
+    return Math.max(0, Math.min(49, Math.floor(variable.value))); // Clamp to grid bounds and floor floats
   }
   return 0; // Default if variable not found
 }

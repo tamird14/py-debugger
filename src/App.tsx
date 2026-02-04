@@ -172,7 +172,7 @@ function App() {
     (name: string, variable: Variable) => {
       if (!contextMenuCell) return;
 
-      if (variable.type === 'int') {
+      if (variable.type === 'int' || variable.type === 'float') {
         placeIntVariable(contextMenuCell, name, variable.value);
       } else if (variable.type === 'arr[int]') {
         placeArrayVariable(contextMenuCell, name, variable.value);

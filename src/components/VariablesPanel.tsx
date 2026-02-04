@@ -42,10 +42,12 @@ export function VariablesPanel({ variables, previousVariables }: VariablesPanelP
                   className={`text-xs px-1.5 py-0.5 rounded font-mono ${
                     variable.type === 'int'
                       ? 'bg-emerald-100 text-emerald-700'
+                      : variable.type === 'float'
+                      ? 'bg-blue-100 text-blue-700'
                       : 'bg-amber-100 text-amber-700'
                   }`}
                 >
-                  {variable.type === 'int' ? 'int' : 'list'}
+                  {variable.type === 'int' ? 'int' : variable.type === 'float' ? 'float' : 'list'}
                 </span>
                 <span className="font-mono text-sm font-medium text-gray-800">
                   {name}
@@ -55,7 +57,7 @@ export function VariablesPanel({ variables, previousVariables }: VariablesPanelP
                 )}
               </div>
               <div className="mt-1 font-mono text-sm text-gray-600">
-                {variable.type === 'int' ? (
+                {variable.type === 'int' || variable.type === 'float' ? (
                   <span className="text-blue-600">{variable.value}</span>
                 ) : (
                   <span className="text-purple-600">

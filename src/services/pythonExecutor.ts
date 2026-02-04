@@ -100,7 +100,7 @@ def _capture_variables(frame, exclude_vars=None):
         elif isinstance(value, int):
             result[name] = {'type': 'int', 'value': value}
         elif isinstance(value, float):
-            result[name] = {'type': 'int', 'value': int(value)}
+            result[name] = {'type': 'float', 'value': value}
         elif isinstance(value, list):
             # Check if it's a list of numbers
             if all(isinstance(x, (int, float, bool)) for x in value):
@@ -178,27 +178,31 @@ function convertToTimeline(steps: any[]): { timeline: Timeline; executionSteps: 
   const timeline: Timeline = [];
   const executionSteps: ExecutionStep[] = [];
 
-  // Group consecutive steps with the same variable state
-  let lastVars: string = '';
+  // Track last known variables to carry forward when no changes
+  let lastVars: VariableDictionary = {};
 
   for (const step of steps) {
-    const varsJson = JSON.stringify(step.variables);
+    // Merge current step variables with last known state
+    // This ensures we always have the full variable state at each step
+    const currentVars = { ...lastVars, ...step.variables };
 
     // Always record the execution step for line highlighting
     executionSteps.push({
       lineNumber: step.line,
-      variables: step.variables,
+      variables: currentVars,
     });
 
-    // Only add to timeline if variables changed
-    if (varsJson !== lastVars && Object.keys(step.variables).length > 0) {
-      timeline.push(step.variables);
-      lastVars = varsJson;
+    // Add every step to the timeline so we can see all execution
+    timeline.push(currentVars);
+
+    // Update last known variables
+    if (Object.keys(step.variables).length > 0) {
+      lastVars = currentVars;
     }
   }
 
-  // If no steps captured any variables, add an empty state
-  if (timeline.length === 0 && executionSteps.length > 0) {
+  // If no steps, add an empty state
+  if (timeline.length === 0) {
     timeline.push({});
   }
 

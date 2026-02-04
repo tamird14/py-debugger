@@ -95,7 +95,7 @@ export function ContextMenu({
   const [colExprError, setColExprError] = useState<string | null>(null);
 
   const variableEntries = Object.entries(variables);
-  const intVariables = variableEntries.filter(([, v]) => v.type === 'int');
+  const intVariables = variableEntries.filter(([, v]) => v.type === 'int' || v.type === 'float');
   const arrayVariables = variableEntries.filter(([, v]) => v.type === 'arr[int]');
   const hasVariables = variableEntries.length > 0;
 

@@ -253,8 +253,8 @@ function evaluateAST(node: ASTNode, variables: VariableDictionary): number {
       if (!varData) {
         throw new Error(`Variable "${node.name}" not found`);
       }
-      if (varData.type !== 'int') {
-        throw new Error(`Variable "${node.name}" is not an integer`);
+      if (varData.type !== 'int' && varData.type !== 'float') {
+        throw new Error(`Variable "${node.name}" is not a number`);
       }
       return varData.value;
     }

@@ -487,10 +487,10 @@ export function useGridState() {
     setPositionBinding(from, createHardcodedBinding(to));
   }, [setPositionBinding]);
 
-  // Get list of int variable names for binding UI
+  // Get list of numeric variable names (int and float) for binding UI
   const intVariableNames = useMemo((): string[] => {
     return Object.entries(currentVariables)
-      .filter(([, v]) => v.type === 'int')
+      .filter(([, v]) => v.type === 'int' || v.type === 'float')
       .map(([name]) => name);
   }, [currentVariables]);
 
