@@ -1,4 +1,4 @@
-export type ShapeType = 'circle' | 'square' | 'arrow';
+export type ShapeType = 'circle' | 'square' | 'rectangle' | 'arrow';
 
 export interface CellPosition {
   row: number;
@@ -6,7 +6,7 @@ export interface CellPosition {
 }
 
 // Variable dictionary types
-export type VariableType = 'int' | 'float' | 'arr[int]';
+export type VariableType = 'int' | 'float' | 'str' | 'arr[int]' | 'arr[str]';
 
 export interface IntVariable {
   type: 'int';
@@ -23,7 +23,17 @@ export interface ArrayVariable {
   value: number[];
 }
 
-export type Variable = IntVariable | FloatVariable | ArrayVariable;
+export interface StringVariable {
+  type: 'str';
+  value: string;
+}
+
+export interface StringArrayVariable {
+  type: 'arr[str]';
+  value: string[];
+}
+
+export type Variable = IntVariable | FloatVariable | ArrayVariable | StringVariable | StringArrayVariable;
 
 export interface VariableDictionary {
   [name: string]: Variable;
@@ -66,6 +76,23 @@ export interface ArrayInfo {
 export interface CellStyle {
   color?: string;       // Fill/text color
   lineWidth?: number;   // Border/stroke thickness (1-5)
+  opacity?: number;     // 0-1
+  fontSize?: number;    // px
+}
+
+export type ArrowOrientation = 'up' | 'down' | 'left' | 'right';
+
+export interface ShapeProps {
+  width?: number;       // in cells
+  height?: number;      // in cells
+  rotation?: number;    // degrees
+  orientation?: ArrowOrientation;
+}
+
+export interface LabelData {
+  text: string;
+  width?: number;       // in cells
+  height?: number;      // in cells
 }
 
 export interface CellData {
@@ -78,14 +105,31 @@ export interface CellData {
     index: number;
     value: string | number;
     varName?: string; // Variable name if from dictionary
+    direction?: 'right' | 'left' | 'down' | 'up';
   };
   // For int variables
   intVar?: {
     name: string;
     value: number;
+    display?: 'name-value' | 'value-only';
   };
+  // For labels
+  label?: LabelData;
+  // For panels (container)
+  panel?: {
+    id: string;
+    width: number;
+    height: number;
+    title?: string;
+  };
+  // Optional panel association for non-panel objects
+  panelId?: string;
   // Styling options
   style?: CellStyle;
+  // Shape-specific props
+  shapeProps?: ShapeProps;
+  // Invalid computation reason (for grayed-out rendering)
+  invalidReason?: string;
   // Position binding (if set, position is computed from variables)
   positionBinding?: PositionBinding;
 }
@@ -158,4 +202,18 @@ export function createHardcodedBinding(position: CellPosition): PositionBinding 
     row: { type: 'hardcoded', value: position.row },
     col: { type: 'hardcoded', value: position.col },
   };
+}
+
+export function getArrayOffset(direction: 'right' | 'left' | 'down' | 'up', index: number): { rowDelta: number; colDelta: number } {
+  switch (direction) {
+    case 'left':
+      return { rowDelta: 0, colDelta: -index };
+    case 'down':
+      return { rowDelta: index, colDelta: 0 };
+    case 'up':
+      return { rowDelta: -index, colDelta: 0 };
+    case 'right':
+    default:
+      return { rowDelta: 0, colDelta: index };
+  }
 }

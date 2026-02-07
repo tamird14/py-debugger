@@ -1,7 +1,7 @@
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { GridCell } from './GridCell';
 import type { CellPosition, CellData } from '../types/grid';
-import { cellKey } from '../types/grid';
+import { cellKey, getArrayOffset } from '../types/grid';
 
 interface GridProps {
   cells: Map<string, CellData>;
@@ -10,6 +10,7 @@ interface GridProps {
   onSelectCell: (position: CellPosition | null) => void;
   onContextMenu: (e: React.MouseEvent, position: CellPosition) => void;
   onZoom: (delta: number) => void;
+  onMoveCell: (from: CellPosition, to: CellPosition) => void;
 }
 
 const CELL_SIZE = 40;
@@ -23,8 +24,15 @@ export function Grid({
   onSelectCell,
   onContextMenu,
   onZoom,
+  onMoveCell,
 }: GridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{
+    start: CellPosition;
+    rowAllowed: boolean;
+    colAllowed: boolean;
+  } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -45,6 +53,64 @@ export function Grid({
     },
     [onSelectCell, onContextMenu]
   );
+
+  const getCellFromPointer = useCallback(
+    (clientX: number, clientY: number): CellPosition | null => {
+      const container = containerRef.current;
+      if (!container) return null;
+      const rect = container.getBoundingClientRect();
+      const x = (clientX - rect.left + container.scrollLeft) / zoom;
+      const y = (clientY - rect.top + container.scrollTop) / zoom;
+      const col = Math.floor(x / CELL_SIZE);
+      const row = Math.floor(y / CELL_SIZE);
+      if (row < 0 || col < 0 || row >= GRID_ROWS || col >= GRID_COLS) return null;
+      return { row, col };
+    },
+    [zoom]
+  );
+
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent, row: number, col: number, cellData?: CellData) => {
+      if (!cellData?.positionBinding) return;
+      const rowAllowed = cellData.positionBinding.row.type === 'hardcoded';
+      const colAllowed = cellData.positionBinding.col.type === 'hardcoded';
+      if (!rowAllowed && !colAllowed) return;
+      e.preventDefault();
+      dragStateRef.current = { start: { row, col }, rowAllowed, colAllowed };
+      setIsDragging(true);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState) return;
+      const target = getCellFromPointer(e.clientX, e.clientY);
+      if (!target) return;
+      const next = {
+        row: dragState.rowAllowed ? target.row : dragState.start.row,
+        col: dragState.colAllowed ? target.col : dragState.start.col,
+      };
+      if (next.row === dragState.start.row && next.col === dragState.start.col) return;
+      onMoveCell(dragState.start, next);
+      dragStateRef.current = { ...dragState, start: next };
+    };
+
+    const handleMouseUp = () => {
+      dragStateRef.current = null;
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [getCellFromPointer, isDragging, onMoveCell]);
 
   // Background grid cells (empty cells for selection and context menu)
   const gridBackground = useMemo(() => {
@@ -87,6 +153,8 @@ export function Grid({
       col: number;
       cellData: CellData;
       isSelected: boolean;
+      widthCells?: number;
+      heightCells?: number;
       // For arrays, we need to know if this is the first cell
       isArrayStart?: boolean;
       arrayLength?: number;
@@ -134,12 +202,16 @@ export function Grid({
           });
         }
       } else {
+        const widthCells = cellData.label?.width || cellData.shapeProps?.width || 1;
+        const heightCells = cellData.label?.height || cellData.shapeProps?.height || 1;
         objects.push({
           key,
           row,
           col,
           cellData,
           isSelected,
+          widthCells,
+          heightCells,
         });
       }
     }
@@ -153,33 +225,50 @@ export function Grid({
       if (obj.isArrayStart && obj.arrayLength) {
         // Render array as a group of cells
         const arrayCells: React.ReactNode[] = [];
+        const direction = obj.cellData.arrayInfo?.direction || 'right';
+        let minRowDelta = 0;
+        let minColDelta = 0;
+        let maxRowDelta = 0;
+        let maxColDelta = 0;
 
         for (let i = 0; i < obj.arrayLength; i++) {
-          const arrayKey = cellKey(obj.row, obj.col + i);
+          const offset = getArrayOffset(direction, i);
+          minRowDelta = Math.min(minRowDelta, offset.rowDelta);
+          minColDelta = Math.min(minColDelta, offset.colDelta);
+          maxRowDelta = Math.max(maxRowDelta, offset.rowDelta);
+          maxColDelta = Math.max(maxColDelta, offset.colDelta);
+        }
+
+        for (let i = 0; i < obj.arrayLength; i++) {
+          const offset = getArrayOffset(direction, i);
+          const arrayRow = obj.row + offset.rowDelta;
+          const arrayCol = obj.col + offset.colDelta;
+          const arrayKey = cellKey(arrayRow, arrayCol);
           const arrayCellData = cells.get(arrayKey);
 
           if (arrayCellData) {
-            const isCellSelected = selectedCell?.row === obj.row && selectedCell?.col === obj.col + i;
+            const isCellSelected = selectedCell?.row === arrayRow && selectedCell?.col === arrayCol;
 
             arrayCells.push(
               <div
                 key={i}
                 style={{
                   position: 'absolute',
-                  left: i * CELL_SIZE,
-                  top: 0,
+                  left: (offset.colDelta - minColDelta) * CELL_SIZE,
+                  top: (offset.rowDelta - minRowDelta) * CELL_SIZE,
                   width: CELL_SIZE,
                   height: CELL_SIZE,
                 }}
-                onClick={() => onSelectCell({ row: obj.row, col: obj.col + i })}
-                onContextMenu={(e) => handleCellContextMenu(e, obj.row, obj.col + i)}
+                onClick={() => onSelectCell({ row: arrayRow, col: arrayCol })}
+                onContextMenu={(e) => handleCellContextMenu(e, arrayRow, arrayCol)}
+                onMouseDown={(e) => handleDragStart(e, arrayRow, arrayCol, arrayCellData)}
               >
                 <GridCell
-                  row={obj.row}
-                  col={obj.col + i}
+                  row={arrayRow}
+                  col={arrayCol}
                   cellData={arrayCellData}
                   isSelected={isCellSelected}
-                  onSelect={() => onSelectCell({ row: obj.row, col: obj.col + i })}
+                  onSelect={() => onSelectCell({ row: arrayRow, col: arrayCol })}
                   size={CELL_SIZE}
                 />
               </div>
@@ -187,15 +276,18 @@ export function Grid({
           }
         }
 
+        const containerWidth = (maxColDelta - minColDelta + 1) * CELL_SIZE;
+        const containerHeight = (maxRowDelta - minRowDelta + 1) * CELL_SIZE;
+
         return (
           <div
             key={obj.key}
             className="absolute transition-all duration-300 ease-out"
             style={{
-              left: obj.col * CELL_SIZE,
-              top: obj.row * CELL_SIZE,
-              width: obj.arrayLength * CELL_SIZE,
-              height: CELL_SIZE,
+              left: (obj.col + minColDelta) * CELL_SIZE,
+              top: (obj.row + minRowDelta) * CELL_SIZE,
+              width: containerWidth,
+              height: containerHeight,
               zIndex: 10,
             }}
           >
@@ -203,6 +295,8 @@ export function Grid({
           </div>
         );
       } else {
+        const widthCells = Math.max(1, obj.widthCells || 1);
+        const heightCells = Math.max(1, obj.heightCells || 1);
         // Single cell object (shape or int variable)
         return (
           <div
@@ -211,12 +305,13 @@ export function Grid({
             style={{
               left: obj.col * CELL_SIZE,
               top: obj.row * CELL_SIZE,
-              width: CELL_SIZE,
-              height: CELL_SIZE,
+              width: CELL_SIZE * widthCells,
+              height: CELL_SIZE * heightCells,
               zIndex: 10,
             }}
             onClick={() => onSelectCell({ row: obj.row, col: obj.col })}
             onContextMenu={(e) => handleCellContextMenu(e, obj.row, obj.col)}
+            onMouseDown={(e) => handleDragStart(e, obj.row, obj.col, obj.cellData)}
           >
             <GridCell
               row={obj.row}
@@ -225,6 +320,8 @@ export function Grid({
               isSelected={obj.isSelected}
               onSelect={() => onSelectCell({ row: obj.row, col: obj.col })}
               size={CELL_SIZE}
+              width={CELL_SIZE * widthCells}
+              height={CELL_SIZE * heightCells}
             />
           </div>
         );

@@ -9,11 +9,14 @@ interface GridCellProps {
   isSelected: boolean;
   onSelect: () => void;
   size: number;
+  width?: number;
+  height?: number;
 }
 
 const ShapeComponents: Record<ShapeType, React.ComponentType<{ color?: string }>> = {
   circle: Circle,
   square: Square,
+  rectangle: Square,
   arrow: Arrow,
 };
 
@@ -22,13 +25,30 @@ export const GridCell = memo(function GridCell({
   isSelected,
   onSelect,
   size,
+  width,
+  height,
 }: GridCellProps) {
   const ShapeComponent = cellData?.shape ? ShapeComponents[cellData.shape] : null;
+  const shapeRotation = cellData?.shapeProps?.rotation || 0;
+  const arrowOrientation = cellData?.shapeProps?.orientation;
   const isArrayCell = !!cellData?.arrayInfo;
   const isIntVarCell = !!cellData?.intVar;
+  const isLabelCell = !!cellData?.label;
+  const isPanelCell = !!cellData?.panel;
 
   const customColor = cellData?.style?.color;
   const customLineWidth = cellData?.style?.lineWidth || 1;
+  const customOpacity = cellData?.style?.opacity ?? 1;
+  const customFontSize = cellData?.style?.fontSize || 12;
+
+  const withOpacity = (hexColor: string, opacity: number): string => {
+    const normalized = hexColor.replace('#', '');
+    if (normalized.length !== 6) return hexColor;
+    const r = parseInt(normalized.slice(0, 2), 16);
+    const g = parseInt(normalized.slice(2, 4), 16);
+    const b = parseInt(normalized.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
 
   const getCellBackground = () => {
     if (customColor) {
@@ -42,16 +62,18 @@ export const GridCell = memo(function GridCell({
 
   const getCellStyle = (): React.CSSProperties => {
     const style: React.CSSProperties = {
-      width: size,
-      height: size,
+      width: width || size,
+      height: height || size,
     };
     if (customColor) {
-      style.borderColor = customColor;
+      style.borderColor = withOpacity(customColor, Math.min(1, Math.max(0, customOpacity)));
       style.borderWidth = customLineWidth;
-      style.backgroundColor = `${customColor}20`; // 20 = ~12% opacity in hex
+      style.backgroundColor = withOpacity(customColor, Math.min(1, Math.max(0, customOpacity * 0.12)));
     }
     return style;
   };
+
+  const isInvalid = !!cellData?.invalidReason;
 
   return (
     <div
@@ -59,11 +81,22 @@ export const GridCell = memo(function GridCell({
         border cursor-pointer transition-colors relative
         ${isSelected && !customColor ? 'border-blue-500 border-2' : !customColor ? 'border-gray-300' : ''}
         ${getCellBackground()}
+        ${isInvalid ? 'opacity-50 grayscale' : ''}
       `}
       style={getCellStyle()}
       onClick={onSelect}
     >
-      {ShapeComponent && <ShapeComponent color={customColor} />}
+      {ShapeComponent && cellData?.shape === 'arrow' ? (
+        <Arrow
+          color={customColor}
+          orientation={arrowOrientation}
+          rotation={shapeRotation}
+        />
+      ) : ShapeComponent ? (
+        <div style={{ transform: `rotate(${shapeRotation}deg)` }}>
+          <ShapeComponent color={customColor} />
+        </div>
+      ) : null}
 
       {/* Array cell display */}
       {isArrayCell && (
@@ -80,16 +113,16 @@ export const GridCell = memo(function GridCell({
           {/* Value - main content */}
           <div className="flex-1 flex items-center justify-center">
             <span
-              className="text-base font-mono font-bold"
-              style={{ color: customColor || '#1f2937' }}
+              className="font-mono font-bold"
+              style={{ color: customColor || '#1f2937', fontSize: customFontSize }}
             >
               {cellData.arrayInfo!.value}
             </span>
           </div>
           {/* Index - small at bottom with brackets */}
           <span
-            className="text-[9px] font-mono leading-none"
-            style={{ color: customColor || '#d97706' }}
+            className="font-mono leading-none"
+            style={{ color: customColor || '#d97706', fontSize: Math.max(8, Math.round(customFontSize * 0.7)) }}
           >
             [{cellData.arrayInfo!.index}]
           </span>
@@ -98,8 +131,11 @@ export const GridCell = memo(function GridCell({
 
       {/* Int variable cell display */}
       {isIntVarCell && (() => {
-        const text = `${cellData.intVar!.name}=${cellData.intVar!.value}`;
-        const charWidth = 7.2; // Approximate width per character for text-xs mono
+        const displayMode = cellData.intVar!.display || 'name-value';
+        const text = displayMode === 'value-only'
+          ? `${cellData.intVar!.value}`
+          : `${cellData.intVar!.name}=${cellData.intVar!.value}`;
+        const charWidth = customFontSize * 0.6;
         const textWidth = text.length * charWidth + 8; // +8 for padding
         const cellsNeeded = Math.ceil(textWidth / size);
         const totalWidth = cellsNeeded * size;
@@ -121,17 +157,49 @@ export const GridCell = memo(function GridCell({
               }}
             >
               <span
-                className="text-xs font-mono whitespace-nowrap px-1"
-                style={{ color: textColor }}
+                className="font-mono whitespace-nowrap px-1"
+                style={{ color: textColor, fontSize: customFontSize }}
               >
-                <span className="font-semibold">{cellData.intVar!.name}</span>
-                <span style={{ color: customColor || '#059669' }}>=</span>
-                <span className="font-bold">{cellData.intVar!.value}</span>
+                {displayMode === 'value-only' ? (
+                  <span className="font-bold">{cellData.intVar!.value}</span>
+                ) : (
+                  <>
+                    <span className="font-semibold">{cellData.intVar!.name}</span>
+                    <span style={{ color: customColor || '#059669' }}>=</span>
+                    <span className="font-bold">{cellData.intVar!.value}</span>
+                  </>
+                )}
               </span>
             </div>
           </div>
         );
       })()}
+
+      {/* Label display */}
+      {isLabelCell && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span
+            className="font-mono text-center whitespace-pre-wrap"
+            style={{ color: customColor || '#1f2937', fontSize: customFontSize }}
+          >
+            {cellData.label!.text}
+          </span>
+        </div>
+      )}
+
+      {/* Panel display */}
+      {isPanelCell && (
+        <div className="absolute inset-0 border-2 border-dashed border-slate-400 bg-slate-50/50">
+          {cellData.panel!.title && (
+            <span
+              className="absolute -top-3 left-1 text-[10px] font-mono bg-slate-50 px-1"
+              style={{ color: customColor || '#64748b' }}
+            >
+              {cellData.panel!.title}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 });

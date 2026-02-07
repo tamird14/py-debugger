@@ -19,6 +19,8 @@ export function TimelineControls({
 
   const canGoPrev = currentStep > 0;
   const canGoNext = currentStep < stepCount - 1;
+  const canGoFirst = currentStep > 0;
+  const canGoLast = currentStep < stepCount - 1;
 
   return (
     <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 rounded-lg border border-gray-200">
@@ -29,6 +31,20 @@ export function TimelineControls({
 
       {/* Navigation buttons */}
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => onGoToStep(0)}
+          disabled={!canGoFirst}
+          className={`
+            px-2 py-1 rounded text-sm font-medium transition-colors
+            ${canGoFirst
+              ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
+              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+            }
+          `}
+          title="First step"
+        >
+          {'<<'}
+        </button>
         <button
           onClick={onPrevStep}
           disabled={!canGoPrev}
@@ -56,6 +72,20 @@ export function TimelineControls({
           title="Next step"
         >
           →
+        </button>
+        <button
+          onClick={() => onGoToStep(stepCount - 1)}
+          disabled={!canGoLast}
+          className={`
+            px-2 py-1 rounded text-sm font-medium transition-colors
+            ${canGoLast
+              ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
+              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+            }
+          `}
+          title="Last step"
+        >
+          {'>>'}
         </button>
       </div>
 

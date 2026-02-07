@@ -101,11 +101,15 @@ def _capture_variables(frame, exclude_vars=None):
             result[name] = {'type': 'int', 'value': value}
         elif isinstance(value, float):
             result[name] = {'type': 'float', 'value': value}
+        elif isinstance(value, str):
+            result[name] = {'type': 'str', 'value': value}
         elif isinstance(value, list):
             # Check if it's a list of numbers
             if all(isinstance(x, (int, float, bool)) for x in value):
                 int_values = [int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in value]
                 result[name] = {'type': 'arr[int]', 'value': int_values}
+            elif all(isinstance(x, str) for x in value):
+                result[name] = {'type': 'arr[str]', 'value': value}
 
     return result
 
@@ -178,8 +182,20 @@ function convertToTimeline(steps: any[]): { timeline: Timeline; executionSteps: 
   const timeline: Timeline = [];
   const executionSteps: ExecutionStep[] = [];
 
+  // Capture the first value each variable gets to use as defaults
+  const firstValues: VariableDictionary = {};
+  for (const step of steps) {
+    if (step?.variables && typeof step.variables === 'object') {
+      for (const [name, value] of Object.entries(step.variables)) {
+        if (!(name in firstValues)) {
+          firstValues[name] = value as VariableDictionary[string];
+        }
+      }
+    }
+  }
+
   // Track last known variables to carry forward when no changes
-  let lastVars: VariableDictionary = {};
+  let lastVars: VariableDictionary = { ...firstValues };
 
   for (const step of steps) {
     // Merge current step variables with last known state
@@ -203,7 +219,7 @@ function convertToTimeline(steps: any[]): { timeline: Timeline; executionSteps: 
 
   // If no steps, add an empty state
   if (timeline.length === 0) {
-    timeline.push({});
+    timeline.push({ ...firstValues });
   }
 
   return { timeline, executionSteps };
@@ -285,16 +301,36 @@ def analyze_variables(code_str):
     variables = []
     seen = set()
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-            if node.id not in seen and not node.id.startswith('_'):
-                variables.append({
-                    'name': node.id,
-                    'type': 'unknown',
-                    'scope': 'global'
-                })
-                seen.add(node.id)
+    class ScopeVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.scope_stack = []
 
+        def current_scope(self):
+            return self.scope_stack[-1] if self.scope_stack else 'global'
+
+        def visit_FunctionDef(self, node):
+            self.scope_stack.append(node.name)
+            self.generic_visit(node)
+            self.scope_stack.pop()
+
+        def visit_AsyncFunctionDef(self, node):
+            self.scope_stack.append(node.name)
+            self.generic_visit(node)
+            self.scope_stack.pop()
+
+        def visit_Name(self, node):
+            if isinstance(node.ctx, ast.Store) and not node.id.startswith('_'):
+                scope = self.current_scope()
+                key = (node.id, scope)
+                if key not in seen:
+                    variables.append({
+                        'name': node.id,
+                        'type': 'unknown',
+                        'scope': scope
+                    })
+                    seen.add(key)
+
+    ScopeVisitor().visit(tree)
     return variables
 
 json.dumps(analyze_variables('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}'''))

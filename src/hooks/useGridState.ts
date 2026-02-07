@@ -7,8 +7,9 @@ import type {
   CellStyle,
   Timeline,
   PositionBinding,
+  ShapeProps,
 } from '../types/grid';
-import { cellKey, resolvePosition, createHardcodedBinding } from '../types/grid';
+import { cellKey, resolvePosition, createHardcodedBinding, getArrayOffset } from '../types/grid';
 import { evaluateExpression } from '../utils/expressionEvaluator';
 
 const MIN_ZOOM = 0.5;
@@ -17,6 +18,12 @@ const ZOOM_STEP = 0.1;
 
 // Object storage - keyed by objectId, stores the object definition
 interface GridObject {
+  id: string;
+  data: CellData;
+  positionBinding: PositionBinding;
+}
+
+export interface GridObjectSnapshot {
   id: string;
   data: CellData;
   positionBinding: PositionBinding;
@@ -34,6 +41,65 @@ export function useGridState() {
 
   const objectIdCounter = useRef(0);
 
+  const resolvePositionWithErrors = useCallback(
+    (binding: PositionBinding, vars: VariableDictionary): { position: CellPosition; error?: string } => {
+      const resolveComponent = (component: PositionBinding['row']): { value: number; error?: string } => {
+        if (component.type === 'hardcoded') {
+          return { value: component.value };
+        }
+        if (component.type === 'variable') {
+          const variable = vars[component.varName];
+          if (!variable || (variable.type !== 'int' && variable.type !== 'float')) {
+            return { value: 0, error: `Variable "${component.varName}" not available` };
+          }
+          return { value: variable.value };
+        }
+        try {
+          return { value: evaluateExpression(component.expression, vars) };
+        } catch (error) {
+          return {
+            value: 0,
+            error: error instanceof Error ? error.message : 'Expression error',
+          };
+        }
+      };
+
+      const rowResult = resolveComponent(binding.row);
+      const colResult = resolveComponent(binding.col);
+      const row = Math.max(0, Math.min(49, Math.floor(rowResult.value)));
+      const col = Math.max(0, Math.min(49, Math.floor(colResult.value)));
+      return {
+        position: { row, col },
+        error: rowResult.error || colResult.error,
+      };
+    },
+    []
+  );
+
+  const resolveObjectPosition = useCallback(
+    (
+      obj: GridObject,
+      objectsMap: Map<string, GridObject>,
+      vars: VariableDictionary
+    ): CellPosition => {
+      let pos = resolvePosition(obj.positionBinding, vars, evaluateExpression);
+      if (obj.data.panelId) {
+        for (const [, panelObj] of objectsMap) {
+          if (panelObj.data.panel?.id === obj.data.panelId) {
+            const panelPos = resolvePosition(panelObj.positionBinding, vars, evaluateExpression);
+            pos = { row: pos.row + panelPos.row, col: pos.col + panelPos.col };
+            break;
+          }
+        }
+      }
+      return {
+        row: Math.max(0, Math.min(49, pos.row)),
+        col: Math.max(0, Math.min(49, pos.col)),
+      };
+    },
+    []
+  );
+
   // Current variables from timeline
   const currentVariables = useMemo((): VariableDictionary => {
     if (timeline.length === 0) return {};
@@ -42,12 +108,54 @@ export function useGridState() {
 
   const stepCount = timeline.length;
 
+  const renderLabelText = useCallback((template: string, vars: VariableDictionary): string => {
+    return template.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (_match, varName) => {
+      const value = vars[varName];
+      if (!value) return `{${varName}}`;
+      if (value.type === 'arr[int]') return `[${value.value.join(', ')}]`;
+      if (value.type === 'float' || value.type === 'int') return `${value.value}`;
+      return `${(value as { value: string }).value}`;
+    });
+  }, []);
+
   // Compute cell positions from objects and current variables
   const cells = useMemo((): Map<string, CellData> => {
     const cellMap = new Map<string, CellData>();
 
+    const panelPositions = new Map<string, { position: CellPosition; error?: string }>();
     for (const [, obj] of objects) {
-      const position = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
+      if (obj.data.panel?.id) {
+        const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
+        panelPositions.set(obj.data.panel.id, {
+          position: resolved.position,
+          error: resolved.error,
+        });
+      }
+    }
+
+    for (const [, obj] of objects) {
+      const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
+      let position = resolved.position;
+      let invalidReason = resolved.error;
+
+      if (obj.data.panelId) {
+        const panelInfo = panelPositions.get(obj.data.panelId);
+        if (panelInfo) {
+          position = {
+            row: position.row + panelInfo.position.row,
+            col: position.col + panelInfo.position.col,
+          };
+          if (panelInfo.error) {
+            invalidReason = panelInfo.error;
+          }
+        } else {
+          invalidReason = `Panel "${obj.data.panelId}" not found`;
+        }
+      }
+      position = {
+        row: Math.max(0, Math.min(49, position.row)),
+        col: Math.max(0, Math.min(49, position.col)),
+      };
 
       // Handle arrays - they span multiple cells
       if (obj.data.arrayInfo) {
@@ -65,13 +173,15 @@ export function useGridState() {
         // Place each array cell
         for (let i = 0; i < arrayObjects.length; i++) {
           const arrayObj = arrayObjects[i];
-          const cellPos = { row: position.row, col: position.col + i };
+          const direction = arrayObj.data.arrayInfo?.direction || 'right';
+          const offset = getArrayOffset(direction, i);
+          const cellPos = { row: position.row + offset.rowDelta, col: position.col + offset.colDelta };
 
           // Update array values from current variables if this is a variable-bound array
           let cellData = { ...arrayObj.data };
           if (cellData.arrayInfo?.varName) {
             const arrVar = currentVariables[cellData.arrayInfo.varName];
-            if (arrVar && arrVar.type === 'arr[int]') {
+            if (arrVar && (arrVar.type === 'arr[int]' || arrVar.type === 'arr[str]')) {
               const newValue = arrVar.value[cellData.arrayInfo.index];
               if (newValue !== undefined) {
                 cellData = {
@@ -81,16 +191,21 @@ export function useGridState() {
                     value: newValue,
                   },
                 };
+              } else {
+                cellData = { ...cellData, invalidReason: `Index ${cellData.arrayInfo.index} out of bounds` };
               }
+            } else {
+              cellData = { ...cellData, invalidReason: `Array "${cellData.arrayInfo.varName}" not available` };
             }
           }
 
-          // Only place the first cell of the array with position binding
-          if (i === 0) {
-            cellData = { ...cellData, positionBinding: obj.positionBinding };
-          }
+          // Share position binding across array cells for dragging and context menu
+          cellData = { ...cellData, positionBinding: obj.positionBinding };
 
-          cellMap.set(cellKey(cellPos.row, cellPos.col), cellData);
+          cellMap.set(cellKey(cellPos.row, cellPos.col), {
+            ...cellData,
+            invalidReason: cellData.invalidReason || invalidReason,
+          });
         }
       } else if (obj.data.intVar) {
         // Update int variable value from current variables
@@ -104,19 +219,44 @@ export function useGridState() {
               value: intVar.value,
             },
           };
+        } else if (intVar && intVar.type === 'float') {
+          cellData = {
+            ...cellData,
+            intVar: {
+              ...cellData.intVar!,
+              value: Math.floor(intVar.value),
+            },
+          };
+        } else {
+          cellData = { ...cellData, invalidReason: `Variable "${obj.data.intVar.name}" not available` };
         }
-        cellMap.set(cellKey(position.row, position.col), cellData);
+        cellMap.set(cellKey(position.row, position.col), {
+          ...cellData,
+          invalidReason: cellData.invalidReason || invalidReason,
+        });
+      } else if (obj.data.label) {
+        const renderedText = renderLabelText(obj.data.label.text, currentVariables);
+        const cellData = {
+          ...obj.data,
+          label: { ...obj.data.label, text: renderedText },
+          positionBinding: obj.positionBinding,
+        };
+        cellMap.set(cellKey(position.row, position.col), {
+          ...cellData,
+          invalidReason,
+        });
       } else {
         // Shapes - just place at resolved position
         cellMap.set(cellKey(position.row, position.col), {
           ...obj.data,
+          invalidReason,
           positionBinding: obj.positionBinding,
         });
       }
     }
 
     return cellMap;
-  }, [objects, currentVariables]);
+  }, [objects, currentVariables, renderLabelText]);
 
   // Helper function to generate unique object ID
   const generateObjectId = useCallback(() => {
@@ -136,13 +276,14 @@ export function useGridState() {
 
     // Find objects that would be at the target positions
     for (const [id, obj] of next) {
-      const pos = resolvePosition(obj.positionBinding, variables, evaluateExpression);
+      const pos = resolveObjectPosition(obj, next, variables);
 
       if (obj.data.arrayInfo) {
         // For arrays, check if any cell overlaps
         const arrayId = obj.data.arrayInfo.id;
         let arrayLength = 0;
         let isFirstCell = true;
+        const direction = obj.data.arrayInfo.direction || 'right';
 
         for (const [, o] of next) {
           if (o.data.arrayInfo?.id === arrayId) {
@@ -156,9 +297,11 @@ export function useGridState() {
         if (isFirstCell) {
           // Check if array overlaps with target range
           for (let i = 0; i < arrayLength; i++) {
-            const arrayCol = pos.col + i;
+            const offset = getArrayOffset(direction, i);
+            const arrayRow = pos.row + offset.rowDelta;
+            const arrayCol = pos.col + offset.colDelta;
             for (let j = 0; j < length; j++) {
-              if (pos.row === row && arrayCol === startCol + j) {
+              if (arrayRow === row && arrayCol === startCol + j) {
                 // If overlapping with arr[0], clear entire array
                 if (i === 0 || obj.data.arrayInfo.index === 0) {
                   objectsToClear.add(arrayId);
@@ -168,10 +311,16 @@ export function useGridState() {
           }
         }
       } else {
-        // Single cell objects
-        for (let j = 0; j < length; j++) {
-          if (pos.row === row && pos.col === startCol + j) {
-            objectsToClear.add(id);
+        // Single cell objects or shapes/labels with width/height
+        const width = obj.data.label?.width || obj.data.shapeProps?.width || 1;
+        const height = obj.data.label?.height || obj.data.shapeProps?.height || 1;
+        for (let r = 0; r < height; r++) {
+          for (let c = 0; c < width; c++) {
+            for (let j = 0; j < length; j++) {
+              if (pos.row + r === row && pos.col + c === startCol + j) {
+                objectsToClear.add(id);
+              }
+            }
           }
         }
       }
@@ -198,7 +347,7 @@ export function useGridState() {
       const next = clearOverlappingObjects(prev, position.row, position.col, 1, currentVariables);
       next.set(objectId, {
         id: objectId,
-        data: { shape, objectId },
+        data: { shape, objectId, shapeProps: { width: 1, height: 1 } },
         positionBinding: createHardcodedBinding(position),
       });
       return next;
@@ -211,18 +360,20 @@ export function useGridState() {
 
       // Find object at this position
       for (const [id, obj] of next) {
-        const pos = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
+        const pos = resolveObjectPosition(obj, next, currentVariables);
 
         if (obj.data.arrayInfo) {
           // Check if this position is part of this array
           const arrayId = obj.data.arrayInfo.id;
           let arrayLength = 0;
+          const direction = obj.data.arrayInfo.direction || 'right';
           for (const [, o] of next) {
             if (o.data.arrayInfo?.id === arrayId) arrayLength++;
           }
 
           for (let i = 0; i < arrayLength; i++) {
-            if (pos.row === position.row && pos.col + i === position.col) {
+            const offset = getArrayOffset(direction, i);
+            if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
               // Clear entire array
               for (const [oid, o] of next) {
                 if (o.data.arrayInfo?.id === arrayId) {
@@ -232,9 +383,17 @@ export function useGridState() {
               return next;
             }
           }
-        } else if (pos.row === position.row && pos.col === position.col) {
-          next.delete(id);
-          return next;
+        } else {
+          const width = obj.data.label?.width || obj.data.shapeProps?.width || 1;
+          const height = obj.data.label?.height || obj.data.shapeProps?.height || 1;
+          for (let r = 0; r < height; r++) {
+            for (let c = 0; c < width; c++) {
+              if (pos.row + r === position.row && pos.col + c === position.col) {
+                next.delete(id);
+                return next;
+              }
+            }
+          }
         }
       }
 
@@ -259,11 +418,55 @@ export function useGridState() {
               id: arrayId,
               index: i,
               value: 0,
+              direction: 'right',
             },
           },
           positionBinding: binding, // All array cells share the same binding (first cell position)
         });
       }
+      return next;
+    });
+  }, [generateObjectId, clearOverlappingObjects, currentVariables]);
+
+  const addLabel = useCallback((position: CellPosition, text: string, width: number, height: number) => {
+    const objectId = generateObjectId();
+    setObjects((prev) => {
+      const next = clearOverlappingObjects(prev, position.row, position.col, width, currentVariables);
+      next.set(objectId, {
+        id: objectId,
+        data: {
+          objectId,
+          label: {
+            text,
+            width,
+            height,
+          },
+        },
+        positionBinding: createHardcodedBinding(position),
+      });
+      return next;
+    });
+  }, [generateObjectId, clearOverlappingObjects, currentVariables]);
+
+  const addPanel = useCallback((position: CellPosition, width: number, height: number, title?: string) => {
+    const objectId = generateObjectId();
+    const panelId = `panel-${objectIdCounter.current++}`;
+    setObjects((prev) => {
+      const next = clearOverlappingObjects(prev, position.row, position.col, width, currentVariables);
+      next.set(objectId, {
+        id: objectId,
+        data: {
+          objectId,
+          panel: {
+            id: panelId,
+            width,
+            height,
+            title,
+          },
+          shapeProps: { width, height },
+        },
+        positionBinding: createHardcodedBinding(position),
+      });
       return next;
     });
   }, [generateObjectId, clearOverlappingObjects, currentVariables]);
@@ -299,7 +502,7 @@ export function useGridState() {
         id: objectId,
         data: {
           objectId,
-          intVar: { name, value },
+          intVar: { name, value, display: 'name-value' },
         },
         positionBinding: createHardcodedBinding(position),
       });
@@ -307,7 +510,7 @@ export function useGridState() {
     });
   }, [generateObjectId, clearOverlappingObjects, currentVariables]);
 
-  const placeArrayVariable = useCallback((position: CellPosition, name: string, values: number[]) => {
+  const placeArrayVariable = useCallback((position: CellPosition, name: string, values: Array<number | string>) => {
     const arrayId = `array-${objectIdCounter.current++}`;
 
     setObjects((prev) => {
@@ -325,6 +528,7 @@ export function useGridState() {
               index: i,
               value: values[i],
               varName: name,
+              direction: 'right',
             },
           },
           positionBinding: binding,
@@ -339,17 +543,19 @@ export function useGridState() {
       const next = new Map(prev);
 
       for (const [, obj] of next) {
-        const pos = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
+        const pos = resolveObjectPosition(obj, next, currentVariables);
 
         if (obj.data.arrayInfo) {
           // Find which index this position corresponds to
           const arrayId = obj.data.arrayInfo.id;
           let found = false;
+          const direction = obj.data.arrayInfo.direction || 'right';
 
           for (const [oid, o] of next) {
             if (o.data.arrayInfo?.id === arrayId) {
               const idx = o.data.arrayInfo.index;
-              if (pos.row === position.row && pos.col + idx === position.col) {
+              const offset = getArrayOffset(direction, idx);
+              if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
                 next.set(oid, {
                   ...o,
                   data: {
@@ -397,18 +603,20 @@ export function useGridState() {
       const next = new Map(prev);
 
       for (const [id, obj] of next) {
-        const pos = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
+        const pos = resolveObjectPosition(obj, next, currentVariables);
 
         if (obj.data.arrayInfo) {
           // Check if this position is part of this array
           const arrayId = obj.data.arrayInfo.id;
           let arrayLength = 0;
+          const direction = obj.data.arrayInfo.direction || 'right';
           for (const [, o] of next) {
             if (o.data.arrayInfo?.id === arrayId) arrayLength++;
           }
 
           for (let i = 0; i < arrayLength; i++) {
-            if (pos.row === position.row && pos.col + i === position.col) {
+            const offset = getArrayOffset(direction, i);
+            if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
               // Update style for all cells in array
               for (const [oid, o] of next) {
                 if (o.data.arrayInfo?.id === arrayId) {
@@ -445,18 +653,20 @@ export function useGridState() {
       const next = new Map(prev);
 
       for (const [id, obj] of next) {
-        const pos = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
+        const pos = resolveObjectPosition(obj, next, currentVariables);
 
         if (obj.data.arrayInfo) {
           // Check if this position is part of this array
           const arrayId = obj.data.arrayInfo.id;
           let arrayLength = 0;
+          const direction = obj.data.arrayInfo.direction || 'right';
           for (const [, o] of next) {
             if (o.data.arrayInfo?.id === arrayId) arrayLength++;
           }
 
           for (let i = 0; i < arrayLength; i++) {
-            if (pos.row === position.row && pos.col + i === position.col) {
+            const offset = getArrayOffset(direction, i);
+            if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
               // Update binding for all cells in array
               for (const [oid, o] of next) {
                 if (o.data.arrayInfo?.id === arrayId) {
@@ -482,6 +692,152 @@ export function useGridState() {
     });
   }, [currentVariables]);
 
+  const updateShapeProps = useCallback((position: CellPosition, shapeProps: Partial<ShapeProps>) => {
+    setObjects((prev) => {
+      const next = new Map(prev);
+
+      for (const [id, obj] of next) {
+        const pos = resolveObjectPosition(obj, next, currentVariables);
+        if (obj.data.arrayInfo) continue;
+
+        if (pos.row === position.row && pos.col === position.col) {
+          next.set(id, {
+            ...obj,
+            data: {
+              ...obj.data,
+              shapeProps: { ...obj.data.shapeProps, ...shapeProps },
+            },
+          });
+          return next;
+        }
+      }
+
+      return next;
+    });
+  }, [currentVariables]);
+
+  const updateIntVarDisplay = useCallback((position: CellPosition, display: 'name-value' | 'value-only') => {
+    setObjects((prev) => {
+      const next = new Map(prev);
+
+      for (const [id, obj] of next) {
+        const pos = resolveObjectPosition(obj, next, currentVariables);
+        if (obj.data.intVar && pos.row === position.row && pos.col === position.col) {
+          next.set(id, {
+            ...obj,
+            data: {
+              ...obj.data,
+              intVar: {
+                ...obj.data.intVar,
+                display,
+              },
+            },
+          });
+          return next;
+        }
+      }
+
+      return next;
+    });
+  }, [currentVariables]);
+
+  const updateArrayDirection = useCallback((position: CellPosition, direction: 'right' | 'left' | 'down' | 'up') => {
+    setObjects((prev) => {
+      const next = new Map(prev);
+
+      for (const [, obj] of next) {
+        const pos = resolveObjectPosition(obj, next, currentVariables);
+        if (!obj.data.arrayInfo) continue;
+
+        const arrayId = obj.data.arrayInfo.id;
+        let arrayLength = 0;
+        for (const [, o] of next) {
+          if (o.data.arrayInfo?.id === arrayId) arrayLength++;
+        }
+
+        for (let i = 0; i < arrayLength; i++) {
+          const offset = getArrayOffset(obj.data.arrayInfo.direction || 'right', i);
+          if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
+            for (const [oid, o] of next) {
+              if (o.data.arrayInfo?.id === arrayId) {
+                next.set(oid, {
+                  ...o,
+                  data: {
+                    ...o.data,
+                    arrayInfo: {
+                      ...o.data.arrayInfo!,
+                      direction,
+                    },
+                  },
+                });
+              }
+            }
+            return next;
+          }
+        }
+      }
+
+      return next;
+    });
+  }, [currentVariables]);
+
+  const setPanelForObject = useCallback((position: CellPosition, panelId: string | null) => {
+    setObjects((prev) => {
+      const next = new Map(prev);
+
+      for (const [id, obj] of next) {
+        const pos = resolveObjectPosition(obj, next, currentVariables);
+
+        if (obj.data.arrayInfo) {
+          const arrayId = obj.data.arrayInfo.id;
+          let arrayLength = 0;
+          const direction = obj.data.arrayInfo.direction || 'right';
+          for (const [, o] of next) {
+            if (o.data.arrayInfo?.id === arrayId) arrayLength++;
+          }
+
+          for (let i = 0; i < arrayLength; i++) {
+            const offset = getArrayOffset(direction, i);
+            if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
+              for (const [oid, o] of next) {
+                if (o.data.arrayInfo?.id === arrayId) {
+                  next.set(oid, {
+                    ...o,
+                    data: {
+                      ...o.data,
+                      panelId: panelId || undefined,
+                    },
+                  });
+                }
+              }
+              return next;
+            }
+          }
+        } else if (pos.row === position.row && pos.col === position.col) {
+          next.set(id, {
+            ...obj,
+            data: {
+              ...obj.data,
+              panelId: panelId || undefined,
+            },
+          });
+          return next;
+        }
+      }
+
+      return next;
+    });
+  }, [currentVariables, resolveObjectPosition]);
+
+  const panelOptions = useMemo(() => {
+    return Array.from(objects.values())
+      .filter((obj) => obj.data.panel?.id)
+      .map((obj) => ({
+        id: obj.data.panel!.id,
+        title: obj.data.panel!.title || obj.data.panel!.id,
+      }));
+  }, [objects]);
+
   const moveCell = useCallback((from: CellPosition, to: CellPosition) => {
     // Update the position binding to new hardcoded position
     setPositionBinding(from, createHardcodedBinding(to));
@@ -493,6 +849,41 @@ export function useGridState() {
       .filter(([, v]) => v.type === 'int' || v.type === 'float')
       .map(([name]) => name);
   }, [currentVariables]);
+
+  const getObjectsSnapshot = useCallback((): GridObjectSnapshot[] => {
+    return Array.from(objects.values()).map((obj) => ({
+      id: obj.id,
+      data: obj.data,
+      positionBinding: obj.positionBinding,
+    }));
+  }, [objects]);
+
+  const loadObjectsSnapshot = useCallback((snapshot: GridObjectSnapshot[]) => {
+    const next = new Map<string, GridObject>();
+    let maxId = -1;
+
+    for (const obj of snapshot) {
+      next.set(obj.id, {
+        id: obj.id,
+        data: obj.data,
+        positionBinding: obj.positionBinding,
+      });
+
+      const idMatch = obj.id.match(/-(\d+)$/);
+      if (idMatch) {
+        maxId = Math.max(maxId, parseInt(idMatch[1], 10));
+      }
+      if (obj.data.arrayInfo?.id) {
+        const arrayMatch = obj.data.arrayInfo.id.match(/-(\d+)$/);
+        if (arrayMatch) {
+          maxId = Math.max(maxId, parseInt(arrayMatch[1], 10));
+        }
+      }
+    }
+
+    objectIdCounter.current = maxId + 1;
+    setObjects(next);
+  }, []);
 
   return {
     cells,
@@ -507,6 +898,8 @@ export function useGridState() {
     setShape,
     clearCell,
     addArray,
+    addLabel,
+    addPanel,
     setCellValue,
     getCellData,
     loadVariables,
@@ -522,5 +915,12 @@ export function useGridState() {
     updateCellStyle,
     moveCell,
     setPositionBinding,
+    updateShapeProps,
+    updateArrayDirection,
+    updateIntVarDisplay,
+    setPanelForObject,
+    panelOptions,
+    getObjectsSnapshot,
+    loadObjectsSnapshot,
   };
 }

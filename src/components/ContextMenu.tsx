@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ShapeType, VariableDictionary, Variable, CellData, CellStyle, CellPosition, PositionBinding, PositionComponent } from '../types/grid';
+import type { ShapeType, VariableDictionary, Variable, CellData, CellStyle, CellPosition, PositionBinding, PositionComponent, ShapeProps, ArrowOrientation } from '../types/grid';
 import { Circle, Square, Arrow } from './shapes';
 import { validateExpression } from '../utils/expressionEvaluator';
 
@@ -11,14 +11,39 @@ interface ContextMenuProps {
   intVariableNames: string[];
   onSelect: (shape: ShapeType | null) => void;
   onAddArray: (length: number) => void;
+  onAddLabel: (text: string, width: number, height: number) => void;
+  onAddPanel: (title: string, width: number, height: number) => void;
   onPlaceVariable: (name: string, variable: Variable) => void;
   onUpdateStyle: (style: Partial<CellStyle>) => void;
   onMoveCell: (newPosition: CellPosition) => void;
   onSetPositionBinding: (binding: PositionBinding) => void;
+  onUpdateShapeProps: (shapeProps: Partial<ShapeProps>) => void;
+  onUpdateArrayDirection: (direction: 'right' | 'left' | 'down' | 'up') => void;
+  onUpdateIntVarDisplay: (display: 'name-value' | 'value-only') => void;
+  onSetPanelForObject: (panelId: string | null) => void;
+  panelOptions: Array<{ id: string; title: string }>;
   onClose: () => void;
 }
 
-type MenuLevel = 'main' | 'add' | 'shapes' | 'variables' | 'array-input' | 'settings' | 'settings-color' | 'settings-thickness' | 'settings-position';
+type MenuLevel =
+  | 'main'
+  | 'add'
+  | 'shapes'
+  | 'variables'
+  | 'array-input'
+  | 'label-input'
+  | 'panel-input'
+  | 'settings'
+  | 'settings-color'
+  | 'settings-thickness'
+  | 'settings-position'
+  | 'settings-size'
+  | 'settings-rotation'
+  | 'settings-orientation'
+  | 'settings-array-direction'
+  | 'settings-int-display'
+  | 'settings-panel'
+  | 'settings-font-size';
 
 const PRESET_COLORS = [
   { name: 'Default', value: undefined },
@@ -35,6 +60,7 @@ const LINE_WIDTHS = [1, 2, 3, 4, 5];
 
 const shapeItems: { type: ShapeType; label: string; Icon: React.ComponentType }[] = [
   { type: 'circle', label: 'Circle', Icon: Circle },
+  { type: 'rectangle', label: 'Rectangle', Icon: Square },
   { type: 'square', label: 'Square', Icon: Square },
   { type: 'arrow', label: 'Arrow', Icon: Arrow },
 ];
@@ -47,10 +73,17 @@ export function ContextMenu({
   intVariableNames,
   onSelect,
   onAddArray,
+  onAddLabel,
+  onAddPanel,
   onPlaceVariable,
   onUpdateStyle,
   onMoveCell: _onMoveCell,
   onSetPositionBinding,
+  onUpdateShapeProps,
+  onUpdateArrayDirection,
+  onUpdateIntVarDisplay,
+  onSetPanelForObject,
+  panelOptions,
   onClose,
 }: ContextMenuProps) {
   void _onMoveCell; // Kept for backward compatibility
@@ -58,6 +91,12 @@ export function ContextMenu({
   const hasContent = !!(cellData?.shape || cellData?.arrayInfo || cellData?.intVar);
   const [menuLevel, setMenuLevel] = useState<MenuLevel>(hasContent ? 'settings' : 'main');
   const [arrayLength, setArrayLength] = useState('5');
+  const [labelText, setLabelText] = useState('Label');
+  const [labelWidth, setLabelWidth] = useState('3');
+  const [labelHeight, setLabelHeight] = useState('1');
+  const [panelTitle, setPanelTitle] = useState('Panel');
+  const [panelWidth, setPanelWidth] = useState('6');
+  const [panelHeight, setPanelHeight] = useState('4');
   const inputRef = useRef<HTMLInputElement>(null);
   const rowInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,11 +135,29 @@ export function ContextMenu({
 
   const variableEntries = Object.entries(variables);
   const intVariables = variableEntries.filter(([, v]) => v.type === 'int' || v.type === 'float');
-  const arrayVariables = variableEntries.filter(([, v]) => v.type === 'arr[int]');
+  const arrayVariables = variableEntries.filter(([, v]) => v.type === 'arr[int]' || v.type === 'arr[str]');
   const hasVariables = variableEntries.length > 0;
 
   const currentColor = cellData?.style?.color;
   const currentLineWidth = cellData?.style?.lineWidth || 1;
+  const currentOpacity = cellData?.style?.opacity ?? 1;
+  const [customColorValue, setCustomColorValue] = useState(currentColor || '#94a3b8');
+  const [customOpacityValue, setCustomOpacityValue] = useState((currentOpacity * 100).toString());
+  const arrowOrientation = (cellData?.shapeProps?.orientation || 'up') as ArrowOrientation;
+  const [shapeWidth, setShapeWidth] = useState(
+    (cellData?.shapeProps?.width || 1).toString()
+  );
+  const [shapeHeight, setShapeHeight] = useState(
+    (cellData?.shapeProps?.height || 1).toString()
+  );
+  const [shapeRotation, setShapeRotation] = useState(
+    (cellData?.shapeProps?.rotation || 0).toString()
+  );
+  const arrayDirection = cellData?.arrayInfo?.direction || 'right';
+  const intDisplay = cellData?.intVar?.display || 'name-value';
+  const [fontSizeValue, setFontSizeValue] = useState(
+    (cellData?.style?.fontSize || 12).toString()
+  );
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -145,6 +202,20 @@ export function ContextMenu({
       onAddArray(length);
       onClose();
     }
+  };
+
+  const handleAddLabel = () => {
+    const width = Math.max(1, parseInt(labelWidth, 10) || 1);
+    const height = Math.max(1, parseInt(labelHeight, 10) || 1);
+    onAddLabel(labelText, width, height);
+    onClose();
+  };
+
+  const handleAddPanel = () => {
+    const width = Math.max(1, parseInt(panelWidth, 10) || 1);
+    const height = Math.max(1, parseInt(panelHeight, 10) || 1);
+    onAddPanel(panelTitle, width, height);
+    onClose();
   };
 
   const handleApplyPositionBinding = () => {
@@ -296,6 +367,26 @@ export function ContextMenu({
             <span className="text-sm text-gray-700">Empty Array</span>
             <span className="ml-auto text-gray-400">→</span>
           </button>
+          <button
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+            onClick={() => setMenuLevel('label-input')}
+          >
+            <div className="w-6 h-6 flex items-center justify-center text-slate-500 font-mono text-xs font-bold">
+              lbl
+            </div>
+            <span className="text-sm text-gray-700">Label</span>
+            <span className="ml-auto text-gray-400">→</span>
+          </button>
+          <button
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+            onClick={() => setMenuLevel('panel-input')}
+          >
+            <div className="w-6 h-6 flex items-center justify-center text-slate-500 font-mono text-xs font-bold">
+              pnl
+            </div>
+            <span className="text-sm text-gray-700">Panel</span>
+            <span className="ml-auto text-gray-400">→</span>
+          </button>
         </>
       )}
 
@@ -429,12 +520,114 @@ export function ContextMenu({
         </>
       )}
 
+      {/* Label Input Menu */}
+      {menuLevel === 'label-input' && (
+        <>
+          {renderBackButton('Add', 'add')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Label
+          </div>
+          <div className="px-3 py-2 space-y-2">
+            <input
+              type="text"
+              value={labelText}
+              onChange={(e) => setLabelText(e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              placeholder="Label text"
+            />
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Width</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={labelWidth}
+                onChange={(e) => setLabelWidth(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Height</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={labelHeight}
+                onChange={(e) => setLabelHeight(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <p className="text-xs text-gray-400">
+              Use {'{var}'} to insert variables
+            </p>
+            <button
+              onClick={handleAddLabel}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Panel Input Menu */}
+      {menuLevel === 'panel-input' && (
+        <>
+          {renderBackButton('Add', 'add')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Panel
+          </div>
+          <div className="px-3 py-2 space-y-2">
+            <input
+              type="text"
+              value={panelTitle}
+              onChange={(e) => setPanelTitle(e.target.value)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              placeholder="Panel title"
+            />
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Width</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={panelWidth}
+                onChange={(e) => setPanelWidth(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Height</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={panelHeight}
+                onChange={(e) => setPanelHeight(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              onClick={handleAddPanel}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Add Panel
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Settings Menu (when clicking on existing object) */}
       {menuLevel === 'settings' && (
         <>
           <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
             {getObjectTypeName()} Settings
           </div>
+          {cellData?.invalidReason && (
+            <div className="px-3 py-2 text-xs text-red-600 border-b border-gray-200 bg-red-50">
+              {cellData.invalidReason}
+            </div>
+          )}
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
             onClick={() => setMenuLevel('settings-color')}
@@ -469,6 +662,90 @@ export function ContextMenu({
             <span className="text-sm text-gray-700">Move</span>
             <span className="ml-auto text-gray-400">→</span>
           </button>
+          {cellData?.shape && (
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              onClick={() => setMenuLevel('settings-size')}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+                size
+              </div>
+              <span className="text-sm text-gray-700">Size</span>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          )}
+          {cellData?.shape && (
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              onClick={() => setMenuLevel('settings-rotation')}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+                rot
+              </div>
+              <span className="text-sm text-gray-700">Rotation</span>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          )}
+          {cellData?.shape === 'arrow' && (
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              onClick={() => setMenuLevel('settings-orientation')}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+                dir
+              </div>
+              <span className="text-sm text-gray-700">Orientation</span>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          )}
+          {cellData?.arrayInfo && (
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              onClick={() => setMenuLevel('settings-array-direction')}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+                dir
+              </div>
+              <span className="text-sm text-gray-700">Array Direction</span>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          )}
+          {cellData?.intVar && (
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              onClick={() => setMenuLevel('settings-int-display')}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+                txt
+              </div>
+              <span className="text-sm text-gray-700">Variable Display</span>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          )}
+          {!cellData?.panel && panelOptions.length > 0 && (
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              onClick={() => setMenuLevel('settings-panel')}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+                pnl
+              </div>
+              <span className="text-sm text-gray-700">Assign Panel</span>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          )}
+          {(cellData?.intVar || cellData?.arrayInfo) && (
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+              onClick={() => setMenuLevel('settings-font-size')}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+                font
+              </div>
+              <span className="text-sm text-gray-700">Font Size</span>
+              <span className="ml-auto text-gray-400">→</span>
+            </button>
+          )}
           <div className="border-t border-gray-200 mt-1 pt-1">
             <button
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
@@ -493,6 +770,46 @@ export function ContextMenu({
           <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
             Color
           </div>
+          <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={customColorValue}
+                onChange={(e) => setCustomColorValue(e.target.value)}
+                className="h-8 w-12 p-0 border border-gray-300 rounded"
+              />
+              <input
+                type="text"
+                value={customColorValue}
+                onChange={(e) => setCustomColorValue(e.target.value)}
+                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-16">Opacity</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={customOpacityValue}
+                onChange={(e) => setCustomOpacityValue(e.target.value)}
+                className="flex-1"
+              />
+              <span className="text-xs text-gray-500 w-10 text-right">
+                {customOpacityValue}%
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                const opacityValue = Math.min(100, Math.max(0, parseInt(customOpacityValue, 10) || 0));
+                onUpdateStyle({ color: customColorValue, opacity: opacityValue / 100 });
+                onClose();
+              }}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
           <div className="max-h-48 overflow-y-auto">
             {PRESET_COLORS.map(({ name, value }) => (
               <button
@@ -501,7 +818,7 @@ export function ContextMenu({
                   currentColor === value ? 'bg-blue-50' : ''
                 }`}
                 onClick={() => {
-                  onUpdateStyle({ color: value });
+                  onUpdateStyle({ color: value, opacity: currentOpacity });
                   onClose();
                 }}
               >
@@ -706,6 +1023,217 @@ export function ContextMenu({
                 ? 'Position will update when variable changes'
                 : 'Fixed position (0-49)'}
             </p>
+          </div>
+        </>
+      )}
+
+      {/* Size Settings */}
+      {menuLevel === 'settings-size' && (
+        <>
+          {renderBackButton('Settings', 'settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Shape Size
+          </div>
+          <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Width</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={shapeWidth}
+                onChange={(e) => setShapeWidth(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Height</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={shapeHeight}
+                onChange={(e) => setShapeHeight(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              onClick={() => {
+                const widthValue = Math.max(1, parseInt(shapeWidth, 10) || 1);
+                const heightValue = Math.max(1, parseInt(shapeHeight, 10) || 1);
+                onUpdateShapeProps({ width: widthValue, height: heightValue });
+                onClose();
+              }}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Rotation Settings */}
+      {menuLevel === 'settings-rotation' && (
+        <>
+          {renderBackButton('Settings', 'settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Shape Rotation
+          </div>
+          <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-16">Degrees</label>
+              <input
+                type="number"
+                value={shapeRotation}
+                onChange={(e) => setShapeRotation(e.target.value)}
+                className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              onClick={() => {
+                const rotationValue = parseFloat(shapeRotation) || 0;
+                onUpdateShapeProps({ rotation: rotationValue });
+                onClose();
+              }}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Orientation Settings */}
+      {menuLevel === 'settings-orientation' && (
+        <>
+          {renderBackButton('Settings', 'settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Arrow Orientation
+          </div>
+          <div className="px-3 py-2">
+            <select
+              value={arrowOrientation}
+              onChange={(e) => {
+                onUpdateShapeProps({ orientation: e.target.value as ArrowOrientation });
+                onClose();
+              }}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="up">Up</option>
+              <option value="right">Right</option>
+              <option value="down">Down</option>
+              <option value="left">Left</option>
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* Array Direction Settings */}
+      {menuLevel === 'settings-array-direction' && (
+        <>
+          {renderBackButton('Settings', 'settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Array Direction
+          </div>
+          <div className="px-3 py-2">
+            <select
+              value={arrayDirection}
+              onChange={(e) => {
+                onUpdateArrayDirection(e.target.value as 'right' | 'left' | 'down' | 'up');
+                onClose();
+              }}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+              <option value="down">Down</option>
+              <option value="up">Up</option>
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* Variable Display Settings */}
+      {menuLevel === 'settings-int-display' && (
+        <>
+          {renderBackButton('Settings', 'settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Variable Display
+          </div>
+          <div className="px-3 py-2">
+            <select
+              value={intDisplay}
+              onChange={(e) => {
+                onUpdateIntVarDisplay(e.target.value as 'name-value' | 'value-only');
+                onClose();
+              }}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="name-value">name=value</option>
+              <option value="value-only">value only</option>
+            </select>
+          </div>
+        </>
+      )}
+
+      {/* Font Size Settings */}
+      {menuLevel === 'settings-font-size' && (
+        <>
+          {renderBackButton('Settings', 'settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Font Size
+          </div>
+          <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Size</label>
+              <input
+                type="number"
+                min="8"
+                max="32"
+                value={fontSizeValue}
+                onChange={(e) => setFontSizeValue(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-xs text-gray-500">px</span>
+            </div>
+            <button
+              onClick={() => {
+                const sizeValue = Math.min(32, Math.max(8, parseInt(fontSizeValue, 10) || 12));
+                onUpdateStyle({ fontSize: sizeValue });
+                onClose();
+              }}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Panel Assignment Settings */}
+      {menuLevel === 'settings-panel' && (
+        <>
+          {renderBackButton('Settings', 'settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Assign Panel
+          </div>
+          <div className="px-3 py-2">
+            <select
+              value={cellData?.panelId || ''}
+              onChange={(e) => {
+                const nextPanel = e.target.value || null;
+                onSetPanelForObject(nextPanel);
+                onClose();
+              }}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">None</option>
+              {panelOptions.map((panel) => (
+                <option key={panel.id} value={panel.id}>
+                  {panel.title}
+                </option>
+              ))}
+            </select>
           </div>
         </>
       )}

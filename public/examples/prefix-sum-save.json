@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "code": "# Prefix Sum Example\nnums = [1, 2, 3, 4, 5]\nprefix = [0] * len(nums)\ntotal = 0\n\nfor i in range(len(nums)):\n    total = total + nums[i]\n    prefix[i] = total\n\nprint(\"Prefix sums:\", prefix)\n",
+  "isEditable": false,
+  "timeline": [
+    {
+      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
+      "prefix": { "type": "arr[int]", "value": [0, 0, 0, 0, 0] },
+      "total": { "type": "int", "value": 0 },
+      "i": { "type": "int", "value": 0 }
+    },
+    {
+      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
+      "prefix": { "type": "arr[int]", "value": [1, 0, 0, 0, 0] },
+      "total": { "type": "int", "value": 1 },
+      "i": { "type": "int", "value": 0 }
+    },
+    {
+      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
+      "prefix": { "type": "arr[int]", "value": [1, 3, 0, 0, 0] },
+      "total": { "type": "int", "value": 3 },
+      "i": { "type": "int", "value": 1 }
+    },
+    {
+      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
+      "prefix": { "type": "arr[int]", "value": [1, 3, 6, 0, 0] },
+      "total": { "type": "int", "value": 6 },
+      "i": { "type": "int", "value": 2 }
+    },
+    {
+      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
+      "prefix": { "type": "arr[int]", "value": [1, 3, 6, 10, 0] },
+      "total": { "type": "int", "value": 10 },
+      "i": { "type": "int", "value": 3 }
+    },
+    {
+      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
+      "prefix": { "type": "arr[int]", "value": [1, 3, 6, 10, 15] },
+      "total": { "type": "int", "value": 15 },
+      "i": { "type": "int", "value": 4 }
+    }
+  ],
+  "currentStep": 0,
+  "executionSteps": [
+    { "lineNumber": 6, "variables": { "i": { "type": "int", "value": 0 } } },
+    { "lineNumber": 7, "variables": { "i": { "type": "int", "value": 0 } } },
+    { "lineNumber": 6, "variables": { "i": { "type": "int", "value": 1 } } },
+    { "lineNumber": 7, "variables": { "i": { "type": "int", "value": 1 } } },
+    { "lineNumber": 6, "variables": { "i": { "type": "int", "value": 2 } } },
+    { "lineNumber": 7, "variables": { "i": { "type": "int", "value": 2 } } }
+  ],
+  "output": "",
+  "objects": [
+    {
+      "id": "obj-0",
+      "data": { "objectId": "obj-0", "arrayInfo": { "id": "array-0", "index": 0, "value": 1, "varName": "nums", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 5 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-1",
+      "data": { "objectId": "obj-1", "arrayInfo": { "id": "array-0", "index": 1, "value": 2, "varName": "nums", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 5 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-2",
+      "data": { "objectId": "obj-2", "arrayInfo": { "id": "array-0", "index": 2, "value": 3, "varName": "nums", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 5 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-3",
+      "data": { "objectId": "obj-3", "arrayInfo": { "id": "array-0", "index": 3, "value": 4, "varName": "nums", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 5 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-4",
+      "data": { "objectId": "obj-4", "arrayInfo": { "id": "array-0", "index": 4, "value": 5, "varName": "nums", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 5 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-5",
+      "data": { "objectId": "obj-5", "arrayInfo": { "id": "array-1", "index": 0, "value": 0, "varName": "prefix", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-6",
+      "data": { "objectId": "obj-6", "arrayInfo": { "id": "array-1", "index": 1, "value": 0, "varName": "prefix", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-7",
+      "data": { "objectId": "obj-7", "arrayInfo": { "id": "array-1", "index": 2, "value": 0, "varName": "prefix", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-8",
+      "data": { "objectId": "obj-8", "arrayInfo": { "id": "array-1", "index": 3, "value": 0, "varName": "prefix", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-9",
+      "data": { "objectId": "obj-9", "arrayInfo": { "id": "array-1", "index": 4, "value": 0, "varName": "prefix", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-10",
+      "data": {
+        "objectId": "obj-10",
+        "shape": "rectangle",
+        "shapeProps": { "width": 1, "height": 1, "rotation": 0 },
+        "style": { "color": "#f97316", "opacity": 0.4, "lineWidth": 1 }
+      },
+      "positionBinding": {
+        "row": { "type": "hardcoded", "value": 5 },
+        "col": { "type": "expression", "expression": "i + 5" }
+      }
+    }
+  ]
+}

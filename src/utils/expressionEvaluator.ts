@@ -55,8 +55,13 @@ function tokenize(expression: string): Token[] {
 
     // Operators
     if (['+', '-', '*', '/', '^', '%'].includes(char)) {
-      tokens.push({ type: 'OPERATOR', value: char });
-      pos++;
+      if (char === '/' && expression[pos + 1] === '/') {
+        tokens.push({ type: 'OPERATOR', value: '//' });
+        pos += 2;
+      } else {
+        tokens.push({ type: 'OPERATOR', value: char });
+        pos++;
+      }
       continue;
     }
 
@@ -150,7 +155,7 @@ class Parser {
     let left = this.parsePower();
 
     while (this.current().type === 'OPERATOR' &&
-           ['*', '/', '%'].includes(this.current().value)) {
+           ['*', '/', '//', '%'].includes(this.current().value)) {
       const op = this.consume().value;
       const right = this.parsePower();
       left = { type: 'binaryOp', operator: op, left, right };
@@ -285,6 +290,9 @@ function evaluateAST(node: ASTNode, variables: VariableDictionary): number {
         case '/':
           if (right === 0) throw new Error('Division by zero');
           return left / right;
+        case '//':
+          if (right === 0) throw new Error('Division by zero');
+          return Math.floor(left / right);
         case '^': return Math.pow(left, right);
         case '%':
           if (right === 0) throw new Error('Modulo by zero');
@@ -339,7 +347,7 @@ function evaluateAST(node: ASTNode, variables: VariableDictionary): number {
  * Evaluate a mathematical expression with variable substitution
  *
  * Supported operations:
- * - Arithmetic: +, -, *, /, ^ (power), % (modulo)
+ * - Arithmetic: +, -, *, /, //, ^ (power), % (modulo)
  * - Functions: abs(), floor(), ceil(), round(), min(), max()
  * - Variables: any int variable from the dictionary
  * - Array access: arr[i], arr[0], arr[i+1]

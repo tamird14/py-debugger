@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 import { Grid } from './components/Grid';
 import { ContextMenu } from './components/ContextMenu';
 import { TimelineControls } from './components/TimelineControls';
@@ -19,6 +20,7 @@ import type {
   Variable,
   CellStyle,
   PositionBinding,
+  ShapeProps,
 } from './types/grid';
 import { cellKey } from './types/grid';
 
@@ -36,6 +38,8 @@ function App() {
     setShape,
     clearCell,
     addArray,
+    addLabel,
+    addPanel,
     loadTimeline,
     nextStep,
     prevStep,
@@ -48,6 +52,13 @@ function App() {
     updateCellStyle,
     moveCell,
     setPositionBinding,
+    updateShapeProps,
+    updateArrayDirection,
+    updateIntVarDisplay,
+    setPanelForObject,
+    panelOptions,
+    getObjectsSnapshot,
+    loadObjectsSnapshot,
   } = useGridState();
 
   // Code editor state
@@ -59,6 +70,7 @@ function App() {
   const [output, setOutput] = useState<string | undefined>();
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -129,6 +141,66 @@ function App() {
     loadTimeline([]);
   }, [loadTimeline]);
 
+  const handleSave = useCallback(() => {
+    const saveData = {
+      version: 1,
+      code,
+      isEditable,
+      timeline,
+      currentStep,
+      executionSteps,
+      output,
+      objects: getObjectsSnapshot(),
+    };
+
+    const blob = new Blob([JSON.stringify(saveData, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'math-insight-save.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [code, isEditable, timeline, currentStep, executionSteps, output, getObjectsSnapshot]);
+
+  const handleLoadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleLoadFile = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result || '{}'));
+          setCode(parsed.code || '');
+          setIsEditable(parsed.isEditable ?? true);
+          setExecutionSteps(Array.isArray(parsed.executionSteps) ? parsed.executionSteps : []);
+          setOutput(parsed.output);
+          setError(undefined);
+
+          loadTimeline(Array.isArray(parsed.timeline) ? parsed.timeline : []);
+          loadObjectsSnapshot(Array.isArray(parsed.objects) ? parsed.objects : []);
+
+          const nextStep = typeof parsed.currentStep === 'number' ? parsed.currentStep : 0;
+          goToStep(nextStep);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Failed to load save file');
+        } finally {
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }
+      };
+      reader.readAsText(file);
+    },
+    [goToStep, loadObjectsSnapshot, loadTimeline]
+  );
+
   // Context menu handlers
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, position: CellPosition) => {
@@ -168,13 +240,31 @@ function App() {
     [contextMenuCell, addArray]
   );
 
+  const handleAddLabel = useCallback(
+    (text: string, width: number, height: number) => {
+      if (contextMenuCell) {
+        addLabel(contextMenuCell, text, width, height);
+      }
+    },
+    [contextMenuCell, addLabel]
+  );
+
+  const handleAddPanel = useCallback(
+    (title: string, width: number, height: number) => {
+      if (contextMenuCell) {
+        addPanel(contextMenuCell, width, height, title);
+      }
+    },
+    [contextMenuCell, addPanel]
+  );
+
   const handlePlaceVariable = useCallback(
     (name: string, variable: Variable) => {
       if (!contextMenuCell) return;
 
       if (variable.type === 'int' || variable.type === 'float') {
         placeIntVariable(contextMenuCell, name, variable.value);
-      } else if (variable.type === 'arr[int]') {
+      } else if (variable.type === 'arr[int]' || variable.type === 'arr[str]') {
         placeArrayVariable(contextMenuCell, name, variable.value);
       }
     },
@@ -215,6 +305,42 @@ function App() {
     [contextMenuCell, setPositionBinding]
   );
 
+  const handleUpdateShapeProps = useCallback(
+    (shapeProps: Partial<ShapeProps>) => {
+      if (contextMenuCell) {
+        updateShapeProps(contextMenuCell, shapeProps);
+      }
+    },
+    [contextMenuCell, updateShapeProps]
+  );
+
+  const handleUpdateArrayDirection = useCallback(
+    (direction: 'right' | 'left' | 'down' | 'up') => {
+      if (contextMenuCell) {
+        updateArrayDirection(contextMenuCell, direction);
+      }
+    },
+    [contextMenuCell, updateArrayDirection]
+  );
+
+  const handleUpdateIntVarDisplay = useCallback(
+    (display: 'name-value' | 'value-only') => {
+      if (contextMenuCell) {
+        updateIntVarDisplay(contextMenuCell, display);
+      }
+    },
+    [contextMenuCell, updateIntVarDisplay]
+  );
+
+  const handleSetPanelForObject = useCallback(
+    (panelId: string | null) => {
+      if (contextMenuCell) {
+        setPanelForObject(contextMenuCell, panelId);
+      }
+    },
+    [contextMenuCell, setPanelForObject]
+  );
+
   const hasTimeline = timeline.length > 0;
   const contextMenuCellData = contextMenuCell
     ? cells.get(cellKey(contextMenuCell.row, contextMenuCell.col))
@@ -233,6 +359,27 @@ function App() {
           >
             About
           </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSave}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
+            >
+              Save
+            </button>
+            <button
+              onClick={handleLoadClick}
+              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
+            >
+              Load
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={handleLoadFile}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -282,66 +429,81 @@ function App() {
         </div>
       </header>
 
-      {/* Main content - two panel layout */}
-      <main className="flex-1 flex overflow-hidden">
-        {/* Left panel - Code Editor */}
-        <div className="w-1/2 flex flex-col border-r border-gray-300">
-          <div className="flex-1 overflow-hidden">
-            <CodeEditor
-              code={code}
-              onChange={setCode}
-              isAnalyzing={isAnalyzing}
-              isEditable={isEditable}
-              currentLine={currentExecutionStep?.lineNumber}
-              lastExecutedLine={previousExecutionStep?.lineNumber}
-              onAnalyze={handleAnalyze}
-              onEdit={handleEdit}
-              error={error}
-              output={output}
-            />
-          </div>
-
-          {/* Variables panel below code editor */}
-          {hasTimeline && (
-            <div className="flex-shrink-0 h-48 border-t border-gray-700 bg-gray-50">
-              <div className="h-full flex flex-col">
-                <div className="flex-shrink-0 px-3 py-1 bg-gray-200 border-b border-gray-300">
-                  <span className="text-xs font-semibold text-gray-600 uppercase">
-                    Variables (Step {currentStep + 1})
-                  </span>
-                </div>
-                <div className="flex-1 overflow-auto">
-                  <VariablesPanel
-                    variables={variables}
-                    previousVariables={previousVariables}
+      {/* Main content - resizable panel layout */}
+      <main className="flex-1 overflow-hidden">
+        <Group orientation="horizontal" className="h-full">
+          {/* Left panel group - Code + Variables */}
+          <Panel defaultSize={50} minSize={20}>
+            <Group orientation="vertical" className="h-full">
+              <Panel defaultSize={hasTimeline ? 70 : 100} minSize={30}>
+                <div className="h-full border-r border-gray-300">
+                  <CodeEditor
+                    code={code}
+                    onChange={setCode}
+                    isAnalyzing={isAnalyzing}
+                    isEditable={isEditable}
+                    currentLine={currentExecutionStep?.lineNumber}
+                    lastExecutedLine={previousExecutionStep?.lineNumber}
+                    onAnalyze={handleAnalyze}
+                    onEdit={handleEdit}
+                    error={error}
+                    output={output}
                   />
                 </div>
+              </Panel>
+
+              {hasTimeline && (
+                <>
+                  <Separator className="h-1 bg-gray-300 hover:bg-gray-400 cursor-row-resize" />
+                  <Panel defaultSize={30} minSize={15}>
+                    <div className="h-full border-t border-gray-700 bg-gray-50">
+                      <div className="h-full flex flex-col">
+                        <div className="flex-shrink-0 px-3 py-1 bg-gray-200 border-b border-gray-300">
+                          <span className="text-xs font-semibold text-gray-600 uppercase">
+                            Variables (Step {currentStep + 1})
+                          </span>
+                        </div>
+                        <div className="flex-1 overflow-auto">
+                          <VariablesPanel
+                            variables={variables}
+                            previousVariables={previousVariables}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </Panel>
+                </>
+              )}
+            </Group>
+          </Panel>
+
+          <Separator className="w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize" />
+
+          {/* Right panel - Visual Grid */}
+          <Panel defaultSize={50} minSize={20}>
+            <div className="h-full flex flex-col">
+              <div className="flex-shrink-0 px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Visual Panel</span>
+                {selectedCell && (
+                  <span className="text-xs text-gray-500">
+                    Cell: ({selectedCell.row}, {selectedCell.col})
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <Grid
+                  cells={cells}
+                  selectedCell={selectedCell}
+                  zoom={zoom}
+                  onSelectCell={selectCell}
+                  onContextMenu={handleContextMenu}
+                  onZoom={handleZoom}
+                  onMoveCell={moveCell}
+                />
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Right panel - Visual Grid */}
-        <div className="w-1/2 flex flex-col">
-          <div className="flex-shrink-0 px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Visual Panel</span>
-            {selectedCell && (
-              <span className="text-xs text-gray-500">
-                Cell: ({selectedCell.row}, {selectedCell.col})
-              </span>
-            )}
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <Grid
-              cells={cells}
-              selectedCell={selectedCell}
-              zoom={zoom}
-              onSelectCell={selectCell}
-              onContextMenu={handleContextMenu}
-              onZoom={handleZoom}
-            />
-          </div>
-        </div>
+          </Panel>
+        </Group>
       </main>
 
       {/* Context menu */}
@@ -354,10 +516,17 @@ function App() {
           intVariableNames={intVariableNames}
           onSelect={handleSelectShape}
           onAddArray={handleAddArray}
+          onAddLabel={handleAddLabel}
+          onAddPanel={handleAddPanel}
           onPlaceVariable={handlePlaceVariable}
           onUpdateStyle={handleUpdateStyle}
           onMoveCell={handleMoveCell}
           onSetPositionBinding={handleSetPositionBinding}
+          onUpdateShapeProps={handleUpdateShapeProps}
+          onUpdateArrayDirection={handleUpdateArrayDirection}
+          onUpdateIntVarDisplay={handleUpdateIntVarDisplay}
+          onSetPanelForObject={handleSetPanelForObject}
+          panelOptions={panelOptions}
           onClose={handleCloseContextMenu}
         />
       )}

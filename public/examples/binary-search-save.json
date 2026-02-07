@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "code": "# Binary Search Example\narr = [2, 3, 4, 10, 40, 50, 60]\ntarget = 10\nleft = 0\nright = len(arr) - 1\nmid = 0\nfound = -1\n\nwhile left <= right:\n    mid = (left + right) // 2\n    if arr[mid] == target:\n        found = mid\n        break\n    elif arr[mid] < target:\n        left = mid + 1\n    else:\n        right = mid - 1\n\nprint(\"Found at index:\", found)\n",
+  "isEditable": false,
+  "timeline": [
+    {
+      "arr": { "type": "arr[int]", "value": [2, 3, 4, 10, 40, 50, 60] },
+      "target": { "type": "int", "value": 10 },
+      "left": { "type": "int", "value": 0 },
+      "right": { "type": "int", "value": 6 },
+      "mid": { "type": "int", "value": 3 },
+      "found": { "type": "int", "value": -1 }
+    },
+    {
+      "arr": { "type": "arr[int]", "value": [2, 3, 4, 10, 40, 50, 60] },
+      "target": { "type": "int", "value": 10 },
+      "left": { "type": "int", "value": 0 },
+      "right": { "type": "int", "value": 6 },
+      "mid": { "type": "int", "value": 3 },
+      "found": { "type": "int", "value": 3 }
+    }
+  ],
+  "currentStep": 0,
+  "executionSteps": [
+    { "lineNumber": 9, "variables": { "mid": { "type": "int", "value": 3 } } },
+    { "lineNumber": 11, "variables": { "found": { "type": "int", "value": 3 } } }
+  ],
+  "output": "",
+  "objects": [
+    {
+      "id": "obj-0",
+      "data": { "objectId": "obj-0", "arrayInfo": { "id": "array-0", "index": 0, "value": 2, "varName": "arr", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-1",
+      "data": { "objectId": "obj-1", "arrayInfo": { "id": "array-0", "index": 1, "value": 3, "varName": "arr", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-2",
+      "data": { "objectId": "obj-2", "arrayInfo": { "id": "array-0", "index": 2, "value": 4, "varName": "arr", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-3",
+      "data": { "objectId": "obj-3", "arrayInfo": { "id": "array-0", "index": 3, "value": 10, "varName": "arr", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-4",
+      "data": { "objectId": "obj-4", "arrayInfo": { "id": "array-0", "index": 4, "value": 40, "varName": "arr", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-5",
+      "data": { "objectId": "obj-5", "arrayInfo": { "id": "array-0", "index": 5, "value": 50, "varName": "arr", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-6",
+      "data": { "objectId": "obj-6", "arrayInfo": { "id": "array-0", "index": 6, "value": 60, "varName": "arr", "direction": "right" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-7",
+      "data": { "objectId": "obj-7", "intVar": { "name": "target", "value": 10, "display": "name-value" } },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 6 }, "col": { "type": "hardcoded", "value": 5 } }
+    },
+    {
+      "id": "obj-8",
+      "data": {
+        "objectId": "obj-8",
+        "shape": "arrow",
+        "shapeProps": { "width": 1, "height": 1, "orientation": "down", "rotation": 0 },
+        "style": { "color": "#22c55e", "opacity": 0.9, "lineWidth": 1 }
+      },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "expression", "expression": "left + 5" } }
+    },
+    {
+      "id": "obj-9",
+      "data": {
+        "objectId": "obj-9",
+        "shape": "arrow",
+        "shapeProps": { "width": 1, "height": 1, "orientation": "down", "rotation": 0 },
+        "style": { "color": "#3b82f6", "opacity": 0.9, "lineWidth": 1 }
+      },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "expression", "expression": "mid + 5" } }
+    },
+    {
+      "id": "obj-10",
+      "data": {
+        "objectId": "obj-10",
+        "shape": "arrow",
+        "shapeProps": { "width": 1, "height": 1, "orientation": "down", "rotation": 0 },
+        "style": { "color": "#ef4444", "opacity": 0.9, "lineWidth": 1 }
+      },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 7 }, "col": { "type": "expression", "expression": "right + 5" } }
+    },
+    {
+      "id": "obj-11",
+      "data": {
+        "objectId": "obj-11",
+        "shape": "rectangle",
+        "shapeProps": { "width": 1, "height": 1, "rotation": 0 },
+        "style": { "color": "#f97316", "opacity": 0.3, "lineWidth": 1 }
+      },
+      "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "expression", "expression": "left + 5" } }
+    }
+  ]
+}
