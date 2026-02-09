@@ -40,6 +40,7 @@ function App() {
     addArray,
     addLabel,
     addPanel,
+    getPanelContextAt,
     loadTimeline,
     nextStep,
     prevStep,
@@ -57,6 +58,7 @@ function App() {
     updateIntVarDisplay,
     setPanelForObject,
     panelOptions,
+    panels,
     getObjectsSnapshot,
     loadObjectsSnapshot,
   } = useGridState();
@@ -78,6 +80,12 @@ function App() {
     position: { x: 0, y: 0 },
   });
   const [contextMenuCell, setContextMenuCell] = useState<CellPosition | null>(null);
+  const [contextMenuPanel, setContextMenuPanel] = useState<{
+    id: string;
+    origin: CellPosition;
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Get previous variables for highlighting changes
   const previousVariables = currentStep > 0 ? timeline[currentStep - 1] : undefined;
@@ -205,26 +213,28 @@ function App() {
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, position: CellPosition) => {
       setContextMenuCell(position);
+      setContextMenuPanel(getPanelContextAt(position));
       setContextMenu({
         isOpen: true,
         position: { x: e.clientX, y: e.clientY },
       });
     },
-    []
+    [getPanelContextAt]
   );
 
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
     setContextMenuCell(null);
+    setContextMenuPanel(null);
   }, []);
 
   const handleSelectShape = useCallback(
-    (shape: ShapeType | null) => {
+    (shape: ShapeType | null, panelContext?: { id: string; origin: CellPosition }) => {
       if (contextMenuCell) {
         if (shape === null) {
           clearCell(contextMenuCell);
         } else {
-          setShape(contextMenuCell, shape);
+          setShape(contextMenuCell, shape, panelContext);
         }
       }
     },
@@ -232,18 +242,18 @@ function App() {
   );
 
   const handleAddArray = useCallback(
-    (length: number) => {
+    (length: number, panelContext?: { id: string; origin: CellPosition }) => {
       if (contextMenuCell) {
-        addArray(contextMenuCell, length);
+        addArray(contextMenuCell, length, panelContext);
       }
     },
     [contextMenuCell, addArray]
   );
 
   const handleAddLabel = useCallback(
-    (text: string, width: number, height: number) => {
+    (text: string, width: number, height: number, panelContext?: { id: string; origin: CellPosition }) => {
       if (contextMenuCell) {
-        addLabel(contextMenuCell, text, width, height);
+        addLabel(contextMenuCell, text, width, height, panelContext);
       }
     },
     [contextMenuCell, addLabel]
@@ -259,13 +269,13 @@ function App() {
   );
 
   const handlePlaceVariable = useCallback(
-    (name: string, variable: Variable) => {
+    (name: string, variable: Variable, panelContext?: { id: string; origin: CellPosition }) => {
       if (!contextMenuCell) return;
 
       if (variable.type === 'int' || variable.type === 'float') {
-        placeIntVariable(contextMenuCell, name, variable.value);
+        placeIntVariable(contextMenuCell, name, variable.value, panelContext);
       } else if (variable.type === 'arr[int]' || variable.type === 'arr[str]') {
-        placeArrayVariable(contextMenuCell, name, variable.value);
+        placeArrayVariable(contextMenuCell, name, variable.value, panelContext);
       }
     },
     [contextMenuCell, placeIntVariable, placeArrayVariable]
@@ -493,6 +503,7 @@ function App() {
               <div className="flex-1 overflow-hidden">
                 <Grid
                   cells={cells}
+                  panels={panels}
                   selectedCell={selectedCell}
                   zoom={zoom}
                   onSelectCell={selectCell}
@@ -527,6 +538,7 @@ function App() {
           onUpdateIntVarDisplay={handleUpdateIntVarDisplay}
           onSetPanelForObject={handleSetPanelForObject}
           panelOptions={panelOptions}
+          panelContext={contextMenuPanel ?? undefined}
           onClose={handleCloseContextMenu}
         />
       )}

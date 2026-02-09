@@ -8,6 +8,7 @@ import type {
   Timeline,
   PositionBinding,
   ShapeProps,
+  PositionComponent,
 } from '../types/grid';
 import { cellKey, resolvePosition, createHardcodedBinding, getArrayOffset } from '../types/grid';
 import { evaluateExpression } from '../utils/expressionEvaluator';
@@ -40,6 +41,8 @@ export function useGridState() {
   const [currentStep, setCurrentStep] = useState(0);
 
   const objectIdCounter = useRef(0);
+  const movePromptRef = useRef<{ key: string; inFlight: boolean }>({ key: '', inFlight: false });
+  const panelPromptRef = useRef<{ key: string; inFlight: boolean }>({ key: '', inFlight: false });
 
   const resolvePositionWithErrors = useCallback(
     (binding: PositionBinding, vars: VariableDictionary): { position: CellPosition; error?: string } => {
@@ -106,6 +109,27 @@ export function useGridState() {
     return timeline[Math.min(currentStep, timeline.length - 1)] || {};
   }, [timeline, currentStep]);
 
+  const getPanelContextAt = useCallback(
+    (position: CellPosition): { id: string; origin: CellPosition; width: number; height: number } | null => {
+      for (const [, obj] of objects) {
+        if (!obj.data.panel) continue;
+        const origin = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
+        const width = obj.data.panel.width;
+        const height = obj.data.panel.height;
+        if (
+          position.row >= origin.row &&
+          position.row < origin.row + height &&
+          position.col >= origin.col &&
+          position.col < origin.col + width
+        ) {
+          return { id: obj.data.panel.id, origin, width, height };
+        }
+      }
+      return null;
+    },
+    [objects, currentVariables]
+  );
+
   const stepCount = timeline.length;
 
   const renderLabelText = useCallback((template: string, vars: VariableDictionary): string => {
@@ -134,6 +158,9 @@ export function useGridState() {
     }
 
     for (const [, obj] of objects) {
+      if (obj.data.panel) {
+        continue;
+      }
       const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
       let position = resolved.position;
       let invalidReason = resolved.error;
@@ -258,6 +285,35 @@ export function useGridState() {
     return cellMap;
   }, [objects, currentVariables, renderLabelText]);
 
+  const panels = useMemo(() => {
+    const result: Array<{
+      id: string;
+      row: number;
+      col: number;
+      width: number;
+      height: number;
+      title?: string;
+      invalidReason?: string;
+    }> = [];
+
+    for (const [, obj] of objects) {
+      if (!obj.data.panel) continue;
+      const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
+      const position = resolved.position;
+      result.push({
+        id: obj.data.panel.id,
+        row: position.row,
+        col: position.col,
+        width: obj.data.panel.width,
+        height: obj.data.panel.height,
+        title: obj.data.panel.title,
+        invalidReason: resolved.error,
+      });
+    }
+
+    return result;
+  }, [objects, currentVariables]);
+
   // Helper function to generate unique object ID
   const generateObjectId = useCallback(() => {
     return `obj-${objectIdCounter.current++}`;
@@ -278,6 +334,10 @@ export function useGridState() {
     for (const [id, obj] of next) {
       const pos = resolveObjectPosition(obj, next, variables);
 
+      if (obj.data.panel) {
+        // Panels are containers; do not clear them when placing children.
+        continue;
+      }
       if (obj.data.arrayInfo) {
         // For arrays, check if any cell overlaps
         const arrayId = obj.data.arrayInfo.id;
@@ -341,14 +401,17 @@ export function useGridState() {
     setSelectedCell(position);
   }, []);
 
-  const setShape = useCallback((position: CellPosition, shape: ShapeType) => {
+  const setShape = useCallback((position: CellPosition, shape: ShapeType, panelContext?: { id: string; origin: CellPosition }) => {
     const objectId = generateObjectId();
+    const targetPosition = panelContext
+      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
+      : position;
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, 1, currentVariables);
       next.set(objectId, {
         id: objectId,
-        data: { shape, objectId, shapeProps: { width: 1, height: 1 } },
-        positionBinding: createHardcodedBinding(position),
+        data: { shape, objectId, shapeProps: { width: 1, height: 1 }, panelId: panelContext?.id },
+        positionBinding: createHardcodedBinding(targetPosition),
       });
       return next;
     });
@@ -401,12 +464,15 @@ export function useGridState() {
     });
   }, [currentVariables]);
 
-  const addArray = useCallback((position: CellPosition, length: number) => {
+  const addArray = useCallback((position: CellPosition, length: number, panelContext?: { id: string; origin: CellPosition }) => {
     const arrayId = `array-${objectIdCounter.current++}`;
+    const targetPosition = panelContext
+      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
+      : position;
 
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, length, currentVariables);
-      const binding = createHardcodedBinding(position);
+      const binding = createHardcodedBinding(targetPosition);
 
       for (let i = 0; i < length; i++) {
         const objectId = generateObjectId();
@@ -420,6 +486,7 @@ export function useGridState() {
               value: 0,
               direction: 'right',
             },
+            panelId: panelContext?.id,
           },
           positionBinding: binding, // All array cells share the same binding (first cell position)
         });
@@ -428,8 +495,11 @@ export function useGridState() {
     });
   }, [generateObjectId, clearOverlappingObjects, currentVariables]);
 
-  const addLabel = useCallback((position: CellPosition, text: string, width: number, height: number) => {
+  const addLabel = useCallback((position: CellPosition, text: string, width: number, height: number, panelContext?: { id: string; origin: CellPosition }) => {
     const objectId = generateObjectId();
+    const targetPosition = panelContext
+      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
+      : position;
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, width, currentVariables);
       next.set(objectId, {
@@ -441,8 +511,9 @@ export function useGridState() {
             width,
             height,
           },
+          panelId: panelContext?.id,
         },
-        positionBinding: createHardcodedBinding(position),
+        positionBinding: createHardcodedBinding(targetPosition),
       });
       return next;
     });
@@ -494,8 +565,11 @@ export function useGridState() {
     setCurrentStep(Math.max(0, Math.min(step, timeline.length - 1)));
   }, [timeline.length]);
 
-  const placeIntVariable = useCallback((position: CellPosition, name: string, value: number) => {
+  const placeIntVariable = useCallback((position: CellPosition, name: string, value: number, panelContext?: { id: string; origin: CellPosition }) => {
     const objectId = generateObjectId();
+    const targetPosition = panelContext
+      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
+      : position;
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, 1, currentVariables);
       next.set(objectId, {
@@ -503,19 +577,23 @@ export function useGridState() {
         data: {
           objectId,
           intVar: { name, value, display: 'name-value' },
+          panelId: panelContext?.id,
         },
-        positionBinding: createHardcodedBinding(position),
+        positionBinding: createHardcodedBinding(targetPosition),
       });
       return next;
     });
   }, [generateObjectId, clearOverlappingObjects, currentVariables]);
 
-  const placeArrayVariable = useCallback((position: CellPosition, name: string, values: Array<number | string>) => {
+  const placeArrayVariable = useCallback((position: CellPosition, name: string, values: Array<number | string>, panelContext?: { id: string; origin: CellPosition }) => {
     const arrayId = `array-${objectIdCounter.current++}`;
+    const targetPosition = panelContext
+      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
+      : position;
 
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, values.length, currentVariables);
-      const binding = createHardcodedBinding(position);
+      const binding = createHardcodedBinding(targetPosition);
 
       for (let i = 0; i < values.length; i++) {
         const objectId = generateObjectId();
@@ -530,6 +608,7 @@ export function useGridState() {
               varName: name,
               direction: 'right',
             },
+            panelId: panelContext?.id,
           },
           positionBinding: binding,
         });
@@ -649,48 +728,117 @@ export function useGridState() {
   }, [currentVariables]);
 
   const setPositionBinding = useCallback((position: CellPosition, binding: PositionBinding) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
+    const getPanelInfo = (panelId?: string) => {
+      if (!panelId) return null;
+      for (const [, pobj] of objects) {
+        if (pobj.data.panel?.id === panelId) {
+          const origin = resolvePosition(pobj.positionBinding, currentVariables, evaluateExpression);
+          return {
+            id: panelId,
+            origin,
+            width: pobj.data.panel.width,
+            height: pobj.data.panel.height,
+          };
+        }
+      }
+      return null;
+    };
 
-      for (const [id, obj] of next) {
-        const pos = resolveObjectPosition(obj, next, currentVariables);
-
+    const findTarget = () => {
+      for (const [id, obj] of objects) {
+        const pos = resolveObjectPosition(obj, objects, currentVariables);
         if (obj.data.arrayInfo) {
-          // Check if this position is part of this array
           const arrayId = obj.data.arrayInfo.id;
           let arrayLength = 0;
           const direction = obj.data.arrayInfo.direction || 'right';
-          for (const [, o] of next) {
+          for (const [, o] of objects) {
             if (o.data.arrayInfo?.id === arrayId) arrayLength++;
           }
-
           for (let i = 0; i < arrayLength; i++) {
             const offset = getArrayOffset(direction, i);
             if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
-              // Update binding for all cells in array
-              for (const [oid, o] of next) {
-                if (o.data.arrayInfo?.id === arrayId) {
-                  next.set(oid, {
-                    ...o,
-                    positionBinding: binding,
-                  });
-                }
-              }
-              return next;
+              return { id, obj, arrayId };
             }
           }
         } else if (pos.row === position.row && pos.col === position.col) {
-          next.set(id, {
-            ...obj,
-            positionBinding: binding,
-          });
-          return next;
+          return { id, obj };
         }
       }
+      return null;
+    };
 
+    const target = findTarget();
+    if (!target) return;
+
+    const panelInfo = getPanelInfo(target.obj.data.panelId);
+    let nextBinding = binding;
+    if (panelInfo && binding.row.type === 'hardcoded' && binding.col.type === 'hardcoded') {
+      const rowValue = binding.row.value - panelInfo.origin.row;
+      const colValue = binding.col.value - panelInfo.origin.col;
+      nextBinding = createHardcodedBinding({
+        row: Math.max(0, rowValue),
+        col: Math.max(0, colValue),
+      });
+      const outOfBounds =
+        rowValue < 0 ||
+        colValue < 0 ||
+        rowValue >= panelInfo.height ||
+        colValue >= panelInfo.width;
+      if (outOfBounds) {
+        const promptKey = `${panelInfo.id}:${rowValue},${colValue}`;
+        if (panelPromptRef.current.inFlight && panelPromptRef.current.key === promptKey) {
+          return;
+        }
+        panelPromptRef.current = { key: promptKey, inFlight: true };
+        const extend = window.confirm('Target is outside the panel. Extend the panel to include it?');
+        panelPromptRef.current = { key: promptKey, inFlight: false };
+        if (!extend) return;
+        setObjects((prev) => {
+          const next = new Map(prev);
+          for (const [pid, pobj] of next) {
+            if (pobj.data.panel?.id === panelInfo.id) {
+              const newWidth = Math.max(panelInfo.width, colValue + 1);
+              const newHeight = Math.max(panelInfo.height, rowValue + 1);
+              next.set(pid, {
+                ...pobj,
+                data: {
+                  ...pobj.data,
+                  panel: {
+                    ...pobj.data.panel,
+                    width: newWidth,
+                    height: newHeight,
+                  },
+                  shapeProps: { ...pobj.data.shapeProps, width: newWidth, height: newHeight },
+                },
+              });
+              break;
+            }
+          }
+          return next;
+        });
+      }
+    }
+
+    setObjects((prev) => {
+      const next = new Map(prev);
+      if (target.arrayId) {
+        for (const [oid, o] of next) {
+          if (o.data.arrayInfo?.id === target.arrayId) {
+            next.set(oid, {
+              ...o,
+              positionBinding: nextBinding,
+            });
+          }
+        }
+      } else {
+        next.set(target.id, {
+          ...target.obj,
+          positionBinding: nextBinding,
+        });
+      }
       return next;
     });
-  }, [currentVariables]);
+  }, [objects, currentVariables, resolveObjectPosition]);
 
   const updateShapeProps = useCallback((position: CellPosition, shapeProps: Partial<ShapeProps>) => {
     setObjects((prev) => {
@@ -839,9 +987,150 @@ export function useGridState() {
   }, [objects]);
 
   const moveCell = useCallback((from: CellPosition, to: CellPosition) => {
-    // Update the position binding to new hardcoded position
-    setPositionBinding(from, createHardcodedBinding(to));
-  }, [setPositionBinding]);
+    const findTarget = () => {
+      for (const [id, obj] of objects) {
+        const pos = resolveObjectPosition(obj, objects, currentVariables);
+        if (obj.data.arrayInfo) {
+          const arrayId = obj.data.arrayInfo.id;
+          let arrayLength = 0;
+          const direction = obj.data.arrayInfo.direction || 'right';
+          for (const [, o] of objects) {
+            if (o.data.arrayInfo?.id === arrayId) arrayLength++;
+          }
+          for (let i = 0; i < arrayLength; i++) {
+            const offset = getArrayOffset(direction, i);
+            if (pos.row + offset.rowDelta === from.row && pos.col + offset.colDelta === from.col) {
+              return { id, obj, arrayId };
+            }
+          }
+        } else if (pos.row === from.row && pos.col === from.col) {
+          return { id, obj };
+        }
+      }
+      return null;
+    };
+
+    const target = findTarget();
+    if (!target) return;
+
+    const panelContext = target.obj.data.panelId ? getPanelContextAt(from) : null;
+    let relativeTarget = to;
+    let extendPanel = false;
+    let newPanelSize: { width: number; height: number } | null = null;
+    let newPanelOrigin: CellPosition | null = null;
+    let shiftRow = 0;
+    let shiftCol = 0;
+
+    if (panelContext) {
+      relativeTarget = {
+        row: to.row - panelContext.origin.row,
+        col: to.col - panelContext.origin.col,
+      };
+      const outOfBounds =
+        relativeTarget.row < 0 ||
+        relativeTarget.col < 0 ||
+        relativeTarget.row >= panelContext.height ||
+        relativeTarget.col >= panelContext.width;
+      if (outOfBounds) {
+        const promptKey = `${panelContext.id}:${relativeTarget.row},${relativeTarget.col}`;
+        if (movePromptRef.current.inFlight && movePromptRef.current.key === promptKey) {
+          return;
+        }
+        movePromptRef.current = { key: promptKey, inFlight: true };
+        const extend = window.confirm('Target is outside the panel. Extend the panel to include it?');
+        movePromptRef.current = { key: promptKey, inFlight: false };
+        if (!extend) return;
+        extendPanel = true;
+        const deltaRow = Math.min(0, relativeTarget.row);
+        const deltaCol = Math.min(0, relativeTarget.col);
+        shiftRow = -deltaRow;
+        shiftCol = -deltaCol;
+        const adjustedTarget = {
+          row: relativeTarget.row + shiftRow,
+          col: relativeTarget.col + shiftCol,
+        };
+        relativeTarget = adjustedTarget;
+        newPanelOrigin = {
+          row: panelContext.origin.row + deltaRow,
+          col: panelContext.origin.col + deltaCol,
+        };
+        newPanelSize = {
+          width: Math.max(panelContext.width + shiftCol, adjustedTarget.col + 1),
+          height: Math.max(panelContext.height + shiftRow, adjustedTarget.row + 1),
+        };
+      }
+    }
+
+    setObjects((prev) => {
+      const next = new Map(prev);
+
+      const adjustComponent = (component: PositionComponent, delta: number): PositionComponent => {
+        if (delta === 0) return component;
+        if (component.type === 'hardcoded') {
+          return { type: 'hardcoded', value: component.value + delta };
+        }
+        if (component.type === 'variable') {
+          return { type: 'expression', expression: `${component.varName} + ${delta}` };
+        }
+        return { type: 'expression', expression: `(${component.expression}) + ${delta}` };
+      };
+
+      if (extendPanel && panelContext && newPanelSize && newPanelOrigin) {
+        for (const [pid, pobj] of next) {
+          if (pobj.data.panel?.id === panelContext.id) {
+            next.set(pid, {
+              ...pobj,
+              data: {
+                ...pobj.data,
+                panel: {
+                  ...pobj.data.panel,
+                  width: newPanelSize.width,
+                  height: newPanelSize.height,
+                },
+                shapeProps: { ...pobj.data.shapeProps, width: newPanelSize.width, height: newPanelSize.height },
+              },
+              positionBinding: createHardcodedBinding({
+                row: Math.max(0, newPanelOrigin.row),
+                col: Math.max(0, newPanelOrigin.col),
+              }),
+            });
+            break;
+          }
+        }
+        if (shiftRow !== 0 || shiftCol !== 0) {
+          for (const [oid, o] of next) {
+            if (o.data.panelId === panelContext.id) {
+              const binding = o.positionBinding;
+              next.set(oid, {
+                ...o,
+                positionBinding: {
+                  row: adjustComponent(binding.row, shiftRow),
+                  col: adjustComponent(binding.col, shiftCol),
+                },
+              });
+            }
+          }
+        }
+      }
+
+      if (target.arrayId) {
+        for (const [oid, o] of next) {
+          if (o.data.arrayInfo?.id === target.arrayId) {
+            next.set(oid, {
+              ...o,
+              positionBinding: createHardcodedBinding(relativeTarget),
+            });
+          }
+        }
+      } else {
+        next.set(target.id, {
+          ...target.obj,
+          positionBinding: createHardcodedBinding(relativeTarget),
+        });
+      }
+      return next;
+    });
+  }, [objects, currentVariables, getPanelContextAt, resolveObjectPosition]);
 
   // Get list of numeric variable names (int and float) for binding UI
   const intVariableNames = useMemo((): string[] => {
@@ -900,6 +1189,7 @@ export function useGridState() {
     addArray,
     addLabel,
     addPanel,
+    getPanelContextAt,
     setCellValue,
     getCellData,
     loadVariables,
@@ -920,6 +1210,7 @@ export function useGridState() {
     updateIntVarDisplay,
     setPanelForObject,
     panelOptions,
+    panels,
     getObjectsSnapshot,
     loadObjectsSnapshot,
   };

@@ -5,6 +5,15 @@ import { cellKey, getArrayOffset } from '../types/grid';
 
 interface GridProps {
   cells: Map<string, CellData>;
+  panels: Array<{
+    id: string;
+    row: number;
+    col: number;
+    width: number;
+    height: number;
+    title?: string;
+    invalidReason?: string;
+  }>;
   selectedCell: CellPosition | null;
   zoom: number;
   onSelectCell: (position: CellPosition | null) => void;
@@ -19,6 +28,7 @@ const GRID_ROWS = 50;
 
 export function Grid({
   cells,
+  panels,
   selectedCell,
   zoom,
   onSelectCell,
@@ -31,6 +41,8 @@ export function Grid({
     start: CellPosition;
     rowAllowed: boolean;
     colAllowed: boolean;
+    lastTarget?: CellPosition;
+    committed?: boolean;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -94,12 +106,21 @@ export function Grid({
         row: dragState.rowAllowed ? target.row : dragState.start.row,
         col: dragState.colAllowed ? target.col : dragState.start.col,
       };
-      if (next.row === dragState.start.row && next.col === dragState.start.col) return;
-      onMoveCell(dragState.start, next);
-      dragStateRef.current = { ...dragState, start: next };
+      dragStateRef.current = { ...dragState, lastTarget: next };
     };
 
     const handleMouseUp = () => {
+      const dragState = dragStateRef.current;
+      if (dragState?.committed) {
+        dragStateRef.current = null;
+        setIsDragging(false);
+        return;
+      }
+      if (dragState?.lastTarget &&
+        (dragState.lastTarget.row !== dragState.start.row || dragState.lastTarget.col !== dragState.start.col)) {
+        dragStateRef.current = { ...dragState, committed: true };
+        onMoveCell(dragState.start, dragState.lastTarget);
+      }
       dragStateRef.current = null;
       setIsDragging(false);
     };
@@ -202,8 +223,12 @@ export function Grid({
           });
         }
       } else {
-        const widthCells = cellData.label?.width || cellData.shapeProps?.width || 1;
-        const heightCells = cellData.label?.height || cellData.shapeProps?.height || 1;
+        const baseWidth = cellData.label?.width || cellData.shapeProps?.width || 1;
+        const baseHeight = cellData.label?.height || cellData.shapeProps?.height || 1;
+        const isUniformShape = cellData.shape === 'circle';
+        const uniformSize = Math.max(baseWidth, baseHeight);
+        const widthCells = isUniformShape ? uniformSize : baseWidth;
+        const heightCells = isUniformShape ? uniformSize : baseHeight;
         objects.push({
           key,
           row,
@@ -329,6 +354,30 @@ export function Grid({
     });
   }, [objectsToRender, cells, selectedCell, onSelectCell, handleCellContextMenu]);
 
+  const renderedPanels = useMemo(() => {
+    return panels.map((panel) => (
+      <div
+        key={panel.id}
+        className={`absolute border-2 border-dashed bg-slate-50/50 ${
+          panel.invalidReason ? 'opacity-50 grayscale' : ''
+        }`}
+        style={{
+          left: panel.col * CELL_SIZE,
+          top: panel.row * CELL_SIZE,
+          width: panel.width * CELL_SIZE,
+          height: panel.height * CELL_SIZE,
+          zIndex: 5,
+        }}
+      >
+        {panel.title && (
+          <span className="absolute -top-3 left-1 text-[10px] font-mono bg-slate-50 px-1 text-slate-600">
+            {panel.title}
+          </span>
+        )}
+      </div>
+    ));
+  }, [panels]);
+
   return (
     <div
       ref={containerRef}
@@ -352,6 +401,13 @@ export function Grid({
           }}
         >
           {gridBackground}
+        </div>
+
+        {/* Panels layer */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="relative w-full h-full pointer-events-none">
+            {renderedPanels}
+          </div>
         </div>
 
         {/* Animated objects layer */}

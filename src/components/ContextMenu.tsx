@@ -9,11 +9,11 @@ interface ContextMenuProps {
   cellData?: CellData;
   cellPosition?: CellPosition;
   intVariableNames: string[];
-  onSelect: (shape: ShapeType | null) => void;
-  onAddArray: (length: number) => void;
-  onAddLabel: (text: string, width: number, height: number) => void;
+  onSelect: (shape: ShapeType | null, panelContext?: { id: string; origin: CellPosition }) => void;
+  onAddArray: (length: number, panelContext?: { id: string; origin: CellPosition }) => void;
+  onAddLabel: (text: string, width: number, height: number, panelContext?: { id: string; origin: CellPosition }) => void;
   onAddPanel: (title: string, width: number, height: number) => void;
-  onPlaceVariable: (name: string, variable: Variable) => void;
+  onPlaceVariable: (name: string, variable: Variable, panelContext?: { id: string; origin: CellPosition }) => void;
   onUpdateStyle: (style: Partial<CellStyle>) => void;
   onMoveCell: (newPosition: CellPosition) => void;
   onSetPositionBinding: (binding: PositionBinding) => void;
@@ -22,6 +22,7 @@ interface ContextMenuProps {
   onUpdateIntVarDisplay: (display: 'name-value' | 'value-only') => void;
   onSetPanelForObject: (panelId: string | null) => void;
   panelOptions: Array<{ id: string; title: string }>;
+  panelContext?: { id: string; origin: CellPosition; width: number; height: number };
   onClose: () => void;
 }
 
@@ -61,7 +62,6 @@ const LINE_WIDTHS = [1, 2, 3, 4, 5];
 const shapeItems: { type: ShapeType; label: string; Icon: React.ComponentType }[] = [
   { type: 'circle', label: 'Circle', Icon: Circle },
   { type: 'rectangle', label: 'Rectangle', Icon: Square },
-  { type: 'square', label: 'Square', Icon: Square },
   { type: 'arrow', label: 'Arrow', Icon: Arrow },
 ];
 
@@ -84,6 +84,7 @@ export function ContextMenu({
   onUpdateIntVarDisplay,
   onSetPanelForObject,
   panelOptions,
+  panelContext,
   onClose,
 }: ContextMenuProps) {
   void _onMoveCell; // Kept for backward compatibility
@@ -102,6 +103,13 @@ export function ContextMenu({
 
   // Position binding state
   const currentBinding = cellData?.positionBinding;
+  const [panelOverrideActive, setPanelOverrideActive] = useState(false);
+  const [panelOverride, setPanelOverride] = useState<{ origin: CellPosition } | null>(null);
+  useEffect(() => {
+    if (panelContext && !panelOverrideActive) {
+      setPanelOverride({ origin: panelContext.origin });
+    }
+  }, [panelContext, panelOverrideActive]);
   const [rowBindType, setRowBindType] = useState<'hardcoded' | 'variable' | 'expression'>(
     currentBinding?.row.type || 'hardcoded'
   );
@@ -150,6 +158,7 @@ export function ContextMenu({
   const [shapeHeight, setShapeHeight] = useState(
     (cellData?.shapeProps?.height || 1).toString()
   );
+  const isUniformShape = cellData?.shape === 'circle';
   const [shapeRotation, setShapeRotation] = useState(
     (cellData?.shapeProps?.rotation || 0).toString()
   );
@@ -199,7 +208,7 @@ export function ContextMenu({
   const handleAddArray = () => {
     const length = parseInt(arrayLength, 10);
     if (length > 0 && length <= 50) {
-      onAddArray(length);
+      onAddArray(length, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
       onClose();
     }
   };
@@ -207,7 +216,7 @@ export function ContextMenu({
   const handleAddLabel = () => {
     const width = Math.max(1, parseInt(labelWidth, 10) || 1);
     const height = Math.max(1, parseInt(labelHeight, 10) || 1);
-    onAddLabel(labelText, width, height);
+    onAddLabel(labelText, width, height, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
     onClose();
   };
 
@@ -251,6 +260,11 @@ export function ContextMenu({
       colComponent = { type: 'variable', varName: colVarName };
     } else {
       colComponent = { type: 'hardcoded', value: Math.max(0, Math.min(49, parseInt(newCol, 10) || 0)) };
+    }
+    const origin = panelOverride?.origin;
+    if (origin && rowComponent.type === 'hardcoded' && colComponent.type === 'hardcoded') {
+      rowComponent = { type: 'hardcoded', value: Math.max(0, rowComponent.value + origin.row) };
+      colComponent = { type: 'hardcoded', value: Math.max(0, colComponent.value + origin.col) };
     }
 
     onSetPositionBinding({ row: rowComponent, col: colComponent });
@@ -402,7 +416,7 @@ export function ContextMenu({
               key={type}
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
               onClick={() => {
-                onSelect(type);
+                onSelect(type, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
                 onClose();
               }}
             >
@@ -432,7 +446,7 @@ export function ContextMenu({
                     key={name}
                     className="w-full px-3 py-2 flex items-center gap-3 hover:bg-emerald-50 transition-colors text-left"
                     onClick={() => {
-                      onPlaceVariable(name, variable);
+                      onPlaceVariable(name, variable, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
                       onClose();
                     }}
                   >
@@ -463,7 +477,7 @@ export function ContextMenu({
                     key={name}
                     className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 transition-colors text-left"
                     onClick={() => {
-                      onPlaceVariable(name, variable);
+                      onPlaceVariable(name, variable, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
                       onClose();
                     }}
                   >
@@ -877,6 +891,20 @@ export function ContextMenu({
             Position Settings
           </div>
           <div className="px-3 py-2">
+            {panelContext && (
+              <div className="mb-3 p-2 bg-blue-50 rounded text-xs text-blue-700">
+                Editing relative to panel origin (0,0).
+                <button
+                  className="ml-2 underline"
+                  onClick={() => {
+                    setPanelOverrideActive(true);
+                    setPanelOverride(null);
+                  }}
+                >
+                  Use global grid
+                </button>
+              </div>
+            )}
             {/* Current position display */}
             {currentBinding && (
               <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
@@ -1035,33 +1063,56 @@ export function ContextMenu({
             Shape Size
           </div>
           <div className="px-3 py-2 space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Width</label>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={shapeWidth}
-                onChange={(e) => setShapeWidth(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Height</label>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={shapeHeight}
-                onChange={(e) => setShapeHeight(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            {isUniformShape ? (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-600 w-12">Size</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={shapeWidth}
+                  onChange={(e) => {
+                    setShapeWidth(e.target.value);
+                    setShapeHeight(e.target.value);
+                  }}
+                  className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-gray-600 w-12">Width</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={shapeWidth}
+                    onChange={(e) => setShapeWidth(e.target.value)}
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-gray-600 w-12">Height</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={shapeHeight}
+                    onChange={(e) => setShapeHeight(e.target.value)}
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </>
+            )}
             <button
               onClick={() => {
                 const widthValue = Math.max(1, parseInt(shapeWidth, 10) || 1);
                 const heightValue = Math.max(1, parseInt(shapeHeight, 10) || 1);
-                onUpdateShapeProps({ width: widthValue, height: heightValue });
+                if (isUniformShape) {
+                  onUpdateShapeProps({ width: widthValue, height: widthValue });
+                } else {
+                  onUpdateShapeProps({ width: widthValue, height: heightValue });
+                }
                 onClose();
               }}
               className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
