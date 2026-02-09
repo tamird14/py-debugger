@@ -20,6 +20,8 @@ interface GridProps {
   onContextMenu: (e: React.MouseEvent, position: CellPosition) => void;
   onZoom: (delta: number) => void;
   onMoveCell: (from: CellPosition, to: CellPosition) => void;
+  onMovePanel?: (panelId: string, to: CellPosition) => void;
+  onPanelContextMenu?: (e: React.MouseEvent, panel: { id: string; row: number; col: number; width: number; height: number; title?: string }) => void;
 }
 
 const CELL_SIZE = 40;
@@ -35,6 +37,8 @@ export function Grid({
   onContextMenu,
   onZoom,
   onMoveCell,
+  onMovePanel,
+  onPanelContextMenu,
 }: GridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{
@@ -45,6 +49,14 @@ export function Grid({
     committed?: boolean;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Panel drag state
+  const panelDragRef = useRef<{
+    panelId: string;
+    startCell: CellPosition;
+    lastTarget?: CellPosition;
+  } | null>(null);
+  const [isPanelDragging, setIsPanelDragging] = useState(false);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -132,6 +144,50 @@ export function Grid({
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [getCellFromPointer, isDragging, onMoveCell]);
+
+  // Panel drag: start handler
+  const handlePanelDragStart = useCallback(
+    (e: React.MouseEvent, panelId: string, panelRow: number, panelCol: number) => {
+      e.preventDefault();
+      e.stopPropagation();
+      panelDragRef.current = {
+        panelId,
+        startCell: { row: panelRow, col: panelCol },
+      };
+      setIsPanelDragging(true);
+    },
+    []
+  );
+
+  // Panel drag: mousemove / mouseup effect
+  useEffect(() => {
+    if (!isPanelDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const state = panelDragRef.current;
+      if (!state) return;
+      const target = getCellFromPointer(e.clientX, e.clientY);
+      if (!target) return;
+      panelDragRef.current = { ...state, lastTarget: target };
+    };
+
+    const handleMouseUp = () => {
+      const state = panelDragRef.current;
+      if (state?.lastTarget && onMovePanel &&
+        (state.lastTarget.row !== state.startCell.row || state.lastTarget.col !== state.startCell.col)) {
+        onMovePanel(state.panelId, state.lastTarget);
+      }
+      panelDragRef.current = null;
+      setIsPanelDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [getCellFromPointer, isPanelDragging, onMovePanel]);
 
   // Background grid cells (empty cells for selection and context menu)
   const gridBackground = useMemo(() => {
@@ -358,7 +414,7 @@ export function Grid({
     return panels.map((panel) => (
       <div
         key={panel.id}
-        className={`absolute border-2 border-dashed bg-slate-50/50 ${
+        className={`absolute border-2 border-dashed bg-slate-50/50 transition-all duration-300 ease-out ${
           panel.invalidReason ? 'opacity-50 grayscale' : ''
         }`}
         style={{
@@ -370,13 +426,26 @@ export function Grid({
         }}
       >
         {panel.title && (
-          <span className="absolute -top-3 left-1 text-[10px] font-mono bg-slate-50 px-1 text-slate-600">
+          <span
+            className="absolute -top-3 left-1 text-[10px] font-mono bg-slate-50 px-1 text-slate-600 hover:text-slate-900 hover:bg-blue-100 rounded"
+            style={{
+              pointerEvents: 'auto',
+              cursor: 'grab',
+              userSelect: 'none',
+            }}
+            onMouseDown={(e) => handlePanelDragStart(e, panel.id, panel.row, panel.col)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onPanelContextMenu?.(e, panel);
+            }}
+          >
             {panel.title}
           </span>
         )}
       </div>
     ));
-  }, [panels]);
+  }, [panels, handlePanelDragStart, onPanelContextMenu]);
 
   return (
     <div

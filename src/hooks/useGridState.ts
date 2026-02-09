@@ -977,6 +977,76 @@ export function useGridState() {
     });
   }, [currentVariables, resolveObjectPosition]);
 
+  const movePanel = useCallback((panelId: string, to: CellPosition) => {
+    setObjects((prev) => {
+      const next = new Map(prev);
+      for (const [id, obj] of next) {
+        if (obj.data.panel?.id === panelId) {
+          next.set(id, {
+            ...obj,
+            positionBinding: createHardcodedBinding(to),
+          });
+          break;
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const updatePanel = useCallback((panelId: string, updates: { title?: string; width?: number; height?: number }) => {
+    setObjects((prev) => {
+      const next = new Map(prev);
+      for (const [id, obj] of next) {
+        if (obj.data.panel?.id === panelId) {
+          const updatedPanel = { ...obj.data.panel };
+          if (updates.title !== undefined) updatedPanel.title = updates.title;
+          if (updates.width !== undefined) updatedPanel.width = updates.width;
+          if (updates.height !== undefined) updatedPanel.height = updates.height;
+          next.set(id, {
+            ...obj,
+            data: {
+              ...obj.data,
+              panel: updatedPanel,
+              shapeProps: {
+                ...obj.data.shapeProps,
+                width: updatedPanel.width,
+                height: updatedPanel.height,
+              },
+            },
+          });
+          break;
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const deletePanel = useCallback((panelId: string) => {
+    setObjects((prev) => {
+      const next = new Map(prev);
+      // Remove panel object
+      for (const [id, obj] of next) {
+        if (obj.data.panel?.id === panelId) {
+          next.delete(id);
+          break;
+        }
+      }
+      // Detach children from this panel (keep them but remove panelId reference)
+      for (const [id, obj] of next) {
+        if (obj.data.panelId === panelId) {
+          next.set(id, {
+            ...obj,
+            data: {
+              ...obj.data,
+              panelId: undefined,
+            },
+          });
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const panelOptions = useMemo(() => {
     return Array.from(objects.values())
       .filter((obj) => obj.data.panel?.id)
@@ -1209,6 +1279,9 @@ export function useGridState() {
     updateArrayDirection,
     updateIntVarDisplay,
     setPanelForObject,
+    movePanel,
+    updatePanel,
+    deletePanel,
     panelOptions,
     panels,
     getObjectsSnapshot,

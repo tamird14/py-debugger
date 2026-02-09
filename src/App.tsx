@@ -52,6 +52,9 @@ function App() {
     setZoom,
     updateCellStyle,
     moveCell,
+    movePanel,
+    updatePanel,
+    deletePanel,
     setPositionBinding,
     updateShapeProps,
     updateArrayDirection,
@@ -85,6 +88,14 @@ function App() {
     origin: CellPosition;
     width: number;
     height: number;
+  } | null>(null);
+  const [panelSettingsTarget, setPanelSettingsTarget] = useState<{
+    id: string;
+    row: number;
+    col: number;
+    width: number;
+    height: number;
+    title?: string;
   } | null>(null);
 
   // Get previous variables for highlighting changes
@@ -226,7 +237,21 @@ function App() {
     setContextMenu((prev) => ({ ...prev, isOpen: false }));
     setContextMenuCell(null);
     setContextMenuPanel(null);
+    setPanelSettingsTarget(null);
   }, []);
+
+  const handlePanelContextMenu = useCallback(
+    (e: React.MouseEvent, panel: { id: string; row: number; col: number; width: number; height: number; title?: string }) => {
+      setPanelSettingsTarget(panel);
+      setContextMenuCell(null);
+      setContextMenuPanel(null);
+      setContextMenu({
+        isOpen: true,
+        position: { x: e.clientX, y: e.clientY },
+      });
+    },
+    []
+  );
 
   const handleSelectShape = useCallback(
     (shape: ShapeType | null, panelContext?: { id: string; origin: CellPosition }) => {
@@ -510,6 +535,8 @@ function App() {
                   onContextMenu={handleContextMenu}
                   onZoom={handleZoom}
                   onMoveCell={moveCell}
+                  onMovePanel={movePanel}
+                  onPanelContextMenu={handlePanelContextMenu}
                 />
               </div>
             </div>
@@ -539,6 +566,9 @@ function App() {
           onSetPanelForObject={handleSetPanelForObject}
           panelOptions={panelOptions}
           panelContext={contextMenuPanel ?? undefined}
+          panelSettingsData={panelSettingsTarget ?? undefined}
+          onUpdatePanel={updatePanel}
+          onDeletePanel={deletePanel}
           onClose={handleCloseContextMenu}
         />
       )}

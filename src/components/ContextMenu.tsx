@@ -3,6 +3,15 @@ import type { ShapeType, VariableDictionary, Variable, CellData, CellStyle, Cell
 import { Circle, Square, Arrow } from './shapes';
 import { validateExpression } from '../utils/expressionEvaluator';
 
+interface PanelSettingsData {
+  id: string;
+  row: number;
+  col: number;
+  width: number;
+  height: number;
+  title?: string;
+}
+
 interface ContextMenuProps {
   position: { x: number; y: number };
   variables: VariableDictionary;
@@ -23,6 +32,9 @@ interface ContextMenuProps {
   onSetPanelForObject: (panelId: string | null) => void;
   panelOptions: Array<{ id: string; title: string }>;
   panelContext?: { id: string; origin: CellPosition; width: number; height: number };
+  panelSettingsData?: PanelSettingsData;
+  onUpdatePanel?: (panelId: string, updates: { title?: string; width?: number; height?: number }) => void;
+  onDeletePanel?: (panelId: string) => void;
   onClose: () => void;
 }
 
@@ -44,7 +56,10 @@ type MenuLevel =
   | 'settings-array-direction'
   | 'settings-int-display'
   | 'settings-panel'
-  | 'settings-font-size';
+  | 'settings-font-size'
+  | 'panel-settings'
+  | 'panel-settings-title'
+  | 'panel-settings-size';
 
 const PRESET_COLORS = [
   { name: 'Default', value: undefined },
@@ -85,12 +100,16 @@ export function ContextMenu({
   onSetPanelForObject,
   panelOptions,
   panelContext,
+  panelSettingsData,
+  onUpdatePanel,
+  onDeletePanel,
   onClose,
 }: ContextMenuProps) {
   void _onMoveCell; // Kept for backward compatibility
   const menuRef = useRef<HTMLDivElement>(null);
   const hasContent = !!(cellData?.shape || cellData?.arrayInfo || cellData?.intVar);
-  const [menuLevel, setMenuLevel] = useState<MenuLevel>(hasContent ? 'settings' : 'main');
+  const isPanelSettings = !!panelSettingsData;
+  const [menuLevel, setMenuLevel] = useState<MenuLevel>(isPanelSettings ? 'panel-settings' : hasContent ? 'settings' : 'main');
   const [arrayLength, setArrayLength] = useState('5');
   const [labelText, setLabelText] = useState('Label');
   const [labelWidth, setLabelWidth] = useState('3');
@@ -98,6 +117,12 @@ export function ContextMenu({
   const [panelTitle, setPanelTitle] = useState('Panel');
   const [panelWidth, setPanelWidth] = useState('6');
   const [panelHeight, setPanelHeight] = useState('4');
+
+  // Panel settings (editing existing panel)
+  const [editPanelTitle, setEditPanelTitle] = useState(panelSettingsData?.title || '');
+  const [editPanelWidth, setEditPanelWidth] = useState((panelSettingsData?.width || 6).toString());
+  const [editPanelHeight, setEditPanelHeight] = useState((panelSettingsData?.height || 4).toString());
+
   const inputRef = useRef<HTMLInputElement>(null);
   const rowInputRef = useRef<HTMLInputElement>(null);
 
@@ -1285,6 +1310,131 @@ export function ContextMenu({
                 </option>
               ))}
             </select>
+          </div>
+        </>
+      )}
+
+      {/* Panel Settings (right-click on panel title) */}
+      {menuLevel === 'panel-settings' && panelSettingsData && (
+        <>
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
+            Panel: {panelSettingsData.title || panelSettingsData.id}
+          </div>
+          <button
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+            onClick={() => setMenuLevel('panel-settings-title')}
+          >
+            <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              Aa
+            </div>
+            <span className="text-sm text-gray-700">Title</span>
+            <span className="ml-auto text-xs text-gray-400 font-mono">{panelSettingsData.title || '(none)'}</span>
+            <span className="text-gray-400">→</span>
+          </button>
+          <button
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+            onClick={() => setMenuLevel('panel-settings-size')}
+          >
+            <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              ⇔
+            </div>
+            <span className="text-sm text-gray-700">Size</span>
+            <span className="ml-auto text-xs text-gray-400 font-mono">{panelSettingsData.width}×{panelSettingsData.height}</span>
+            <span className="text-gray-400">→</span>
+          </button>
+          <div className="border-t border-gray-200 mt-1 pt-1">
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
+              onClick={() => {
+                onDeletePanel?.(panelSettingsData.id);
+                onClose();
+              }}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-red-500 font-bold">
+                ×
+              </div>
+              <span className="text-sm text-red-600">Delete Panel</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Panel Settings - Title */}
+      {menuLevel === 'panel-settings-title' && panelSettingsData && (
+        <>
+          {renderBackButton('Panel Settings', 'panel-settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Panel Title
+          </div>
+          <div className="px-3 py-2 space-y-2">
+            <input
+              type="text"
+              value={editPanelTitle}
+              onChange={(e) => setEditPanelTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  onUpdatePanel?.(panelSettingsData.id, { title: editPanelTitle });
+                  onClose();
+                }
+              }}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              placeholder="Panel title"
+              autoFocus
+            />
+            <button
+              onClick={() => {
+                onUpdatePanel?.(panelSettingsData.id, { title: editPanelTitle });
+                onClose();
+              }}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Panel Settings - Size */}
+      {menuLevel === 'panel-settings-size' && panelSettingsData && (
+        <>
+          {renderBackButton('Panel Settings', 'panel-settings')}
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Panel Size
+          </div>
+          <div className="px-3 py-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Width</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={editPanelWidth}
+                onChange={(e) => setEditPanelWidth(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600 w-12">Height</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={editPanelHeight}
+                onChange={(e) => setEditPanelHeight(e.target.value)}
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              onClick={() => {
+                const width = Math.max(1, parseInt(editPanelWidth, 10) || 1);
+                const height = Math.max(1, parseInt(editPanelHeight, 10) || 1);
+                onUpdatePanel?.(panelSettingsData.id, { width, height });
+                onClose();
+              }}
+              className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+            >
+              Apply
+            </button>
           </div>
         </>
       )}
