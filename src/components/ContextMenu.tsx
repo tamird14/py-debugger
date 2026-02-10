@@ -119,7 +119,6 @@ export function ContextMenu({
   const [editPanelWidth, setEditPanelWidth] = useState((panelSettingsData?.width || 6).toString());
   const [editPanelHeight, setEditPanelHeight] = useState((panelSettingsData?.height || 4).toString());
 
-  const inputRef = useRef<HTMLInputElement>(null);
   const rowInputRef = useRef<HTMLInputElement>(null);
 
   // Position binding state
