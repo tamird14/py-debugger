@@ -13,7 +13,13 @@ interface GridCellProps {
   height?: number;
 }
 
-const ShapeComponents: Record<ShapeType, React.ComponentType<{ color?: string }>> = {
+interface ShapeComponentProps {
+  color?: string;
+  opacity?: number;
+  strokeWidth?: number;
+}
+
+const ShapeComponents: Record<ShapeType, React.ComponentType<ShapeComponentProps>> = {
   circle: Circle,
   square: Square,
   rectangle: Square,
@@ -31,6 +37,7 @@ export const GridCell = memo(function GridCell({
   const ShapeComponent = cellData?.shape ? ShapeComponents[cellData.shape] : null;
   const shapeRotation = cellData?.shapeProps?.rotation || 0;
   const arrowOrientation = cellData?.shapeProps?.orientation;
+  const isShapeCell = !!ShapeComponent;
   const isArrayCell = !!cellData?.arrayInfo;
   const isIntVarCell = !!cellData?.intVar;
   const isLabelCell = !!cellData?.label;
@@ -51,9 +58,9 @@ export const GridCell = memo(function GridCell({
   };
 
   const getCellBackground = () => {
-    if (customColor) {
-      return `border-2`;
-    }
+    // Shapes handle their own styling via SVG; don't style the cell
+    if (isShapeCell) return '';
+    if (customColor) return 'border-2';
     if (isArrayCell) return 'bg-amber-50 border-amber-400';
     if (isIntVarCell) return 'bg-emerald-50 border-emerald-400';
     if (isSelected) return 'bg-blue-100';
@@ -65,7 +72,8 @@ export const GridCell = memo(function GridCell({
       width: width || size,
       height: height || size,
     };
-    if (customColor) {
+    // Shapes handle their own fill/stroke via SVG; skip cell-level styling
+    if (customColor && !isShapeCell) {
       style.borderColor = withOpacity(customColor, Math.min(1, Math.max(0, customOpacity)));
       style.borderWidth = customLineWidth;
       style.backgroundColor = withOpacity(customColor, Math.min(1, Math.max(0, customOpacity * 0.12)));
@@ -79,7 +87,8 @@ export const GridCell = memo(function GridCell({
     <div
       className={`
         border cursor-pointer transition-colors relative
-        ${isSelected && !customColor ? 'border-blue-500 border-2' : !customColor ? 'border-gray-300' : ''}
+        ${isSelected && !isShapeCell && !customColor ? 'border-blue-500 border-2' : !isShapeCell && !customColor ? 'border-gray-300' : ''}
+        ${isShapeCell ? 'border-transparent' : ''}
         ${getCellBackground()}
         ${isInvalid ? 'opacity-50 grayscale' : ''}
       `}
@@ -89,12 +98,18 @@ export const GridCell = memo(function GridCell({
       {ShapeComponent && cellData?.shape === 'arrow' ? (
         <Arrow
           color={customColor}
+          opacity={customOpacity}
+          strokeWidth={customLineWidth}
           orientation={arrowOrientation}
           rotation={shapeRotation}
         />
       ) : ShapeComponent ? (
-        <div style={{ transform: `rotate(${shapeRotation}deg)` }}>
-          <ShapeComponent color={customColor} />
+        <div style={{ transform: `rotate(${shapeRotation}deg)`, width: '100%', height: '100%' }}>
+          <ShapeComponent
+            color={customColor}
+            opacity={customOpacity}
+            strokeWidth={customLineWidth}
+          />
         </div>
       ) : null}
 

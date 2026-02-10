@@ -1059,6 +1059,9 @@ export function useGridState() {
   const moveCell = useCallback((from: CellPosition, to: CellPosition) => {
     const findTarget = () => {
       for (const [id, obj] of objects) {
+        // Skip panels -- they use their own drag system (movePanel)
+        if (obj.data.panel) continue;
+
         const pos = resolveObjectPosition(obj, objects, currentVariables);
         if (obj.data.arrayInfo) {
           const arrayId = obj.data.arrayInfo.id;

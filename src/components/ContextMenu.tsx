@@ -19,7 +19,6 @@ interface ContextMenuProps {
   cellPosition?: CellPosition;
   intVariableNames: string[];
   onSelect: (shape: ShapeType | null, panelContext?: { id: string; origin: CellPosition }) => void;
-  onAddArray: (length: number, panelContext?: { id: string; origin: CellPosition }) => void;
   onAddLabel: (text: string, width: number, height: number, panelContext?: { id: string; origin: CellPosition }) => void;
   onAddPanel: (title: string, width: number, height: number) => void;
   onPlaceVariable: (name: string, variable: Variable, panelContext?: { id: string; origin: CellPosition }) => void;
@@ -43,7 +42,6 @@ type MenuLevel =
   | 'add'
   | 'shapes'
   | 'variables'
-  | 'array-input'
   | 'label-input'
   | 'panel-input'
   | 'settings'
@@ -87,7 +85,6 @@ export function ContextMenu({
   cellPosition,
   intVariableNames,
   onSelect,
-  onAddArray,
   onAddLabel,
   onAddPanel,
   onPlaceVariable,
@@ -110,7 +107,6 @@ export function ContextMenu({
   const hasContent = !!(cellData?.shape || cellData?.arrayInfo || cellData?.intVar);
   const isPanelSettings = !!panelSettingsData;
   const [menuLevel, setMenuLevel] = useState<MenuLevel>(isPanelSettings ? 'panel-settings' : hasContent ? 'settings' : 'main');
-  const [arrayLength, setArrayLength] = useState('5');
   const [labelText, setLabelText] = useState('Label');
   const [labelWidth, setLabelWidth] = useState('3');
   const [labelHeight, setLabelHeight] = useState('1');
@@ -220,23 +216,11 @@ export function ContextMenu({
   }, [onClose, menuLevel]);
 
   useEffect(() => {
-    if (menuLevel === 'array-input' && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
     if (menuLevel === 'settings-position' && rowInputRef.current) {
       rowInputRef.current.focus();
       rowInputRef.current.select();
     }
   }, [menuLevel]);
-
-  const handleAddArray = () => {
-    const length = parseInt(arrayLength, 10);
-    if (length > 0 && length <= 50) {
-      onAddArray(length, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
-      onClose();
-    }
-  };
 
   const handleAddLabel = () => {
     const width = Math.max(1, parseInt(labelWidth, 10) || 1);
@@ -398,16 +382,6 @@ export function ContextMenu({
           )}
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
-            onClick={() => setMenuLevel('array-input')}
-          >
-            <div className="w-6 h-6 flex items-center justify-center text-amber-500 font-mono text-xs font-bold">
-              [...]
-            </div>
-            <span className="text-sm text-gray-700">Empty Array</span>
-            <span className="ml-auto text-gray-400">→</span>
-          </button>
-          <button
-            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
             onClick={() => setMenuLevel('label-input')}
           >
             <div className="w-6 h-6 flex items-center justify-center text-slate-500 font-mono text-xs font-bold">
@@ -520,42 +494,6 @@ export function ContextMenu({
               </div>
             </>
           )}
-        </>
-      )}
-
-      {/* Array Input Menu */}
-      {menuLevel === 'array-input' && (
-        <>
-          {renderBackButton('Add', 'add')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-            Empty Array
-          </div>
-          <div className="px-3 py-2">
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                type="number"
-                min="1"
-                max="50"
-                value={arrayLength}
-                onChange={(e) => setArrayLength(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleAddArray();
-                  }
-                }}
-                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Length"
-              />
-              <button
-                onClick={handleAddArray}
-                className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
-              >
-                Add
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">Length (1-50)</p>
-          </div>
         </>
       )}
 

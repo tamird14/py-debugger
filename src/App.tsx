@@ -37,7 +37,6 @@ function App() {
     selectCell,
     setShape,
     clearCell,
-    addArray,
     addLabel,
     addPanel,
     getPanelContextAt,
@@ -264,15 +263,6 @@ function App() {
       }
     },
     [contextMenuCell, setShape, clearCell]
-  );
-
-  const handleAddArray = useCallback(
-    (length: number, panelContext?: { id: string; origin: CellPosition }) => {
-      if (contextMenuCell) {
-        addArray(contextMenuCell, length, panelContext);
-      }
-    },
-    [contextMenuCell, addArray]
   );
 
   const handleAddLabel = useCallback(
@@ -553,7 +543,6 @@ function App() {
           cellPosition={contextMenuCell ?? undefined}
           intVariableNames={intVariableNames}
           onSelect={handleSelectShape}
-          onAddArray={handleAddArray}
           onAddLabel={handleAddLabel}
           onAddPanel={handleAddPanel}
           onPlaceVariable={handlePlaceVariable}
