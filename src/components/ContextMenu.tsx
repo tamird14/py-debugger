@@ -1,7 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import type { ShapeType, VariableDictionary, Variable, CellData, CellStyle, CellPosition, PositionBinding, PositionComponent, ShapeProps, ArrowOrientation } from '../types/grid';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ShapeType, VariableDictionary, Variable, CellData, CellStyle, CellPosition, PositionBinding, PositionComponent, ShapeProps, ArrowOrientation, NumericExpression, SizeValue } from '../types/grid';
 import { Circle, Square, Arrow } from './shapes';
 import { validateExpression } from '../utils/expressionEvaluator';
+
+// Parse expression string to NumericExpression: pure integer -> fixed, else expression
+function parseToNumericExpression(s: string, clamp?: { min: number; max: number }): NumericExpression {
+  const trimmed = s.trim();
+  const asInt = /^-?\d+$/.test(trimmed) ? parseInt(trimmed, 10) : NaN;
+  if (!Number.isNaN(asInt)) {
+    const v = clamp ? Math.max(clamp.min, Math.min(clamp.max, asInt)) : asInt;
+    return { type: 'fixed', value: v };
+  }
+  return trimmed ? { type: 'expression', expression: trimmed } : { type: 'fixed', value: clamp?.min ?? 0 };
+}
 
 interface PanelSettingsData {
   id: string;
@@ -12,9 +23,17 @@ interface PanelSettingsData {
   title?: string;
 }
 
+type ValidateProposedOverTimeline = (proposed: {
+  row?: PositionComponent;
+  col?: PositionComponent;
+  width?: SizeValue;
+  height?: SizeValue;
+}) => string | null;
+
 interface ContextMenuProps {
   position: { x: number; y: number };
   variables: VariableDictionary;
+  validateProposedOverTimeline?: ValidateProposedOverTimeline;
   cellData?: CellData;
   cellPosition?: CellPosition;
   intVariableNames: string[];
@@ -60,7 +79,6 @@ type MenuLevel =
   | 'panel-settings-size';
 
 const PRESET_COLORS = [
-  { name: 'Default', value: undefined },
   { name: 'Red', value: '#ef4444' },
   { name: 'Orange', value: '#f97316' },
   { name: 'Yellow', value: '#eab308' },
@@ -72,15 +90,23 @@ const PRESET_COLORS = [
 
 const LINE_WIDTHS = [1, 2, 3, 4, 5];
 
-const shapeItems: { type: ShapeType; label: string; Icon: React.ComponentType }[] = [
-  { type: 'circle', label: 'Circle', Icon: Circle },
-  { type: 'rectangle', label: 'Rectangle', Icon: Square },
-  { type: 'arrow', label: 'Arrow', Icon: Arrow },
+const DEFAULT_SHAPE_COLORS: Record<ShapeType, string> = {
+  rectangle: '#22c55e',
+  square: '#22c55e',
+  circle: '#3b82f6',
+  arrow: '#ef4444',
+};
+
+const shapeItems: { type: ShapeType; label: string; Icon: React.ComponentType<{ color?: string }>; defaultColor: string }[] = [
+  { type: 'circle', label: 'Circle', Icon: Circle, defaultColor: DEFAULT_SHAPE_COLORS.circle },
+  { type: 'rectangle', label: 'Rectangle', Icon: Square, defaultColor: DEFAULT_SHAPE_COLORS.rectangle },
+  { type: 'arrow', label: 'Arrow', Icon: Arrow, defaultColor: DEFAULT_SHAPE_COLORS.arrow },
 ];
 
 export function ContextMenu({
   position,
   variables,
+  validateProposedOverTimeline,
   cellData,
   cellPosition,
   intVariableNames,
@@ -130,41 +156,68 @@ export function ContextMenu({
       setPanelOverride({ origin: panelContext.origin });
     }
   }, [panelContext, panelOverrideActive]);
-  const [rowBindType, setRowBindType] = useState<'hardcoded' | 'variable' | 'expression'>(
-    currentBinding?.row.type || 'hardcoded'
-  );
-  const [colBindType, setColBindType] = useState<'hardcoded' | 'variable' | 'expression'>(
-    currentBinding?.col.type || 'hardcoded'
-  );
-  const [newRow, setNewRow] = useState(
-    currentBinding?.row.type === 'hardcoded'
-      ? currentBinding.row.value.toString()
-      : cellPosition?.row.toString() || '0'
-  );
-  const [newCol, setNewCol] = useState(
-    currentBinding?.col.type === 'hardcoded'
-      ? currentBinding.col.value.toString()
-      : cellPosition?.col.toString() || '0'
-  );
-  const [rowVarName, setRowVarName] = useState(
-    currentBinding?.row.type === 'variable' ? currentBinding.row.varName : intVariableNames[0] || ''
-  );
-  const [colVarName, setColVarName] = useState(
-    currentBinding?.col.type === 'variable' ? currentBinding.col.varName : intVariableNames[0] || ''
-  );
+  const getInitialExpr = (component: PositionComponent | undefined, fallback: string): string => {
+    if (!component) return fallback;
+    if (component.type === 'fixed' || component.type === 'hardcoded') return component.value.toString();
+    if (component.type === 'variable') return component.varName;
+    if (component.type === 'expression') return component.expression;
+    return fallback;
+  };
   const [rowExpression, setRowExpression] = useState(
-    currentBinding?.row.type === 'expression' ? currentBinding.row.expression : ''
+    getInitialExpr(currentBinding?.row, cellPosition?.row.toString() || '0')
   );
   const [colExpression, setColExpression] = useState(
-    currentBinding?.col.type === 'expression' ? currentBinding.col.expression : ''
+    getInitialExpr(currentBinding?.col, cellPosition?.col.toString() || '0')
   );
   const [rowExprError, setRowExprError] = useState<string | null>(null);
   const [colExprError, setColExprError] = useState<string | null>(null);
+  const [applyError, setApplyError] = useState<string | null>(null);
+  const [variablePickerFor, setVariablePickerFor] = useState<'row' | 'col' | null>(null);
+  const colInputRef = useRef<HTMLInputElement>(null);
+
+  const insertVariableInto = (field: 'row' | 'col', varName: string) => {
+    const ref = field === 'row' ? rowInputRef : colInputRef;
+    const setter = field === 'row' ? setRowExpression : setColExpression;
+    const current = field === 'row' ? rowExpression : colExpression;
+    if (!ref.current) return;
+    const el = ref.current;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const next = current.slice(0, start) + varName + current.slice(end);
+    setter(next);
+    setVariablePickerFor(null);
+    setTimeout(() => { el.focus(); el.setSelectionRange(start + varName.length, start + varName.length); }, 0);
+  };
+
+  const insertVariableIntoSize = (field: 'width' | 'height', varName: string) => {
+    const ref = field === 'width' ? widthInputRef : heightInputRef;
+    const setter = field === 'width' ? setShapeWidth : setShapeHeight;
+    const current = field === 'width' ? shapeWidth : shapeHeight;
+    if (!ref.current) return;
+    const el = ref.current;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const next = current.slice(0, start) + varName + current.slice(end);
+    setter(next);
+    setSizePickerFor(null);
+    setTimeout(() => { el.focus(); el.setSelectionRange(start + varName.length, start + varName.length); }, 0);
+  };
 
   const variableEntries = Object.entries(variables);
   const intVariables = variableEntries.filter(([, v]) => v.type === 'int' || v.type === 'float');
   const arrayVariables = variableEntries.filter(([, v]) => v.type === 'arr[int]' || v.type === 'arr[str]');
   const hasVariables = variableEntries.length > 0;
+  const allVariableNames = useMemo(
+    () => [...intVariableNames, ...arrayVariables.map(([n]) => n)],
+    [intVariableNames, arrayVariables]
+  );
+
+  const getSizeInitial = (v: SizeValue | undefined): string => {
+    if (v === undefined) return '1';
+    if (typeof v === 'number') return String(v);
+    if (v.type === 'fixed') return String(v.value);
+    return v.expression;
+  };
 
   const currentColor = cellData?.style?.color;
   const currentLineWidth = cellData?.style?.lineWidth || 1;
@@ -173,11 +226,14 @@ export function ContextMenu({
   const [customOpacityValue, setCustomOpacityValue] = useState((currentOpacity * 100).toString());
   const arrowOrientation = (cellData?.shapeProps?.orientation || 'up') as ArrowOrientation;
   const [shapeWidth, setShapeWidth] = useState(
-    (cellData?.shapeProps?.width || 1).toString()
+    getSizeInitial(cellData?.shapeSizeBinding?.width ?? cellData?.shapeProps?.width ?? 1)
   );
   const [shapeHeight, setShapeHeight] = useState(
-    (cellData?.shapeProps?.height || 1).toString()
+    getSizeInitial(cellData?.shapeSizeBinding?.height ?? cellData?.shapeProps?.height ?? 1)
   );
+  const [sizePickerFor, setSizePickerFor] = useState<'width' | 'height' | null>(null);
+  const widthInputRef = useRef<HTMLInputElement>(null);
+  const heightInputRef = useRef<HTMLInputElement>(null);
   const isUniformShape = cellData?.shape === 'circle';
   const [shapeRotation, setShapeRotation] = useState(
     (cellData?.shapeProps?.rotation || 0).toString()
@@ -215,6 +271,13 @@ export function ContextMenu({
   }, [onClose, menuLevel]);
 
   useEffect(() => {
+    if (menuLevel === 'settings-size') {
+      setShapeWidth(getSizeInitial(cellData?.shapeSizeBinding?.width ?? cellData?.shapeProps?.width ?? 1));
+      setShapeHeight(getSizeInitial(cellData?.shapeSizeBinding?.height ?? cellData?.shapeProps?.height ?? 1));
+    }
+  }, [menuLevel]);
+
+  useEffect(() => {
     if (menuLevel === 'settings-position' && rowInputRef.current) {
       rowInputRef.current.focus();
       rowInputRef.current.select();
@@ -236,54 +299,53 @@ export function ContextMenu({
   };
 
   const handleApplyPositionBinding = () => {
-    // Validate expressions before applying
-    if (rowBindType === 'expression') {
-      const error = validateExpression(rowExpression, variables);
-      if (error) {
-        setRowExprError(error);
-        return;
-      }
-    }
-    if (colBindType === 'expression') {
-      const error = validateExpression(colExpression, variables);
-      if (error) {
-        setColExprError(error);
-        return;
-      }
-    }
+    setApplyError(null);
+    const rowError = rowExpression.trim() && validateExpression(rowExpression, variables);
+    const colError = colExpression.trim() && validateExpression(colExpression, variables);
+    if (rowError) { setRowExprError(rowError); return; }
+    if (colError) { setColExprError(colError); return; }
 
-    let rowComponent: PositionComponent;
-    if (rowBindType === 'expression') {
-      rowComponent = { type: 'expression', expression: rowExpression };
-    } else if (rowBindType === 'variable') {
-      rowComponent = { type: 'variable', varName: rowVarName };
-    } else {
-      rowComponent = { type: 'hardcoded', value: Math.max(0, Math.min(49, parseInt(newRow, 10) || 0)) };
-    }
-
-    let colComponent: PositionComponent;
-    if (colBindType === 'expression') {
-      colComponent = { type: 'expression', expression: colExpression };
-    } else if (colBindType === 'variable') {
-      colComponent = { type: 'variable', varName: colVarName };
-    } else {
-      colComponent = { type: 'hardcoded', value: Math.max(0, Math.min(49, parseInt(newCol, 10) || 0)) };
-    }
+    let rowComponent: PositionComponent = parseToNumericExpression(rowExpression, { min: 0, max: 49 });
+    let colComponent: PositionComponent = parseToNumericExpression(colExpression, { min: 0, max: 49 });
     const origin = panelOverride?.origin;
-    if (origin && rowComponent.type === 'hardcoded' && colComponent.type === 'hardcoded') {
-      rowComponent = { type: 'hardcoded', value: Math.max(0, rowComponent.value + origin.row) };
-      colComponent = { type: 'hardcoded', value: Math.max(0, colComponent.value + origin.col) };
+    if (origin && rowComponent.type === 'fixed' && colComponent.type === 'fixed') {
+      rowComponent = { type: 'fixed', value: Math.max(0, rowComponent.value + origin.row) };
+      colComponent = { type: 'fixed', value: Math.max(0, colComponent.value + origin.col) };
+    }
+
+    if (validateProposedOverTimeline) {
+      const timelineError = validateProposedOverTimeline({ row: rowComponent, col: colComponent });
+      if (timelineError) {
+        setApplyError(timelineError);
+        return;
+      }
     }
 
     onSetPositionBinding({ row: rowComponent, col: colComponent });
     onClose();
   };
 
+  const handleApplySize = () => {
+    setApplyError(null);
+    const widthExpr = parseToNumericExpression(shapeWidth, { min: 1, max: 50 });
+    const heightExpr = isUniformShape ? widthExpr : parseToNumericExpression(shapeHeight, { min: 1, max: 50 });
+    if (validateProposedOverTimeline) {
+      const timelineError = validateProposedOverTimeline({ width: widthExpr, height: heightExpr });
+      if (timelineError) {
+        setApplyError(timelineError);
+        return;
+      }
+    }
+    onUpdateShapeProps({ width: widthExpr, height: heightExpr });
+    onClose();
+  };
+
   const getPositionDisplayText = (component: PositionComponent | undefined): string => {
     if (!component) return 'Not set';
-    if (component.type === 'hardcoded') return component.value.toString();
-    if (component.type === 'expression') return `=${component.expression}`;
-    return `$${component.varName}`;
+    if (component.type === 'fixed' || component.type === 'hardcoded') return component.value.toString();
+    if (component.type === 'expression') return component.expression;
+    if (component.type === 'variable') return component.varName;
+    return '?';
   };
 
   const getObjectTypeName = () => {
@@ -409,7 +471,7 @@ export function ContextMenu({
           <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
             Shapes
           </div>
-          {shapeItems.map(({ type, label, Icon }) => (
+          {shapeItems.map(({ type, label, Icon, defaultColor }) => (
             <button
               key={type}
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
@@ -419,7 +481,7 @@ export function ContextMenu({
               }}
             >
               <div className="w-6 h-6">
-                <Icon />
+                <Icon color={defaultColor} />
               </div>
               <span className="text-sm text-gray-700">{label}</span>
             </button>
@@ -630,7 +692,7 @@ export function ContextMenu({
           </button>
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
-            onClick={() => setMenuLevel('settings-position')}
+            onClick={() => { setApplyError(null); setMenuLevel('settings-position'); }}
           >
             <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
               ↔
@@ -641,7 +703,7 @@ export function ContextMenu({
           {cellData?.shape && (
             <button
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
-              onClick={() => setMenuLevel('settings-size')}
+              onClick={() => { setApplyError(null); setMenuLevel('settings-size'); }}
             >
               <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
                 size
@@ -877,129 +939,95 @@ export function ContextMenu({
               </div>
             )}
 
-            {/* Row binding */}
+            {/* Row: single expression input + variable helper */}
             <div className="mb-3">
               <label className="text-xs text-gray-600 font-medium block mb-1">Row</label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={rowBindType}
-                  onChange={(e) => {
-                    setRowBindType(e.target.value as 'hardcoded' | 'variable' | 'expression');
-                    setRowExprError(null);
-                  }}
-                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <div className="flex items-center gap-1">
+                <input
+                  ref={rowInputRef}
+                  type="text"
+                  value={rowExpression}
+                  onChange={(e) => { setRowExpression(e.target.value); setRowExprError(null); }}
+                  placeholder="e.g. 0, i, i + 1"
+                  className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
+                    rowExprError ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                  onClick={() => setVariablePickerFor((v) => (v === 'row' ? null : 'row'))}
+                  title="Insert variable"
                 >
-                  <option value="hardcoded">Fixed</option>
-                  <option value="variable">Variable</option>
-                  <option value="expression">Expression</option>
-                </select>
-                {rowBindType === 'hardcoded' && (
-                  <input
-                    ref={rowInputRef}
-                    type="number"
-                    min="0"
-                    max="49"
-                    value={newRow}
-                    onChange={(e) => setNewRow(e.target.value)}
-                    className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-                {rowBindType === 'variable' && (
-                  <select
-                    value={rowVarName}
-                    onChange={(e) => setRowVarName(e.target.value)}
-                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                  >
-                    {intVariableNames.length === 0 ? (
-                      <option value="">No variables</option>
-                    ) : (
-                      intVariableNames.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))
-                    )}
-                  </select>
-                )}
-                {rowBindType === 'expression' && (
-                  <input
-                    type="text"
-                    value={rowExpression}
-                    onChange={(e) => {
-                      setRowExpression(e.target.value);
-                      setRowExprError(null);
-                    }}
-                    placeholder="e.g., i + 1"
-                    className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
-                      rowExprError ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                )}
+                  var
+                </button>
               </div>
-              {rowExprError && (
-                <p className="text-xs text-red-500 mt-1">{rowExprError}</p>
+              {variablePickerFor === 'row' && (
+                <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                  {allVariableNames.length === 0 ? (
+                    <p className="text-xs text-gray-500">No variables</p>
+                  ) : (
+                    allVariableNames.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                        onClick={() => insertVariableInto('row', name)}
+                      >
+                        {name}
+                      </button>
+                    ))
+                  )}
+                </div>
               )}
+              {rowExprError && <p className="text-xs text-red-500 mt-1">{rowExprError}</p>}
             </div>
 
-            {/* Col binding */}
+            {/* Column: single expression input + variable helper */}
             <div className="mb-3">
               <label className="text-xs text-gray-600 font-medium block mb-1">Column</label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={colBindType}
-                  onChange={(e) => {
-                    setColBindType(e.target.value as 'hardcoded' | 'variable' | 'expression');
-                    setColExprError(null);
-                  }}
-                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <div className="flex items-center gap-1">
+                <input
+                  ref={colInputRef}
+                  type="text"
+                  value={colExpression}
+                  onChange={(e) => { setColExpression(e.target.value); setColExprError(null); }}
+                  placeholder="e.g. 0, j, len(arr)"
+                  className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
+                    colExprError ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                  onClick={() => setVariablePickerFor((v) => (v === 'col' ? null : 'col'))}
+                  title="Insert variable"
                 >
-                  <option value="hardcoded">Fixed</option>
-                  <option value="variable">Variable</option>
-                  <option value="expression">Expression</option>
-                </select>
-                {colBindType === 'hardcoded' && (
-                  <input
-                    type="number"
-                    min="0"
-                    max="49"
-                    value={newCol}
-                    onChange={(e) => setNewCol(e.target.value)}
-                    className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-                {colBindType === 'variable' && (
-                  <select
-                    value={colVarName}
-                    onChange={(e) => setColVarName(e.target.value)}
-                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                  >
-                    {intVariableNames.length === 0 ? (
-                      <option value="">No variables</option>
-                    ) : (
-                      intVariableNames.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))
-                    )}
-                  </select>
-                )}
-                {colBindType === 'expression' && (
-                  <input
-                    type="text"
-                    value={colExpression}
-                    onChange={(e) => {
-                      setColExpression(e.target.value);
-                      setColExprError(null);
-                    }}
-                    placeholder="e.g., arr[j]"
-                    className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
-                      colExprError ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                )}
+                  var
+                </button>
               </div>
-              {colExprError && (
-                <p className="text-xs text-red-500 mt-1">{colExprError}</p>
+              {variablePickerFor === 'col' && (
+                <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                  {allVariableNames.length === 0 ? (
+                    <p className="text-xs text-gray-500">No variables</p>
+                  ) : (
+                    allVariableNames.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                        onClick={() => insertVariableInto('col', name)}
+                      >
+                        {name}
+                      </button>
+                    ))
+                  )}
+                </div>
               )}
+              {colExprError && <p className="text-xs text-red-500 mt-1">{colExprError}</p>}
             </div>
 
+            {applyError && <p className="text-xs text-red-500 mt-1">{applyError}</p>}
             <button
               onClick={handleApplyPositionBinding}
               className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
@@ -1007,17 +1035,13 @@ export function ContextMenu({
               Apply
             </button>
             <p className="text-xs text-gray-400 mt-1">
-              {rowBindType === 'expression' || colBindType === 'expression'
-                ? 'Expressions: +, -, *, /, ^, %, abs(), floor(), ceil(), round(), min(), max()'
-                : rowBindType === 'variable' || colBindType === 'variable'
-                ? 'Position will update when variable changes'
-                : 'Fixed position (0-49)'}
+              Number or expression (e.g. i+1, len(arr)). Use var to insert variables.
             </p>
           </div>
         </>
       )}
 
-      {/* Size Settings */}
+      {/* Size Settings - expression inputs + variable helper */}
       {menuLevel === 'settings-size' && (
         <>
           {renderBackButton('Settings', 'settings')}
@@ -1026,57 +1050,134 @@ export function ContextMenu({
           </div>
           <div className="px-3 py-2 space-y-2">
             {isUniformShape ? (
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-600 w-12">Size</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  value={shapeWidth}
-                  onChange={(e) => {
-                    setShapeWidth(e.target.value);
-                    setShapeHeight(e.target.value);
-                  }}
-                  className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="mb-2">
+                <label className="text-xs text-gray-600 font-medium block mb-1">
+                  {cellData?.shape === 'circle' ? 'Radius (expression)' : 'Size (expression)'}
+                </label>
+                <div className="flex items-center gap-1">
+                  <input
+                    ref={widthInputRef}
+                    type="text"
+                    value={shapeWidth}
+                    onChange={(e) => { setShapeWidth(e.target.value); setShapeHeight(e.target.value); }}
+                    placeholder="e.g. 2, len(arr)"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                    onClick={() => setSizePickerFor((v) => (v === 'width' ? null : 'width'))}
+                    title="Insert variable"
+                  >
+                    var
+                  </button>
+                </div>
+                {sizePickerFor === 'width' && (
+                  <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                    {allVariableNames.length === 0 ? (
+                      <p className="text-xs text-gray-500">No variables</p>
+                    ) : (
+                      allVariableNames.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                          onClick={() => {
+                            if (!widthInputRef.current) return;
+                            const el = widthInputRef.current;
+                            const start = el.selectionStart ?? 0;
+                            const end = el.selectionEnd ?? 0;
+                            const next = shapeWidth.slice(0, start) + name + shapeWidth.slice(end);
+                            setShapeWidth(next);
+                            setShapeHeight(next);
+                            setSizePickerFor(null);
+                            setTimeout(() => { el.focus(); el.setSelectionRange(start + name.length, start + name.length); }, 0);
+                          }}
+                        >
+                          {name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-gray-600 w-12">Width</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={shapeWidth}
-                    onChange={(e) => setShapeWidth(e.target.value)}
-                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                <div className="mb-2">
+                  <label className="text-xs text-gray-600 font-medium block mb-1">Width (expression)</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={widthInputRef}
+                      type="text"
+                      value={shapeWidth}
+                      onChange={(e) => setShapeWidth(e.target.value)}
+                      placeholder="e.g. 2, len(arr)"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                      onClick={() => setSizePickerFor((v) => (v === 'width' ? null : 'width'))}
+                      title="Insert variable"
+                    >
+                      var
+                    </button>
+                  </div>
+                  {sizePickerFor === 'width' && (
+                    <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                      {allVariableNames.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                          onClick={() => insertVariableIntoSize('width', name)}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-gray-600 w-12">Height</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={shapeHeight}
-                    onChange={(e) => setShapeHeight(e.target.value)}
-                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                <div className="mb-2">
+                  <label className="text-xs text-gray-600 font-medium block mb-1">Height (expression)</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={heightInputRef}
+                      type="text"
+                      value={shapeHeight}
+                      onChange={(e) => setShapeHeight(e.target.value)}
+                      placeholder="e.g. 1, len(arr)"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                      onClick={() => setSizePickerFor((v) => (v === 'height' ? null : 'height'))}
+                      title="Insert variable"
+                    >
+                      var
+                    </button>
+                  </div>
+                  {sizePickerFor === 'height' && (
+                    <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                      {allVariableNames.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                          onClick={() => insertVariableIntoSize('height', name)}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}
+            {applyError && <p className="text-xs text-red-500 mt-1">{applyError}</p>}
             <button
-              onClick={() => {
-                const widthValue = Math.max(1, parseInt(shapeWidth, 10) || 1);
-                const heightValue = Math.max(1, parseInt(shapeHeight, 10) || 1);
-                if (isUniformShape) {
-                  onUpdateShapeProps({ width: widthValue, height: widthValue });
-                } else {
-                  onUpdateShapeProps({ width: widthValue, height: heightValue });
-                }
-                onClose();
-              }}
+              onClick={handleApplySize}
               className="w-full px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
             >
               Apply

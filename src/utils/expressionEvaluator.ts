@@ -311,8 +311,33 @@ function evaluateAST(node: ASTNode, variables: VariableDictionary): number {
     }
 
     case 'functionCall': {
-      const args = node.args.map(arg => evaluateAST(arg, variables));
       const funcName = node.name.toLowerCase();
+
+      // len(arr), min(arr), max(arr) - single array argument
+      if (node.args.length === 1 && node.args[0].type === 'variable') {
+        const arrVar = variables[node.args[0].name];
+        if (arrVar) {
+          if (arrVar.type === 'arr[int]' || arrVar.type === 'arr[str]') {
+            const arr = arrVar.value as number[] | string[];
+            if (funcName === 'len') return arr.length;
+          }
+          if (arrVar.type === 'arr[int]') {
+            const arr = arrVar.value;
+            switch (funcName) {
+              case 'min':
+                if (arr.length === 0) throw new Error('min() on empty array');
+                return Math.min(...arr);
+              case 'max':
+                if (arr.length === 0) throw new Error('max() on empty array');
+                return Math.max(...arr);
+              default:
+                break;
+            }
+          }
+        }
+      }
+
+      const args = node.args.map(arg => evaluateAST(arg, variables));
 
       switch (funcName) {
         case 'abs':
@@ -328,11 +353,13 @@ function evaluateAST(node: ASTNode, variables: VariableDictionary): number {
           if (args.length !== 1) throw new Error('round() requires exactly 1 argument');
           return Math.round(args[0]);
         case 'min':
-          if (args.length < 2) throw new Error('min() requires at least 2 arguments');
+          if (args.length < 1) throw new Error('min() requires at least 1 argument');
           return Math.min(...args);
         case 'max':
-          if (args.length < 2) throw new Error('max() requires at least 2 arguments');
+          if (args.length < 1) throw new Error('max() requires at least 1 argument');
           return Math.max(...args);
+        case 'len':
+          throw new Error('len() requires one array argument');
         default:
           throw new Error(`Unknown function: ${node.name}`);
       }
@@ -399,7 +426,7 @@ export function validateExpression(expression: string, variables: VariableDictio
 export function getExpressionVariables(expression: string): string[] {
   const tokens = tokenize(expression);
   const vars: string[] = [];
-  const functions = ['abs', 'floor', 'ceil', 'round', 'min', 'max'];
+  const functions = ['abs', 'floor', 'ceil', 'round', 'min', 'max', 'len'];
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];

@@ -27,6 +27,7 @@ import { cellKey } from './types/grid';
 function App() {
   const {
     cells,
+    overlayCells,
     selectedCell,
     zoom,
     variables,
@@ -63,6 +64,7 @@ function App() {
     panels,
     getObjectsSnapshot,
     loadObjectsSnapshot,
+    validateProposedOverTimeline,
   } = useGridState();
 
   // Code editor state
@@ -518,6 +520,7 @@ function App() {
               <div className="flex-1 overflow-hidden">
                 <Grid
                   cells={cells}
+                  overlayCells={overlayCells}
                   panels={panels}
                   selectedCell={selectedCell}
                   zoom={zoom}
@@ -527,6 +530,9 @@ function App() {
                   onMoveCell={moveCell}
                   onMovePanel={movePanel}
                   onPanelContextMenu={handlePanelContextMenu}
+                  onDragBegin={handleCloseContextMenu}
+                  onUpdateShapeProps={updateShapeProps}
+                  onUpdatePanel={updatePanel}
                 />
               </div>
             </div>
@@ -539,6 +545,11 @@ function App() {
         <ContextMenu
           position={contextMenu.position}
           variables={variables}
+          validateProposedOverTimeline={
+            timeline.length > 0
+              ? (proposed) => validateProposedOverTimeline(proposed, timeline)
+              : undefined
+          }
           cellData={contextMenuCellData}
           cellPosition={contextMenuCell ?? undefined}
           intVariableNames={intVariableNames}

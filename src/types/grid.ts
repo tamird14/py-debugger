@@ -42,7 +42,30 @@ export interface VariableDictionary {
 // Timeline is a list of variable dictionaries (steps in time)
 export type Timeline = VariableDictionary[];
 
-// Position binding - can be hardcoded number, variable, or expression
+// Numeric property metadata (for validation)
+export interface NumericPropertyMeta {
+  mustBeInteger: boolean;
+  canBeExpression: boolean;
+}
+
+export const POSITION_PROPERTY_META: NumericPropertyMeta = { mustBeInteger: true, canBeExpression: true };
+export const SIZE_PROPERTY_META: NumericPropertyMeta = { mustBeInteger: true, canBeExpression: true };
+
+// Unified numeric value: fixed number or expression (variable name is just expression "i")
+export interface NumericFixed {
+  type: 'fixed';
+  value: number;
+}
+
+export interface NumericExpr {
+  type: 'expression';
+  expression: string;
+}
+
+export type NumericExpression = NumericFixed | NumericExpr;
+
+// Position binding - uses NumericExpression (fixed = literal, expression = formula or variable)
+// Legacy: 'hardcoded' and 'variable' are still supported when reading
 export interface PositionValue {
   type: 'hardcoded';
   value: number;
@@ -55,10 +78,14 @@ export interface PositionVarBinding {
 
 export interface PositionExpression {
   type: 'expression';
-  expression: string; // e.g., "i + 1", "arr[j]", "floor(i / 2)"
+  expression: string;
 }
 
-export type PositionComponent = PositionValue | PositionVarBinding | PositionExpression;
+export type PositionComponent =
+  | NumericExpression
+  | PositionValue
+  | PositionVarBinding
+  | PositionExpression;
 
 export interface PositionBinding {
   row: PositionComponent;
@@ -82,17 +109,20 @@ export interface CellStyle {
 
 export type ArrowOrientation = 'up' | 'down' | 'left' | 'right';
 
+// Size can be fixed number (legacy) or NumericExpression
+export type SizeValue = number | NumericExpression;
+
 export interface ShapeProps {
-  width?: number;       // in cells
-  height?: number;      // in cells
+  width?: SizeValue;    // in cells
+  height?: SizeValue;   // in cells
   rotation?: number;    // degrees
   orientation?: ArrowOrientation;
 }
 
 export interface LabelData {
   text: string;
-  width?: number;       // in cells
-  height?: number;      // in cells
+  width?: SizeValue;    // in cells
+  height?: SizeValue;   // in cells
 }
 
 export interface CellData {
@@ -118,8 +148,8 @@ export interface CellData {
   // For panels (container)
   panel?: {
     id: string;
-    width: number;
-    height: number;
+    width: SizeValue;
+    height: SizeValue;
     title?: string;
   };
   // Optional panel association for non-panel objects
@@ -128,10 +158,16 @@ export interface CellData {
   style?: CellStyle;
   // Shape-specific props
   shapeProps?: ShapeProps;
+  // Raw size binding for editing (expressions); shapeProps.width/height may be resolved numbers for display
+  shapeSizeBinding?: { width: SizeValue; height: SizeValue };
   // Invalid computation reason (for grayed-out rendering)
   invalidReason?: string;
   // Position binding (if set, position is computed from variables)
   positionBinding?: PositionBinding;
+  // Render/drag order (higher = on top)
+  zOrder?: number;
+  // If true, user can resize by dragging edges/corners (no variable-dependent expressions)
+  sizeResizable?: boolean;
 }
 
 export interface GridState {
@@ -154,34 +190,34 @@ export function parseKey(key: string): CellPosition {
   return { row, col };
 }
 
-// Resolve a position component to a number
-// Note: For expression type, this function returns 0 and callers must handle
-// expression evaluation separately using evaluateExpression from expressionEvaluator
+// Resolve a position component to a number (handles fixed, expression, and legacy hardcoded/variable)
 export function resolvePositionComponent(
   component: PositionComponent,
   variables: VariableDictionary,
   expressionEvaluator?: (expression: string, vars: VariableDictionary) => number
 ): number {
-  if (component.type === 'hardcoded') {
-    return component.value;
+  const fixedValue = (v: number) => Math.max(0, Math.min(49, Math.floor(v)));
+  if (component.type === 'fixed' || component.type === 'hardcoded') {
+    return fixedValue(component.value);
   }
   if (component.type === 'expression') {
     if (expressionEvaluator) {
       try {
-        const result = expressionEvaluator(component.expression, variables);
-        return Math.max(0, Math.min(49, Math.floor(result))); // Clamp to grid bounds
+        return fixedValue(expressionEvaluator(component.expression, variables));
       } catch {
-        return 0; // Default if expression fails
+        return 0;
       }
     }
-    return 0; // No evaluator provided
+    return 0;
   }
-  // Variable binding
-  const variable = variables[component.varName];
-  if (variable && (variable.type === 'int' || variable.type === 'float')) {
-    return Math.max(0, Math.min(49, Math.floor(variable.value))); // Clamp to grid bounds and floor floats
+  if (component.type === 'variable') {
+    const variable = variables[component.varName];
+    if (variable && (variable.type === 'int' || variable.type === 'float')) {
+      return fixedValue(variable.value);
+    }
+    return 0;
   }
-  return 0; // Default if variable not found
+  return 0;
 }
 
 // Resolve full position binding to CellPosition
@@ -199,9 +235,28 @@ export function resolvePosition(
 // Create a hardcoded position binding from a CellPosition
 export function createHardcodedBinding(position: CellPosition): PositionBinding {
   return {
-    row: { type: 'hardcoded', value: position.row },
-    col: { type: 'hardcoded', value: position.col },
+    row: { type: 'fixed', value: position.row },
+    col: { type: 'fixed', value: position.col },
   };
+}
+
+// Resolve SizeValue (number or NumericExpression) to a number
+export function resolveSizeValue(
+  value: SizeValue | undefined,
+  variables: VariableDictionary,
+  expressionEvaluator?: (expression: string, vars: VariableDictionary) => number
+): number {
+  if (value === undefined) return 1;
+  if (typeof value === 'number') return Math.max(1, Math.min(50, Math.floor(value)));
+  if (value.type === 'fixed') return Math.max(1, Math.min(50, value.value));
+  if (value.type === 'expression' && expressionEvaluator) {
+    try {
+      return Math.max(1, Math.min(50, Math.floor(expressionEvaluator(value.expression, variables))));
+    } catch {
+      return 1;
+    }
+  }
+  return 1;
 }
 
 export function getArrayOffset(direction: 'right' | 'left' | 'down' | 'up', index: number): { rowDelta: number; colDelta: number } {

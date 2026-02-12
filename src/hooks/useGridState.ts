@@ -9,9 +9,10 @@ import type {
   PositionBinding,
   ShapeProps,
   PositionComponent,
+  SizeValue,
 } from '../types/grid';
-import { cellKey, resolvePosition, createHardcodedBinding, getArrayOffset } from '../types/grid';
-import { evaluateExpression } from '../utils/expressionEvaluator';
+import { cellKey, resolvePosition, createHardcodedBinding, getArrayOffset, resolveSizeValue } from '../types/grid';
+import { evaluateExpression, getExpressionVariables } from '../utils/expressionEvaluator';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.0;
@@ -22,12 +23,14 @@ interface GridObject {
   id: string;
   data: CellData;
   positionBinding: PositionBinding;
+  zOrder: number;
 }
 
 export interface GridObjectSnapshot {
   id: string;
   data: CellData;
   positionBinding: PositionBinding;
+  zOrder?: number;
 }
 
 export function useGridState() {
@@ -41,13 +44,151 @@ export function useGridState() {
   const [currentStep, setCurrentStep] = useState(0);
 
   const objectIdCounter = useRef(0);
+  const zOrderCounter = useRef(0);
+
+  const isSizeResizable = useCallback((w: SizeValue | undefined, h: SizeValue | undefined): boolean => {
+    const noVars = (v: SizeValue | undefined) => {
+      if (v === undefined || typeof v === 'number') return true;
+      if (v.type === 'fixed') return true;
+      return getExpressionVariables(v.expression).length === 0;
+    };
+    return noVars(w) && noVars(h);
+  }, []);
   const movePromptRef = useRef<{ key: string; inFlight: boolean }>({ key: '', inFlight: false });
   const panelPromptRef = useRef<{ key: string; inFlight: boolean }>({ key: '', inFlight: false });
+
+  const validateIntegerOverTimeline = useCallback((obj: GridObject, timelineData: Timeline): string | null => {
+    const check = (value: number) => !Number.isInteger(value);
+    for (let step = 0; step < timelineData.length; step++) {
+      const vars = timelineData[step];
+      const row = obj.positionBinding.row;
+      if (row.type === 'expression') {
+        try {
+          const v = evaluateExpression(row.expression, vars);
+          if (check(v)) return `Row must be integer at every step (got ${v} at step ${step + 1})`;
+        } catch {
+          return `Row expression invalid at step ${step + 1}`;
+        }
+      }
+      const col = obj.positionBinding.col;
+      if (col.type === 'expression') {
+        try {
+          const v = evaluateExpression(col.expression, vars);
+          if (check(v)) return `Column must be integer at every step (got ${v} at step ${step + 1})`;
+        } catch {
+          return `Column expression invalid at step ${step + 1}`;
+        }
+      }
+      if (obj.data.shapeProps) {
+        const w = obj.data.shapeProps.width;
+        if (w !== undefined && typeof w !== 'number' && w.type === 'expression') {
+          try {
+            const v = evaluateExpression(w.expression, vars);
+            if (check(v)) return `Width must be integer at every step (got ${v} at step ${step + 1})`;
+          } catch {
+            return `Width expression invalid at step ${step + 1}`;
+          }
+        }
+        const h = obj.data.shapeProps.height;
+        if (h !== undefined && typeof h !== 'number' && h.type === 'expression') {
+          try {
+            const v = evaluateExpression(h.expression, vars);
+            if (check(v)) return `Height must be integer at every step (got ${v} at step ${step + 1})`;
+          } catch {
+            return `Height expression invalid at step ${step + 1}`;
+          }
+        }
+      }
+      if (obj.data.panel) {
+        const w = obj.data.panel.width;
+        if (typeof w !== 'number' && w && 'expression' in w) {
+          try {
+            const v = evaluateExpression(w.expression, vars);
+            if (check(v)) return `Panel width must be integer at every step`;
+          } catch {
+            return `Panel width invalid at step ${step + 1}`;
+          }
+        }
+        const h = obj.data.panel.height;
+        if (typeof h !== 'number' && h && 'expression' in h) {
+          try {
+            const v = evaluateExpression(h.expression, vars);
+            if (check(v)) return `Panel height must be integer at every step`;
+          } catch {
+            return `Panel height invalid at step ${step + 1}`;
+          }
+        }
+      }
+    }
+    return null;
+  }, []);
+
+  /** Validate proposed position/size over the full timeline. Returns first error message or null. Used to block Apply when invalid. */
+  const validateProposedOverTimeline = useCallback(
+    (
+      proposed: { row?: PositionComponent; col?: PositionComponent; width?: SizeValue; height?: SizeValue },
+      timelineData: Timeline
+    ): string | null => {
+      const check = (v: number) => !Number.isInteger(v);
+      const evalPos = (c: PositionComponent, vars: VariableDictionary): number => {
+        if (c.type === 'fixed' || c.type === 'hardcoded') return c.value;
+        if (c.type === 'variable') {
+          const x = vars[c.varName];
+          if (x && (x.type === 'int' || x.type === 'float')) return (x as { value: number }).value;
+          throw new Error(`Variable "${c.varName}" not available`);
+        }
+        return evaluateExpression(c.expression, vars);
+      };
+      const evalSize = (s: SizeValue | undefined, vars: VariableDictionary): number | undefined => {
+        if (s === undefined) return undefined;
+        if (typeof s === 'number') return s;
+        if (s.type === 'fixed') return s.value;
+        return evaluateExpression(s.expression, vars);
+      };
+      for (let step = 0; step < timelineData.length; step++) {
+        const vars = timelineData[step];
+        if (proposed.row !== undefined && (proposed.row.type === 'expression' || proposed.row.type === 'variable')) {
+          try {
+            const v = evalPos(proposed.row, vars);
+            if (check(v)) return `Row must be integer at every step (got ${v} at step ${step + 1})`;
+          } catch {
+            return `Row expression invalid at step ${step + 1}`;
+          }
+        }
+        if (proposed.col !== undefined && (proposed.col.type === 'expression' || proposed.col.type === 'variable')) {
+          try {
+            const v = evalPos(proposed.col, vars);
+            if (check(v)) return `Column must be integer at every step (got ${v} at step ${step + 1})`;
+          } catch {
+            return `Column expression invalid at step ${step + 1}`;
+          }
+        }
+        if (proposed.width !== undefined && typeof proposed.width !== 'number' && proposed.width.type === 'expression') {
+          try {
+            const v = evalSize(proposed.width, vars)!;
+            if (check(v)) return `Width must be integer at every step (got ${v} at step ${step + 1})`;
+          } catch {
+            return `Width expression invalid at step ${step + 1}`;
+          }
+        }
+        if (proposed.height !== undefined && typeof proposed.height !== 'number' && proposed.height.type === 'expression') {
+          try {
+            const v = evalSize(proposed.height, vars)!;
+            if (check(v)) return `Height must be integer at every step (got ${v} at step ${step + 1})`;
+          } catch {
+            return `Height expression invalid at step ${step + 1}`;
+          }
+        }
+      }
+      return null;
+    },
+    []
+  );
 
   const resolvePositionWithErrors = useCallback(
     (binding: PositionBinding, vars: VariableDictionary): { position: CellPosition; error?: string } => {
       const resolveComponent = (component: PositionBinding['row']): { value: number; error?: string } => {
-        if (component.type === 'hardcoded') {
+        if (component.type === 'fixed' || component.type === 'hardcoded') {
           return { value: component.value };
         }
         if (component.type === 'variable') {
@@ -57,14 +198,17 @@ export function useGridState() {
           }
           return { value: variable.value };
         }
-        try {
-          return { value: evaluateExpression(component.expression, vars) };
-        } catch (error) {
-          return {
-            value: 0,
-            error: error instanceof Error ? error.message : 'Expression error',
-          };
+        if (component.type === 'expression') {
+          try {
+            return { value: evaluateExpression(component.expression, vars) };
+          } catch (error) {
+            return {
+              value: 0,
+              error: error instanceof Error ? error.message : 'Expression error',
+            };
+          }
         }
+        return { value: 0 };
       };
 
       const rowResult = resolveComponent(binding.row);
@@ -114,8 +258,8 @@ export function useGridState() {
       for (const [, obj] of objects) {
         if (!obj.data.panel) continue;
         const origin = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
-        const width = obj.data.panel.width;
-        const height = obj.data.panel.height;
+        const width = resolveSizeValue(obj.data.panel.width, currentVariables, evaluateExpression);
+        const height = resolveSizeValue(obj.data.panel.height, currentVariables, evaluateExpression);
         if (
           position.row >= origin.row &&
           position.row < origin.row + height &&
@@ -142,12 +286,16 @@ export function useGridState() {
     });
   }, []);
 
-  // Compute cell positions from objects and current variables
-  const cells = useMemo((): Map<string, CellData> => {
+  // Compute cell positions from objects and current variables.
+  // Array cells take priority so they are never overwritten by a shape/label; displaced single objects go in overlayCells.
+  const { cells, overlayCells } = useMemo((): { cells: Map<string, CellData>; overlayCells: Map<string, CellData> } => {
     const cellMap = new Map<string, CellData>();
+    const overlayMap = new Map<string, CellData>();
+    const sortedObjects = Array.from(objects.values()).sort((a, b) => (a.zOrder ?? 0) - (b.zOrder ?? 0));
 
     const panelPositions = new Map<string, { position: CellPosition; error?: string }>();
-    for (const [, obj] of objects) {
+    for (const obj of sortedObjects) {
+      if (!obj.data.panel) continue;
       if (obj.data.panel?.id) {
         const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
         panelPositions.set(obj.data.panel.id, {
@@ -157,13 +305,72 @@ export function useGridState() {
       }
     }
 
-    for (const [, obj] of objects) {
-      if (obj.data.panel) {
-        continue;
-      }
+    const setOrOverlay = (key: string, cellData: CellData) => {
+      if (cellMap.has(key)) overlayMap.set(key, cellData);
+      else cellMap.set(key, cellData);
+    };
+
+    // Pass 1: set all array cells first so they are never overwritten
+    for (const obj of sortedObjects) {
+      if (obj.data.panel || !obj.data.arrayInfo) continue;
       const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
       let position = resolved.position;
       let invalidReason = resolved.error;
+      const timelineIntegerError = validateIntegerOverTimeline(obj, timeline);
+      if (timelineIntegerError) {
+        invalidReason = invalidReason ? `${invalidReason}; ${timelineIntegerError}` : timelineIntegerError;
+      }
+      if (obj.data.panelId) {
+        const panelInfo = panelPositions.get(obj.data.panelId);
+        if (panelInfo) {
+          position = { row: position.row + panelInfo.position.row, col: position.col + panelInfo.position.col };
+          if (panelInfo.error) invalidReason = panelInfo.error;
+        } else invalidReason = `Panel "${obj.data.panelId}" not found`;
+      }
+      position = { row: Math.max(0, Math.min(49, position.row)), col: Math.max(0, Math.min(49, position.col)) };
+
+      const arrayId = obj.data.arrayInfo.id;
+      const arrayObjects: GridObject[] = [];
+      for (const [, o] of objects) {
+        if (o.data.arrayInfo?.id === arrayId) arrayObjects.push(o);
+      }
+      arrayObjects.sort((a, b) => (a.data.arrayInfo?.index || 0) - (b.data.arrayInfo?.index || 0));
+
+      for (let i = 0; i < arrayObjects.length; i++) {
+        const arrayObj = arrayObjects[i];
+        const direction = arrayObj.data.arrayInfo?.direction || 'right';
+        const offset = getArrayOffset(direction, i);
+        const cellPos = { row: position.row + offset.rowDelta, col: position.col + offset.colDelta };
+
+        let cellData: CellData = { ...arrayObj.data };
+        if (cellData.arrayInfo?.varName) {
+          const arrVar = currentVariables[cellData.arrayInfo.varName];
+          if (arrVar && (arrVar.type === 'arr[int]' || arrVar.type === 'arr[str]')) {
+            const newValue = arrVar.value[cellData.arrayInfo.index];
+            if (newValue !== undefined) {
+              cellData = { ...cellData, arrayInfo: { ...cellData.arrayInfo!, value: newValue } };
+            } else {
+              cellData = { ...cellData, invalidReason: `Index ${cellData.arrayInfo.index} out of bounds` };
+            }
+          } else {
+            cellData = { ...cellData, invalidReason: `Array "${cellData.arrayInfo.varName}" not available` };
+          }
+        }
+        cellData = { ...cellData, positionBinding: obj.positionBinding };
+        cellMap.set(cellKey(cellPos.row, cellPos.col), { ...cellData, invalidReason: cellData.invalidReason || invalidReason });
+      }
+    }
+
+    // Pass 2: non-array objects; if cell already occupied by array, put in overlay
+    for (const obj of sortedObjects) {
+      if (obj.data.panel || obj.data.arrayInfo) continue;
+      const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
+      let position = resolved.position;
+      let invalidReason = resolved.error;
+      const timelineIntegerError = validateIntegerOverTimeline(obj, timeline);
+      if (timelineIntegerError) {
+        invalidReason = invalidReason ? `${invalidReason}; ${timelineIntegerError}` : timelineIntegerError;
+      }
 
       if (obj.data.panelId) {
         const panelInfo = panelPositions.get(obj.data.panelId);
@@ -184,57 +391,7 @@ export function useGridState() {
         col: Math.max(0, Math.min(49, position.col)),
       };
 
-      // Handle arrays - they span multiple cells
-      if (obj.data.arrayInfo) {
-        const arrayId = obj.data.arrayInfo.id;
-        // Find all objects in this array
-        const arrayObjects: GridObject[] = [];
-        for (const [, o] of objects) {
-          if (o.data.arrayInfo?.id === arrayId) {
-            arrayObjects.push(o);
-          }
-        }
-        // Sort by index
-        arrayObjects.sort((a, b) => (a.data.arrayInfo?.index || 0) - (b.data.arrayInfo?.index || 0));
-
-        // Place each array cell
-        for (let i = 0; i < arrayObjects.length; i++) {
-          const arrayObj = arrayObjects[i];
-          const direction = arrayObj.data.arrayInfo?.direction || 'right';
-          const offset = getArrayOffset(direction, i);
-          const cellPos = { row: position.row + offset.rowDelta, col: position.col + offset.colDelta };
-
-          // Update array values from current variables if this is a variable-bound array
-          let cellData = { ...arrayObj.data };
-          if (cellData.arrayInfo?.varName) {
-            const arrVar = currentVariables[cellData.arrayInfo.varName];
-            if (arrVar && (arrVar.type === 'arr[int]' || arrVar.type === 'arr[str]')) {
-              const newValue = arrVar.value[cellData.arrayInfo.index];
-              if (newValue !== undefined) {
-                cellData = {
-                  ...cellData,
-                  arrayInfo: {
-                    ...cellData.arrayInfo,
-                    value: newValue,
-                  },
-                };
-              } else {
-                cellData = { ...cellData, invalidReason: `Index ${cellData.arrayInfo.index} out of bounds` };
-              }
-            } else {
-              cellData = { ...cellData, invalidReason: `Array "${cellData.arrayInfo.varName}" not available` };
-            }
-          }
-
-          // Share position binding across array cells for dragging and context menu
-          cellData = { ...cellData, positionBinding: obj.positionBinding };
-
-          cellMap.set(cellKey(cellPos.row, cellPos.col), {
-            ...cellData,
-            invalidReason: cellData.invalidReason || invalidReason,
-          });
-        }
-      } else if (obj.data.intVar) {
+      if (obj.data.intVar) {
         // Update int variable value from current variables
         let cellData = { ...obj.data, positionBinding: obj.positionBinding };
         const intVar = currentVariables[obj.data.intVar.name];
@@ -257,33 +414,101 @@ export function useGridState() {
         } else {
           cellData = { ...cellData, invalidReason: `Variable "${obj.data.intVar.name}" not available` };
         }
-        cellMap.set(cellKey(position.row, position.col), {
+        setOrOverlay(cellKey(position.row, position.col), {
           ...cellData,
           invalidReason: cellData.invalidReason || invalidReason,
         });
       } else if (obj.data.label) {
         const renderedText = renderLabelText(obj.data.label.text, currentVariables);
+        const labelW = resolveSizeValue(obj.data.label.width, currentVariables, evaluateExpression) || 1;
+        const labelH = resolveSizeValue(obj.data.label.height, currentVariables, evaluateExpression) || 1;
         const cellData = {
           ...obj.data,
-          label: { ...obj.data.label, text: renderedText },
+          label: { ...obj.data.label, text: renderedText, width: labelW, height: labelH },
           positionBinding: obj.positionBinding,
+          sizeResizable: isSizeResizable(obj.data.label.width, obj.data.label.height),
         };
-        cellMap.set(cellKey(position.row, position.col), {
-          ...cellData,
-          invalidReason,
-        });
+        setOrOverlay(cellKey(position.row, position.col), { ...cellData, invalidReason });
       } else {
-        // Shapes - just place at resolved position
-        cellMap.set(cellKey(position.row, position.col), {
+        const shapeW = resolveSizeValue(obj.data.shapeProps?.width, currentVariables, evaluateExpression) || 1;
+        const shapeH = resolveSizeValue(obj.data.shapeProps?.height, currentVariables, evaluateExpression) || 1;
+        const rawW: SizeValue = obj.data.shapeProps?.width ?? 1;
+        const rawH: SizeValue = obj.data.shapeProps?.height ?? 1;
+        setOrOverlay(cellKey(position.row, position.col), {
           ...obj.data,
+          shapeProps: { ...obj.data.shapeProps, width: shapeW, height: shapeH },
+          shapeSizeBinding: { width: rawW, height: rawH },
           invalidReason,
           positionBinding: obj.positionBinding,
+          sizeResizable: isSizeResizable(obj.data.shapeProps?.width, obj.data.shapeProps?.height),
         });
       }
     }
 
-    return cellMap;
-  }, [objects, currentVariables, renderLabelText]);
+    return { cells: cellMap, overlayCells: overlayMap };
+  }, [objects, currentVariables, renderLabelText, timeline, validateIntegerOverTimeline, isSizeResizable]);
+
+  // Precompute all positions and sizes across timeline for objects with expression-based position/size
+  const precomputedBounds = useMemo((): Map<string, { positions: CellPosition[]; sizes: Array<{ w: number; h: number }> }> => {
+    const map = new Map<string, { positions: CellPosition[]; sizes: Array<{ w: number; h: number }> }>();
+    for (const [, obj] of objects) {
+      const hasExprPosition =
+        obj.positionBinding.row.type === 'expression' || obj.positionBinding.col.type === 'expression';
+      const w = obj.data.shapeProps?.width ?? obj.data.label?.width ?? obj.data.panel?.width;
+      const h = obj.data.shapeProps?.height ?? obj.data.label?.height ?? obj.data.panel?.height;
+      const hasExprSize =
+        (typeof w !== 'number' && w?.type === 'expression') ||
+        (typeof h !== 'number' && h?.type === 'expression');
+      if (!hasExprPosition && !hasExprSize) continue;
+      const positions: CellPosition[] = [];
+      const sizes: Array<{ w: number; h: number }> = [];
+      for (let step = 0; step < timeline.length; step++) {
+        const vars = timeline[step];
+        const pos = resolvePosition(obj.positionBinding, vars, evaluateExpression);
+        positions.push({ row: Math.max(0, Math.min(49, pos.row)), col: Math.max(0, Math.min(49, pos.col)) });
+        const width = resolveSizeValue(w, vars, evaluateExpression);
+        const height = resolveSizeValue(h, vars, evaluateExpression);
+        sizes.push({ w: width, h: height });
+      }
+      if (positions.length > 0) map.set(obj.id, { positions, sizes });
+    }
+    return map;
+  }, [objects, timeline]);
+
+  const getMinimumPanelSize = useCallback(
+    (panelId: string): { width: number; height: number } => {
+      let minW = 1;
+      let minH = 1;
+      for (const [, obj] of objects) {
+        if (obj.data.panelId !== panelId) continue;
+        const pre = precomputedBounds.get(obj.id);
+        if (pre) {
+          for (let i = 0; i < pre.positions.length; i++) {
+            const pos = pre.positions[i];
+            const s = pre.sizes[i] ?? { w: 1, h: 1 };
+            minW = Math.max(minW, pos.col + s.w);
+            minH = Math.max(minH, pos.row + s.h);
+          }
+        } else {
+          const pos = resolveObjectPosition(obj, objects, currentVariables);
+          const w = resolveSizeValue(
+            obj.data.label?.width ?? obj.data.shapeProps?.width,
+            currentVariables,
+            evaluateExpression
+          ) || 1;
+          const h = resolveSizeValue(
+            obj.data.label?.height ?? obj.data.shapeProps?.height,
+            currentVariables,
+            evaluateExpression
+          ) || 1;
+          minW = Math.max(minW, pos.col + w);
+          minH = Math.max(minH, pos.row + h);
+        }
+      }
+      return { width: minW, height: minH };
+    },
+    [objects, currentVariables, precomputedBounds]
+  );
 
   const panels = useMemo(() => {
     const result: Array<{
@@ -294,25 +519,33 @@ export function useGridState() {
       height: number;
       title?: string;
       invalidReason?: string;
+      sizeResizable: boolean;
     }> = [];
 
     for (const [, obj] of objects) {
       if (!obj.data.panel) continue;
       const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
       const position = resolved.position;
+      const width = resolveSizeValue(obj.data.panel.width, currentVariables, evaluateExpression);
+      const height = resolveSizeValue(obj.data.panel.height, currentVariables, evaluateExpression);
+      const timelineErr = validateIntegerOverTimeline(obj, timeline);
+      const invalidReason = resolved.error
+        ? (timelineErr ? `${resolved.error}; ${timelineErr}` : resolved.error)
+        : timelineErr ?? undefined;
       result.push({
         id: obj.data.panel.id,
         row: position.row,
         col: position.col,
-        width: obj.data.panel.width,
-        height: obj.data.panel.height,
+        width,
+        height,
         title: obj.data.panel.title,
-        invalidReason: resolved.error,
+        invalidReason,
+        sizeResizable: isSizeResizable(obj.data.panel.width, obj.data.panel.height),
       });
     }
 
     return result;
-  }, [objects, currentVariables]);
+  }, [objects, currentVariables, timeline, validateIntegerOverTimeline, isSizeResizable]);
 
   // Helper function to generate unique object ID
   const generateObjectId = useCallback(() => {
@@ -372,8 +605,8 @@ export function useGridState() {
         }
       } else {
         // Single cell objects or shapes/labels with width/height
-        const width = obj.data.label?.width || obj.data.shapeProps?.width || 1;
-        const height = obj.data.label?.height || obj.data.shapeProps?.height || 1;
+        const width = resolveSizeValue(obj.data.label?.width ?? obj.data.shapeProps?.width, variables, evaluateExpression) || 1;
+        const height = resolveSizeValue(obj.data.label?.height ?? obj.data.shapeProps?.height, variables, evaluateExpression) || 1;
         for (let r = 0; r < height; r++) {
           for (let c = 0; c < width; c++) {
             for (let j = 0; j < length; j++) {
@@ -406,12 +639,23 @@ export function useGridState() {
     const targetPosition = panelContext
       ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
       : position;
+    const defaultColor =
+      shape === 'circle' ? '#3b82f6' : shape === 'arrow' ? '#ef4444' : '#22c55e';
+    const zOrder = zOrderCounter.current++;
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, 1, currentVariables);
       next.set(objectId, {
         id: objectId,
-        data: { shape, objectId, shapeProps: { width: 1, height: 1 }, panelId: panelContext?.id },
+        data: {
+          shape,
+          objectId,
+          style: { color: defaultColor },
+          shapeProps: { width: 1, height: 1 },
+          panelId: panelContext?.id,
+          zOrder,
+        },
         positionBinding: createHardcodedBinding(targetPosition),
+        zOrder,
       });
       return next;
     });
@@ -447,8 +691,8 @@ export function useGridState() {
             }
           }
         } else {
-          const width = obj.data.label?.width || obj.data.shapeProps?.width || 1;
-          const height = obj.data.label?.height || obj.data.shapeProps?.height || 1;
+          const width = resolveSizeValue(obj.data.label?.width ?? obj.data.shapeProps?.width, currentVariables, evaluateExpression) || 1;
+          const height = resolveSizeValue(obj.data.label?.height ?? obj.data.shapeProps?.height, currentVariables, evaluateExpression) || 1;
           for (let r = 0; r < height; r++) {
             for (let c = 0; c < width; c++) {
               if (pos.row + r === position.row && pos.col + c === position.col) {
@@ -470,6 +714,7 @@ export function useGridState() {
       ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
       : position;
 
+    const zOrder = zOrderCounter.current++;
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, length, currentVariables);
       const binding = createHardcodedBinding(targetPosition);
@@ -487,8 +732,10 @@ export function useGridState() {
               direction: 'right',
             },
             panelId: panelContext?.id,
+            zOrder,
           },
-          positionBinding: binding, // All array cells share the same binding (first cell position)
+          positionBinding: binding,
+          zOrder,
         });
       }
       return next;
@@ -497,6 +744,7 @@ export function useGridState() {
 
   const addLabel = useCallback((position: CellPosition, text: string, width: number, height: number, panelContext?: { id: string; origin: CellPosition }) => {
     const objectId = generateObjectId();
+    const zOrder = zOrderCounter.current++;
     const targetPosition = panelContext
       ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
       : position;
@@ -506,14 +754,12 @@ export function useGridState() {
         id: objectId,
         data: {
           objectId,
-          label: {
-            text,
-            width,
-            height,
-          },
+          label: { text, width, height },
           panelId: panelContext?.id,
+          zOrder,
         },
         positionBinding: createHardcodedBinding(targetPosition),
+        zOrder,
       });
       return next;
     });
@@ -522,21 +768,19 @@ export function useGridState() {
   const addPanel = useCallback((position: CellPosition, width: number, height: number, title?: string) => {
     const objectId = generateObjectId();
     const panelId = `panel-${objectIdCounter.current++}`;
+    const zOrder = zOrderCounter.current++;
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, width, currentVariables);
       next.set(objectId, {
         id: objectId,
         data: {
           objectId,
-          panel: {
-            id: panelId,
-            width,
-            height,
-            title,
-          },
+          panel: { id: panelId, width, height, title },
           shapeProps: { width, height },
+          zOrder,
         },
         positionBinding: createHardcodedBinding(position),
+        zOrder,
       });
       return next;
     });
@@ -567,6 +811,7 @@ export function useGridState() {
 
   const placeIntVariable = useCallback((position: CellPosition, name: string, value: number, panelContext?: { id: string; origin: CellPosition }) => {
     const objectId = generateObjectId();
+    const zOrder = zOrderCounter.current++;
     const targetPosition = panelContext
       ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
       : position;
@@ -578,8 +823,10 @@ export function useGridState() {
           objectId,
           intVar: { name, value, display: 'name-value' },
           panelId: panelContext?.id,
+          zOrder,
         },
         positionBinding: createHardcodedBinding(targetPosition),
+        zOrder,
       });
       return next;
     });
@@ -591,6 +838,7 @@ export function useGridState() {
       ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
       : position;
 
+    const zOrder = zOrderCounter.current++;
     setObjects((prev) => {
       const next = clearOverlappingObjects(prev, position.row, position.col, values.length, currentVariables);
       const binding = createHardcodedBinding(targetPosition);
@@ -609,8 +857,10 @@ export function useGridState() {
               direction: 'right',
             },
             panelId: panelContext?.id,
+            zOrder,
           },
           positionBinding: binding,
+          zOrder,
         });
       }
       return next;
@@ -660,9 +910,10 @@ export function useGridState() {
 
   const getCellData = useCallback(
     (row: number, col: number): CellData | undefined => {
-      return cells.get(cellKey(row, col));
+      const key = cellKey(row, col);
+      return overlayCells.get(key) ?? cells.get(key);
     },
-    [cells]
+    [cells, overlayCells]
   );
 
   const zoomIn = useCallback(() => {
@@ -728,17 +979,14 @@ export function useGridState() {
   }, [currentVariables]);
 
   const setPositionBinding = useCallback((position: CellPosition, binding: PositionBinding) => {
-    const getPanelInfo = (panelId?: string) => {
+    const getPanelInfo = (panelId?: string): { id: string; origin: CellPosition; width: number; height: number } | null => {
       if (!panelId) return null;
       for (const [, pobj] of objects) {
         if (pobj.data.panel?.id === panelId) {
           const origin = resolvePosition(pobj.positionBinding, currentVariables, evaluateExpression);
-          return {
-            id: panelId,
-            origin,
-            width: pobj.data.panel.width,
-            height: pobj.data.panel.height,
-          };
+          const width = resolveSizeValue(pobj.data.panel.width, currentVariables, evaluateExpression);
+          const height = resolveSizeValue(pobj.data.panel.height, currentVariables, evaluateExpression);
+          return { id: panelId, origin, width, height };
         }
       }
       return null;
@@ -772,9 +1020,11 @@ export function useGridState() {
 
     const panelInfo = getPanelInfo(target.obj.data.panelId);
     let nextBinding = binding;
-    if (panelInfo && binding.row.type === 'hardcoded' && binding.col.type === 'hardcoded') {
-      const rowValue = binding.row.value - panelInfo.origin.row;
-      const colValue = binding.col.value - panelInfo.origin.col;
+    const rowFixed = binding.row.type === 'fixed' || binding.row.type === 'hardcoded';
+    const colFixed = binding.col.type === 'fixed' || binding.col.type === 'hardcoded';
+    if (panelInfo && rowFixed && colFixed) {
+      const rowValue = (binding.row as { value: number }).value - panelInfo.origin.row;
+      const colValue = (binding.col as { value: number }).value - panelInfo.origin.col;
       nextBinding = createHardcodedBinding({
         row: Math.max(0, rowValue),
         col: Math.max(0, colValue),
@@ -793,12 +1043,15 @@ export function useGridState() {
         const extend = window.confirm('Target is outside the panel. Extend the panel to include it?');
         panelPromptRef.current = { key: promptKey, inFlight: false };
         if (!extend) return;
+        const minSize = getMinimumPanelSize(panelInfo.id);
+        const requestedW = Math.max(panelInfo.width, colValue + 1);
+        const requestedH = Math.max(panelInfo.height, rowValue + 1);
+        const newWidth = Math.max(requestedW, minSize.width);
+        const newHeight = Math.max(requestedH, minSize.height);
         setObjects((prev) => {
           const next = new Map(prev);
           for (const [pid, pobj] of next) {
             if (pobj.data.panel?.id === panelInfo.id) {
-              const newWidth = Math.max(panelInfo.width, colValue + 1);
-              const newHeight = Math.max(panelInfo.height, rowValue + 1);
               next.set(pid, {
                 ...pobj,
                 data: {
@@ -838,7 +1091,7 @@ export function useGridState() {
       }
       return next;
     });
-  }, [objects, currentVariables, resolveObjectPosition]);
+  }, [objects, currentVariables, resolveObjectPosition, getMinimumPanelSize]);
 
   const updateShapeProps = useCallback((position: CellPosition, shapeProps: Partial<ShapeProps>) => {
     setObjects((prev) => {
@@ -1139,13 +1392,16 @@ export function useGridState() {
 
       const adjustComponent = (component: PositionComponent, delta: number): PositionComponent => {
         if (delta === 0) return component;
-        if (component.type === 'hardcoded') {
-          return { type: 'hardcoded', value: component.value + delta };
+        if (component.type === 'fixed' || component.type === 'hardcoded') {
+          return { type: 'fixed', value: component.value + delta };
         }
         if (component.type === 'variable') {
           return { type: 'expression', expression: `${component.varName} + ${delta}` };
         }
-        return { type: 'expression', expression: `(${component.expression}) + ${delta}` };
+        if (component.type === 'expression') {
+          return { type: 'expression', expression: `(${component.expression}) + ${delta}` };
+        }
+        return component;
       };
 
       if (extendPanel && panelContext && newPanelSize && newPanelOrigin) {
@@ -1217,18 +1473,23 @@ export function useGridState() {
       id: obj.id,
       data: obj.data,
       positionBinding: obj.positionBinding,
+      zOrder: obj.zOrder,
     }));
   }, [objects]);
 
   const loadObjectsSnapshot = useCallback((snapshot: GridObjectSnapshot[]) => {
     const next = new Map<string, GridObject>();
     let maxId = -1;
+    let maxZ = -1;
 
     for (const obj of snapshot) {
+      const zOrder = obj.zOrder ?? 0;
+      maxZ = Math.max(maxZ, zOrder);
       next.set(obj.id, {
         id: obj.id,
-        data: obj.data,
+        data: { ...obj.data, zOrder },
         positionBinding: obj.positionBinding,
+        zOrder,
       });
 
       const idMatch = obj.id.match(/-(\d+)$/);
@@ -1244,11 +1505,13 @@ export function useGridState() {
     }
 
     objectIdCounter.current = maxId + 1;
+    zOrderCounter.current = maxZ + 1;
     setObjects(next);
   }, []);
 
   return {
     cells,
+    overlayCells,
     selectedCell,
     zoom,
     variables: currentVariables,
@@ -1289,5 +1552,6 @@ export function useGridState() {
     panels,
     getObjectsSnapshot,
     loadObjectsSnapshot,
+    validateProposedOverTimeline,
   };
 }
