@@ -344,7 +344,9 @@ export function useGridState() {
         const cellPos = { row: position.row + offset.rowDelta, col: position.col + offset.colDelta };
 
         let cellData: CellData = { ...arrayObj.data };
-        if (cellData.arrayInfo?.varName) {
+        const arrayId = obj.data.arrayInfo?.id ?? '';
+        const isVbArray = arrayId.startsWith('vb-');
+        if (cellData.arrayInfo?.varName && !isVbArray) {
           const arrVar = currentVariables[cellData.arrayInfo.varName];
           if (arrVar && (arrVar.type === 'arr[int]' || arrVar.type === 'arr[str]')) {
             const newValue = arrVar.value[cellData.arrayInfo.index];
@@ -357,6 +359,7 @@ export function useGridState() {
             cellData = { ...cellData, invalidReason: `Array "${cellData.arrayInfo.varName}" not available` };
           }
         }
+        // vb-* arrays: keep value from the builder (arr_viz[i]=x); already on arrayObj.data.arrayInfo.value
         cellData = { ...cellData, positionBinding: obj.positionBinding };
         cellMap.set(cellKey(cellPos.row, cellPos.col), { ...cellData, invalidReason: cellData.invalidReason || invalidReason });
       }
@@ -1649,6 +1652,32 @@ export function useGridState() {
             positionBinding: binding,
             zOrder: z++,
           });
+        } else if (el.type === 'array') {
+          const arrayId = `${VB_PREFIX}array-${idx++}`;
+          const length = Math.max(1, Math.min(50, el.length ?? 5));
+          const direction = (el.direction === 'left' || el.direction === 'down' || el.direction === 'up' ? el.direction : 'right') as 'right' | 'left' | 'down' | 'up';
+          const values = el.values ?? [];
+          for (let i = 0; i < length; i++) {
+            const cellId = `${VB_PREFIX}${idx++}`;
+            const cellValue = values[i] ?? 0;
+            next.set(cellId, {
+              id: cellId,
+              data: {
+                objectId: cellId,
+                arrayInfo: {
+                  id: arrayId,
+                  index: i,
+                  value: cellValue,
+                  varName: el.varName ?? '',
+                  direction,
+                },
+                panelId,
+                zOrder: z,
+              },
+              positionBinding: binding,
+              zOrder: z++,
+            });
+          }
         }
       }
 

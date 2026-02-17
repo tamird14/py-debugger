@@ -1,5 +1,26 @@
 import { loadPyodide } from './pythonExecutor';
+import type { ExecutionScope } from './pythonExecutor';
+import type { VariableDictionary } from '../types/grid';
 import type { VisualBuilderElement } from '../types/visualBuilder';
+
+/**
+ * Convert VariableDictionary (typed vars) to a plain dict for Python update(scope, params).
+ * Python expects params to be name -> value (number, list of numbers, string, or list of strings).
+ */
+function variableDictionaryToParams(vars: VariableDictionary): Record<string, number | number[] | string | string[]> {
+  const out: Record<string, number | number[] | string | string[]> = {};
+  for (const [name, v] of Object.entries(vars)) {
+    if (v.type === 'int' || v.type === 'float') out[name] = v.value;
+    else if (v.type === 'str') out[name] = v.value;
+    else if (v.type === 'arr[int]') out[name] = v.value;
+    else if (v.type === 'arr[str]') out[name] = v.value;
+  }
+  return out;
+}
+
+function escapeForPythonString(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r/g, '').replace(/\n/g, '\\n');
+}
 
 const VISUAL_BUILDER_PYTHON = `
 class VisualElem:
@@ -69,6 +90,29 @@ class Var(VisualElem):
         self.visible = True
 
 
+class Array(VisualElem):
+    def __init__(self, var_name=""):
+        super().__init__()
+        self.var_name = var_name
+        self.position = (0, 0)
+        self.direction = "right"
+        self.length = 5
+        self.visible = True
+        self._cells = [0] * self.length
+
+    def __setitem__(self, index, value):
+        n = len(self._cells)
+        if index >= n:
+            self._cells.extend([0] * (index - n + 1))
+            self.length = len(self._cells)
+        self._cells[index] = value
+
+    def __getitem__(self, index):
+        if 0 <= index < len(self._cells):
+            return self._cells[index]
+        return 0
+
+
 def _serialize_elem(elem, vb_id):
     """Serialize one visual element to a dict for JSON."""
     pos = getattr(elem, 'position', (0, 0))
@@ -111,6 +155,13 @@ def _serialize_elem(elem, vb_id):
         out["type"] = "var"
         out["varName"] = str(getattr(elem, 'var_name', ''))
         out["display"] = str(getattr(elem, 'display', 'name-value'))
+    elif isinstance(elem, Array):
+        out["type"] = "array"
+        out["varName"] = str(getattr(elem, 'var_name', ''))
+        out["direction"] = str(getattr(elem, 'direction', 'right'))
+        out["length"] = int(getattr(elem, 'length', 5))
+        cells = getattr(elem, '_cells', [])
+        out["values"] = list(cells) if isinstance(cells, (list, tuple)) else []
     else:
         out["type"] = "rect"
         out["width"] = 1
@@ -139,7 +190,7 @@ def _serialize_visual_builder():
             elem._vb_id = next_id("elem")
     
     # Output panels first so loaders can resolve panelId before processing children
-    panels_first = sorted(VisualElem._registry, key=lambda e: 0 if isinstance(e, Panel) else 1)
+    panels_first = sorted(VisualElem._registry, key=lambda e: (0 if isinstance(e, Panel) else 1, type(e).__name__))
     result = []
     for elem in panels_first:
         result.append(_serialize_elem(elem, elem._vb_id))
@@ -194,5 +245,41 @@ exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
       elements: [],
       error: cleanError,
     };
+  }
+}
+
+/**
+ * Call update(scope, params) on each visual element in the Pyodide registry, then
+ * re-serialize and return the updated elements. Use when the user has already run
+ * Visual Builder Analyze; call this on each step change to apply reactive updates.
+ * Returns [] if the registry is empty or not initialized (e.g. no prior Analyze).
+ */
+export async function runVisualBuilderUpdate(
+  scope: ExecutionScope,
+  params: VariableDictionary
+): Promise<VisualBuilderElement[]> {
+  try {
+    const py = await loadPyodide();
+
+    const paramsPlain = variableDictionaryToParams(params);
+    const scopeJson = JSON.stringify(scope);
+    const paramsJson = JSON.stringify(paramsPlain);
+    const scopeEsc = escapeForPythonString(scopeJson);
+    const paramsEsc = escapeForPythonString(paramsJson);
+
+    const code = `
+import json
+scope = json.loads('''${scopeEsc}''')
+params = json.loads('''${paramsEsc}''')
+for e in VisualElem._registry:
+    e.update(scope, params)
+_serialize_visual_builder()
+`;
+    const resultJson = await py.runPythonAsync(code);
+    if (resultJson == null || resultJson === undefined) return [];
+    const elements = JSON.parse(String(resultJson)) as VisualBuilderElement[];
+    return elements;
+  } catch {
+    return [];
   }
 }

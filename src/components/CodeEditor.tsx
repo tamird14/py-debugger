@@ -92,6 +92,12 @@ panel.add(l)
 v = Var("i")
 v.position = (2, 0)
 panel.add(v)
+
+# Array: show a list variable (e.g. "arr") — run main Code "Analyze" first
+arr_viz = Array("arr")
+arr_viz.position = (5, 2)
+arr_viz.direction = "right"
+arr_viz.length = 7
 `;
 
 export function CodeEditor({

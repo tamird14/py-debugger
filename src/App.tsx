@@ -13,7 +13,7 @@ import {
   isPyodideLoaded,
   type ExecutionStep,
 } from './services/pythonExecutor';
-import { executeVisualBuilderCode } from './services/visualBuilderExecutor';
+import { executeVisualBuilderCode, runVisualBuilderUpdate } from './services/visualBuilderExecutor';
 import type {
   CellPosition,
   ShapeType,
@@ -79,6 +79,7 @@ function App() {
   const [visualBuilderCode, setVisualBuilderCode] = useState('');
   const [isAnalyzingVisualBuilder, setIsAnalyzingVisualBuilder] = useState(false);
   const [visualBuilderError, setVisualBuilderError] = useState<string | undefined>();
+  const [visualBuilderAnalyzed, setVisualBuilderAnalyzed] = useState(false);
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -169,6 +170,7 @@ function App() {
       if (result.success) {
         loadVisualBuilderObjects(result.elements);
         setVisualBuilderError(undefined);
+        setVisualBuilderAnalyzed(true);
       } else {
         setVisualBuilderError(result.error);
       }
@@ -178,6 +180,20 @@ function App() {
       setIsAnalyzingVisualBuilder(false);
     }
   }, [visualBuilderCode, loadVisualBuilderObjects]);
+
+  // Per-step: call update(scope, params) on visual builder elements and sync to grid
+  useEffect(() => {
+    if (!visualBuilderAnalyzed || executionSteps.length === 0) return;
+    const step = executionSteps[currentStep];
+    if (!step) return;
+
+    const scope = step.scope ?? [];
+    const params = step.variables ?? {};
+
+    runVisualBuilderUpdate(scope, params).then((elements) => {
+      if (elements.length > 0) loadVisualBuilderObjects(elements);
+    });
+  }, [currentStep, executionSteps, visualBuilderAnalyzed, loadVisualBuilderObjects]);
 
   // Handle edit mode
   const handleEdit = useCallback(() => {

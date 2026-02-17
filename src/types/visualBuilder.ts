@@ -1,6 +1,8 @@
 // Visual Builder element types (serialized from Python)
 
-export type VisualBuilderElementType = 'rect' | 'label' | 'var' | 'panel';
+export type VisualBuilderElementType = 'rect' | 'label' | 'var' | 'panel' | 'array';
+
+export type ArrayDirection = 'right' | 'left' | 'down' | 'up';
 
 export interface VisualBuilderElement {
   type: VisualBuilderElementType;
@@ -17,6 +19,11 @@ export interface VisualBuilderElement {
   name?: string;
   children?: VisualBuilderElement[];
   panelId?: string; // for children of a panel
+  /** Array: variable name and layout */
+  direction?: ArrayDirection;
+  length?: number; // number of cells (used when no timeline yet)
+  /** Per-cell values from the builder (e.g. arr_viz[0]=2). When set, these are shown instead of timeline. */
+  values?: (number | string)[];
 }
 
 // Schema for Monaco autocomplete, hover, and API reference panel
@@ -95,6 +102,18 @@ export const VISUAL_ELEM_SCHEMA: ClassDoc[] = [
       { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).' },
       { name: 'display', type: 'str', description: '"name-value" or "value-only".' },
       { name: 'visible', type: 'bool', description: 'Show or hide the variable cell.' },
+    ],
+  },
+  {
+    className: 'Array',
+    constructorParams: 'var_name: str = ""',
+    docstring: 'Displays an array variable (list) from the current execution step. Each cell shows one element.',
+    properties: [
+      { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums").' },
+      { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the first cell.' },
+      { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout of cells.' },
+      { name: 'length', type: 'int', description: 'Number of cells to reserve (default 5). Use ≥ max array length.' },
+      { name: 'visible', type: 'bool', description: 'Show or hide the array.' },
     ],
   },
 ];
