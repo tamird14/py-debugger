@@ -170,6 +170,14 @@ export interface CellData {
   sizeResizable?: boolean;
 }
 
+export interface OccupantInfo {
+  cellData: CellData;
+  originRow: number;
+  originCol: number;
+  isPanel: boolean;
+  zOrder: number;
+}
+
 export interface GridState {
   cells: Map<string, CellData>;
   selectedCell: CellPosition | null;

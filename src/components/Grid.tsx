@@ -1,6 +1,6 @@
 import { useRef, useCallback, useMemo, useEffect, useState, memo } from 'react';
 import { GridCell } from './GridCell';
-import type { CellPosition, CellData, ShapeProps } from '../types/grid';
+import type { CellPosition, CellData, ShapeProps, OccupantInfo } from '../types/grid';
 import { cellKey, getArrayOffset } from '../types/grid';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -14,6 +14,7 @@ const GRID_ROWS = 50;
 interface GridProps {
   cells: Map<string, CellData>;
   overlayCells?: Map<string, CellData>;
+  occupancyMap?: Map<string, OccupantInfo[]>;
   panels: Array<PanelInfo>;
   selectedCell: CellPosition | null;
   zoom: number;
@@ -197,13 +198,11 @@ const GridSingleObject = memo(function GridSingleObject({
         height: CELL_SIZE * heightCells,
         zIndex: 10,
       }}
-      onClick={(e) => {
-        const cell = getSubCell(e);
-        handlers.onSelectCell(cell);
+      onClick={() => {
+        handlers.onSelectCell({ row: obj.row, col: obj.col });
       }}
       onContextMenu={(e) => {
-        const cell = getSubCell(e);
-        handlers.onContextMenu(e, cell.row, cell.col);
+        handlers.onContextMenu(e, obj.row, obj.col);
       }}
       onMouseDown={(e) => {
         const cell = getSubCell(e);
@@ -244,6 +243,7 @@ const GridSingleObject = memo(function GridSingleObject({
 export function Grid({
   cells,
   overlayCells = new Map(),
+  occupancyMap = new Map(),
   panels,
   selectedCell,
   zoom,
@@ -670,7 +670,7 @@ export function Grid({
         const key = cellKey(row, col);
         const isSelected =
           selectedCell?.row === row && selectedCell?.col === col;
-        const hasContent = cells.has(key);
+        const hasContent = occupancyMap.has(key);
 
         result.push(
           <div
@@ -692,7 +692,7 @@ export function Grid({
       }
     }
     return result;
-  }, [selectedCell, cells, onSelectCell, handleCellContextMenu]);
+  }, [selectedCell, occupancyMap, onSelectCell, handleCellContextMenu]);
 
   // Collect unique objects for animated rendering
   // Group array cells by their array ID to render them together

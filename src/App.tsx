@@ -23,7 +23,6 @@ import type {
   PositionBinding,
   ShapeProps,
 } from './types/grid';
-import { cellKey } from './types/grid';
 
 function App() {
   const {
@@ -67,6 +66,8 @@ function App() {
     loadObjectsSnapshot,
     loadVisualBuilderObjects,
     validateProposedOverTimeline,
+    getObjectAtCell,
+    occupancyMap,
   } = useGridState();
 
   // Code editor state
@@ -425,7 +426,7 @@ function App() {
 
   const hasTimeline = timeline.length > 0;
   const contextMenuCellData = contextMenuCell
-    ? cells.get(cellKey(contextMenuCell.row, contextMenuCell.col))
+    ? getObjectAtCell(contextMenuCell.row, contextMenuCell.col)
     : undefined;
 
   return (
@@ -581,6 +582,7 @@ function App() {
                 <Grid
                   cells={cells}
                   overlayCells={overlayCells}
+                  occupancyMap={occupancyMap}
                   panels={panels}
                   selectedCell={selectedCell}
                   zoom={zoom}
