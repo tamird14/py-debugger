@@ -1,9 +1,14 @@
 import type { Timeline, VariableDictionary } from '../types/grid';
 
 // Types for execution results
+/** Scope: list of [function_name, line_number] for the call stack (e.g. [["_main_", 5], ["foo", 12]]) */
+export type ExecutionScope = Array<[string, number]>;
+
 export interface ExecutionStep {
   lineNumber: number;
   variables: VariableDictionary;
+  /** Call stack at this step: (function name, line number) from bottom to top. */
+  scope?: ExecutionScope;
 }
 
 export interface ExecutionResult {
@@ -135,9 +140,21 @@ def _trace_function(frame, event, arg):
     line_no = frame.f_lineno
     variables = _capture_variables(frame, {'__builtins__', '__name__', '__doc__'})
 
+    # Capture call stack (scope)
+    scope = []
+    f = frame
+    while f is not None:
+        name = f.f_code.co_name
+        if name.startswith('_'):
+            f = f.f_back
+            continue
+        scope.insert(0, (name if name != '<module>' else '_main_', f.f_lineno))
+        f = f.f_back
+
     _trace_steps.append({
         'line': line_no,
-        'variables': variables
+        'variables': variables,
+        'scope': scope
     })
 
     return _trace_function
@@ -206,6 +223,7 @@ function convertToTimeline(steps: any[]): { timeline: Timeline; executionSteps: 
     executionSteps.push({
       lineNumber: step.line,
       variables: currentVars,
+      scope: Array.isArray(step.scope) ? (step.scope as ExecutionScope) : undefined,
     });
 
     // Add every step to the timeline so we can see all execution

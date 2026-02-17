@@ -13,6 +13,7 @@ import {
   isPyodideLoaded,
   type ExecutionStep,
 } from './services/pythonExecutor';
+import { executeVisualBuilderCode } from './services/visualBuilderExecutor';
 import type {
   CellPosition,
   ShapeType,
@@ -64,6 +65,7 @@ function App() {
     panels,
     getObjectsSnapshot,
     loadObjectsSnapshot,
+    loadVisualBuilderObjects,
     validateProposedOverTimeline,
   } = useGridState();
 
@@ -74,6 +76,9 @@ function App() {
   const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([]);
   const [error, setError] = useState<string | undefined>();
   const [output, setOutput] = useState<string | undefined>();
+  const [visualBuilderCode, setVisualBuilderCode] = useState('');
+  const [isAnalyzingVisualBuilder, setIsAnalyzingVisualBuilder] = useState(false);
+  const [visualBuilderError, setVisualBuilderError] = useState<string | undefined>();
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -152,6 +157,28 @@ function App() {
     }
   }, [code, loadTimeline]);
 
+  const handleAnalyzeVisualBuilder = useCallback(async () => {
+    if (!visualBuilderCode.trim()) return;
+
+    setIsAnalyzingVisualBuilder(true);
+    setVisualBuilderError(undefined);
+
+    try {
+      const result = await executeVisualBuilderCode(visualBuilderCode);
+
+      if (result.success) {
+        loadVisualBuilderObjects(result.elements);
+        setVisualBuilderError(undefined);
+      } else {
+        setVisualBuilderError(result.error);
+      }
+    } catch (err) {
+      setVisualBuilderError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsAnalyzingVisualBuilder(false);
+    }
+  }, [visualBuilderCode, loadVisualBuilderObjects]);
+
   // Handle edit mode
   const handleEdit = useCallback(() => {
     setIsEditable(true);
@@ -165,6 +192,7 @@ function App() {
     const saveData = {
       version: 1,
       code,
+      visualBuilderCode,
       isEditable,
       timeline,
       currentStep,
@@ -182,7 +210,7 @@ function App() {
     link.download = 'math-insight-save.json';
     link.click();
     URL.revokeObjectURL(url);
-  }, [code, isEditable, timeline, currentStep, executionSteps, output, getObjectsSnapshot]);
+  }, [code, visualBuilderCode, isEditable, timeline, currentStep, executionSteps, output, getObjectsSnapshot]);
 
   const handleLoadClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -198,10 +226,12 @@ function App() {
         try {
           const parsed = JSON.parse(String(reader.result || '{}'));
           setCode(parsed.code || '');
+          setVisualBuilderCode(parsed.visualBuilderCode ?? '');
           setIsEditable(parsed.isEditable ?? true);
           setExecutionSteps(Array.isArray(parsed.executionSteps) ? parsed.executionSteps : []);
           setOutput(parsed.output);
           setError(undefined);
+          setVisualBuilderError(undefined);
 
           loadTimeline(Array.isArray(parsed.timeline) ? parsed.timeline : []);
           loadObjectsSnapshot(Array.isArray(parsed.objects) ? parsed.objects : []);
@@ -484,6 +514,11 @@ function App() {
                     onEdit={handleEdit}
                     error={error}
                     output={output}
+                    visualBuilderCode={visualBuilderCode}
+                    onVisualBuilderCodeChange={setVisualBuilderCode}
+                    onAnalyzeVisualBuilder={handleAnalyzeVisualBuilder}
+                    isAnalyzingVisualBuilder={isAnalyzingVisualBuilder}
+                    visualBuilderError={visualBuilderError}
                   />
                 </div>
               </Panel>

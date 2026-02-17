@@ -11,6 +11,7 @@ import type {
   PositionComponent,
   SizeValue,
 } from '../types/grid';
+import type { VisualBuilderElement } from '../types/visualBuilder';
 import { cellKey, resolvePosition, createHardcodedBinding, getArrayOffset, resolveSizeValue } from '../types/grid';
 import { evaluateExpression, getExpressionVariables } from '../utils/expressionEvaluator';
 
@@ -1537,6 +1538,124 @@ export function useGridState() {
     setObjects(next);
   }, []);
 
+  const VB_PREFIX = 'vb-';
+
+  const loadVisualBuilderObjects = useCallback((elements: VisualBuilderElement[]) => {
+    function rgbToHex(rgb: [number, number, number]): string {
+      return '#' + rgb.map((x) => Math.max(0, Math.min(255, Math.floor(x))).toString(16).padStart(2, '0')).join('');
+    }
+
+    setObjects((prev) => {
+      const next = new Map(prev);
+      for (const [id] of next) {
+        if (id.startsWith(VB_PREFIX)) next.delete(id);
+      }
+
+      const panelIdMap = new Map<string, { gridId: string; origin: CellPosition }>();
+      let idx = 0;
+      let z = zOrderCounter.current++;
+
+      // First pass: add panels and record their positions
+      for (const el of elements) {
+        if (el.type !== 'panel') continue;
+        const [row, col] = el.position;
+        const width = el.width ?? 5;
+        const height = el.height ?? 5;
+        const gridId = `${VB_PREFIX}panel-${idx++}`;
+        panelIdMap.set(gridId, { gridId, origin: { row, col } });
+        next.set(gridId, {
+          id: gridId,
+          data: {
+            objectId: gridId,
+            panel: { id: gridId, width, height, title: el.name },
+            shapeProps: { width, height },
+            zOrder: z,
+          },
+          positionBinding: createHardcodedBinding({ row, col }),
+          zOrder: z++,
+        });
+      }
+
+      // Map serialized panelId from Python (e.g. "panel-1") to our grid panel id
+      const serializedPanelIdToGridId = new Map<string, string>();
+      let panelIndex = 0;
+      for (const el of elements) {
+        if (el.type === 'panel') {
+          serializedPanelIdToGridId.set(`panel-${panelIndex + 1}`, `${VB_PREFIX}panel-${panelIndex}`);
+          panelIndex++;
+        }
+      }
+
+      // Second pass: add non-panel elements
+      for (const el of elements) {
+        if (el.type === 'panel') continue;
+        const gridId = `${VB_PREFIX}${idx++}`;
+        let row = el.position[0];
+        let col = el.position[1];
+        let panelId: string | undefined;
+        if (el.panelId) {
+          const gridPanelId = serializedPanelIdToGridId.get(el.panelId) ?? el.panelId;
+          const info = panelIdMap.get(gridPanelId);
+          if (info) {
+            row = row + info.origin.row;
+            col = col + info.origin.col;
+            panelId = gridPanelId;
+          }
+        }
+        const pos: CellPosition = { row, col };
+        const targetPosition = panelId ? { row: el.position[0], col: el.position[1] } : pos;
+        const binding = createHardcodedBinding(targetPosition);
+
+        if (el.type === 'rect') {
+          const color = el.color ? rgbToHex(el.color) : '#22c55e';
+          next.set(gridId, {
+            id: gridId,
+            data: {
+              objectId: gridId,
+              shape: 'rectangle',
+              style: { color },
+              shapeProps: { width: el.width ?? 1, height: el.height ?? 1 },
+              panelId,
+              zOrder: z,
+            },
+            positionBinding: binding,
+            zOrder: z++,
+          });
+        } else if (el.type === 'label') {
+          const style: CellStyle = {};
+          if (el.color) style.color = rgbToHex(el.color);
+          if (el.fontSize != null) style.fontSize = el.fontSize;
+          next.set(gridId, {
+            id: gridId,
+            data: {
+              objectId: gridId,
+              label: { text: el.label ?? '', width: el.width ?? 1, height: el.height ?? 1 },
+              ...(Object.keys(style).length > 0 && { style }),
+              panelId,
+              zOrder: z,
+            },
+            positionBinding: binding,
+            zOrder: z++,
+          });
+        } else if (el.type === 'var') {
+          next.set(gridId, {
+            id: gridId,
+            data: {
+              objectId: gridId,
+              intVar: { name: el.varName ?? '', value: 0, display: (el.display as 'name-value' | 'value-only') ?? 'name-value' },
+              panelId,
+              zOrder: z,
+            },
+            positionBinding: binding,
+            zOrder: z++,
+          });
+        }
+      }
+
+      return next;
+    });
+  }, []);
+
   return {
     cells,
     overlayCells,
@@ -1580,6 +1699,7 @@ export function useGridState() {
     panels,
     getObjectsSnapshot,
     loadObjectsSnapshot,
+    loadVisualBuilderObjects,
     validateProposedOverTimeline,
   };
 }
