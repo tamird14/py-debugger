@@ -661,16 +661,18 @@ export function useGridState() {
     });
   }, [generateObjectId, clearOverlappingObjects, currentVariables]);
 
-  const clearCell = useCallback((position: CellPosition) => {
+  const clearCell = useCallback((position: CellPosition): string | undefined => {
+    let hitPanelId: string | undefined;
+
     setObjects((prev) => {
       const next = new Map(prev);
 
-      // Find object at this position
+      // Pass 1: find non-panel objects at this position (prioritize child objects)
       for (const [id, obj] of next) {
+        if (obj.data.panel) continue;
         const pos = resolveObjectPosition(obj, next, currentVariables);
 
         if (obj.data.arrayInfo) {
-          // Check if this position is part of this array
           const arrayId = obj.data.arrayInfo.id;
           let arrayLength = 0;
           const direction = obj.data.arrayInfo.direction || 'right';
@@ -681,7 +683,6 @@ export function useGridState() {
           for (let i = 0; i < arrayLength; i++) {
             const offset = getArrayOffset(direction, i);
             if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
-              // Clear entire array
               for (const [oid, o] of next) {
                 if (o.data.arrayInfo?.id === arrayId) {
                   next.delete(oid);
@@ -704,8 +705,26 @@ export function useGridState() {
         }
       }
 
+      // Pass 2: no non-panel object found -- check if position is inside a panel
+      for (const [, obj] of next) {
+        if (!obj.data.panel) continue;
+        const pos = resolveObjectPosition(obj, next, currentVariables);
+        const width = resolveSizeValue(obj.data.panel.width, currentVariables, evaluateExpression) || 1;
+        const height = resolveSizeValue(obj.data.panel.height, currentVariables, evaluateExpression) || 1;
+        for (let r = 0; r < height; r++) {
+          for (let c = 0; c < width; c++) {
+            if (pos.row + r === position.row && pos.col + c === position.col) {
+              hitPanelId = obj.data.panel.id;
+              return next;
+            }
+          }
+        }
+      }
+
       return next;
     });
+
+    return hitPanelId;
   }, [currentVariables]);
 
   const addArray = useCallback((position: CellPosition, length: number, panelContext?: { id: string; origin: CellPosition }) => {
@@ -1274,31 +1293,40 @@ export function useGridState() {
     });
   }, []);
 
-  const deletePanel = useCallback((panelId: string) => {
+  const deletePanel = useCallback((panelId: string, keepChildren: boolean) => {
     setObjects((prev) => {
       const next = new Map(prev);
-      // Remove panel object
+      // Find panel origin and remove the panel object
+      let panelOrigin: CellPosition = { row: 0, col: 0 };
       for (const [id, obj] of next) {
         if (obj.data.panel?.id === panelId) {
+          panelOrigin = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
           next.delete(id);
           break;
         }
       }
-      // Detach children from this panel (keep them but remove panelId reference)
+      // Handle children
       for (const [id, obj] of next) {
         if (obj.data.panelId === panelId) {
-          next.set(id, {
-            ...obj,
-            data: {
-              ...obj.data,
-              panelId: undefined,
-            },
-          });
+          if (!keepChildren) {
+            next.delete(id);
+          } else {
+            // Convert relative position to absolute so objects stay in place
+            const childPos = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
+            next.set(id, {
+              ...obj,
+              data: { ...obj.data, panelId: undefined },
+              positionBinding: createHardcodedBinding({
+                row: childPos.row + panelOrigin.row,
+                col: childPos.col + panelOrigin.col,
+              }),
+            });
+          }
         }
       }
       return next;
     });
-  }, []);
+  }, [currentVariables]);
 
   const panelOptions = useMemo(() => {
     return Array.from(objects.values())

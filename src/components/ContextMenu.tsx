@@ -52,7 +52,7 @@ interface ContextMenuProps {
   panelContext?: { id: string; origin: CellPosition; width: number; height: number };
   panelSettingsData?: PanelSettingsData;
   onUpdatePanel?: (panelId: string, updates: { title?: string; width?: number; height?: number }) => void;
-  onDeletePanel?: (panelId: string) => void;
+  onDeletePanel?: (panelId: string, keepChildren: boolean) => void;
   onClose: () => void;
 }
 
@@ -1384,14 +1384,26 @@ export function ContextMenu({
             <button
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
               onClick={() => {
-                onDeletePanel?.(panelSettingsData.id);
+                onDeletePanel?.(panelSettingsData.id, false);
                 onClose();
               }}
             >
               <div className="w-6 h-6 flex items-center justify-center text-red-500 font-bold">
                 ×
               </div>
-              <span className="text-sm text-red-600">Delete Panel</span>
+              <span className="text-sm text-red-600">Delete Panel & All Objects</span>
+            </button>
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 transition-colors text-left"
+              onClick={() => {
+                onDeletePanel?.(panelSettingsData.id, true);
+                onClose();
+              }}
+            >
+              <div className="w-6 h-6 flex items-center justify-center text-amber-500 font-bold">
+                ⊘
+              </div>
+              <span className="text-sm text-amber-600">Delete Panel Only (Keep Objects)</span>
             </button>
           </div>
         </>

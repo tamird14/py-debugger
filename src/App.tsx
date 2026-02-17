@@ -258,13 +258,22 @@ function App() {
     (shape: ShapeType | null, panelContext?: { id: string; origin: CellPosition }) => {
       if (contextMenuCell) {
         if (shape === null) {
-          clearCell(contextMenuCell);
+          const hitPanelId = clearCell(contextMenuCell);
+          if (hitPanelId) {
+            const wantDelete = window.confirm('This cell is part of a panel. Do you want to delete the panel?');
+            if (wantDelete) {
+              const deleteAll = window.confirm(
+                'Delete all objects inside the panel too?\n\nOK = Delete all objects\nCancel = Keep objects in their current positions'
+              );
+              deletePanel(hitPanelId, !deleteAll);
+            }
+          }
         } else {
           setShape(contextMenuCell, shape, panelContext);
         }
       }
     },
-    [contextMenuCell, setShape, clearCell]
+    [contextMenuCell, setShape, clearCell, deletePanel]
   );
 
   const handleAddLabel = useCallback(

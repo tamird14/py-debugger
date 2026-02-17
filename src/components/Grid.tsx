@@ -317,9 +317,31 @@ export function Grid({
   const panelDragRef = useRef<{
     panelId: string;
     startCell: CellPosition;
+    startMouseX: number;
+    startMouseY: number;
+    startPanelX: number;
+    startPanelY: number;
+    panelWidth: number;
+    panelHeight: number;
     lastTarget?: CellPosition;
   } | null>(null);
   const [isPanelDragging, setIsPanelDragging] = useState(false);
+  const [panelDragGhost, setPanelDragGhost] = useState<{
+    panelId: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    title?: string;
+  } | null>(null);
+
+  // Set grabbing cursor on body during panel drag
+  useEffect(() => {
+    if (isPanelDragging) {
+      document.body.style.cursor = 'grabbing';
+      return () => { document.body.style.cursor = ''; };
+    }
+  }, [isPanelDragging]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -436,13 +458,30 @@ export function Grid({
       e.preventDefault();
       e.stopPropagation();
       onDragBegin?.();
+      const panel = panels.find((p) => p.id === panelId);
+      const panelX = panelCol * CELL_SIZE;
+      const panelY = panelRow * CELL_SIZE;
       panelDragRef.current = {
         panelId,
         startCell: { row: panelRow, col: panelCol },
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startPanelX: panelX,
+        startPanelY: panelY,
+        panelWidth: panel?.width ?? 1,
+        panelHeight: panel?.height ?? 1,
       };
+      setPanelDragGhost({
+        panelId,
+        x: panelX,
+        y: panelY,
+        width: panel?.width ?? 1,
+        height: panel?.height ?? 1,
+        title: panel?.title,
+      });
       setIsPanelDragging(true);
     },
-    [onDragBegin]
+    [onDragBegin, panels]
   );
 
   const handleResizeStart = useCallback(
@@ -592,9 +631,16 @@ export function Grid({
     const handleMouseMove = (e: MouseEvent) => {
       const state = panelDragRef.current;
       if (!state) return;
-      const target = getCellFromPointer(e.clientX, e.clientY);
-      if (!target) return;
-      panelDragRef.current = { ...state, lastTarget: target };
+      // Compute smooth pixel-level ghost position (grid-space pixels)
+      const dx = (e.clientX - state.startMouseX) / zoom;
+      const dy = (e.clientY - state.startMouseY) / zoom;
+      const ghostX = state.startPanelX + dx;
+      const ghostY = state.startPanelY + dy;
+      // Compute cell-snapped target for the panel origin
+      const newCol = Math.max(0, Math.min(GRID_COLS - 1, Math.round(ghostX / CELL_SIZE)));
+      const newRow = Math.max(0, Math.min(GRID_ROWS - 1, Math.round(ghostY / CELL_SIZE)));
+      panelDragRef.current = { ...state, lastTarget: { row: newRow, col: newCol } };
+      setPanelDragGhost((prev) => prev ? { ...prev, x: ghostX, y: ghostY } : null);
     };
 
     const handleMouseUp = () => {
@@ -604,6 +650,7 @@ export function Grid({
         onMovePanel(state.panelId, state.lastTarget);
       }
       panelDragRef.current = null;
+      setPanelDragGhost(null);
       setIsPanelDragging(false);
     };
 
@@ -613,7 +660,7 @@ export function Grid({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [getCellFromPointer, isPanelDragging, onMovePanel]);
+  }, [getCellFromPointer, isPanelDragging, onMovePanel, zoom]);
 
   // Background grid cells (empty cells for selection and context menu)
   const gridBackground = useMemo(() => {
@@ -752,6 +799,8 @@ export function Grid({
     );
   }, [objectsToRender, cells, selectedCell, cellEventHandlers]);
 
+  const draggingPanelId = panelDragGhost?.panelId ?? null;
+
   // Panel visuals (dashed border + background) - rendered below objects; resize handles when sizeResizable
   const renderedPanelBackgrounds = useMemo(() => {
     return panels.map((panel) => (
@@ -759,7 +808,7 @@ export function Grid({
         key={panel.id}
         className={`absolute border-2 border-dashed bg-slate-50/50 transition-all duration-300 ease-out ${
           panel.invalidReason ? 'opacity-50 grayscale' : ''
-        }`}
+        } ${draggingPanelId === panel.id ? 'opacity-30' : ''}`}
         style={{
           left: panel.col * CELL_SIZE,
           top: panel.row * CELL_SIZE,
@@ -789,7 +838,7 @@ export function Grid({
           ))}
       </div>
     ));
-  }, [panels, onUpdatePanel, handlePanelResizeStart]);
+  }, [panels, onUpdatePanel, handlePanelResizeStart, draggingPanelId]);
 
   // Panel drag handles - rendered above objects so they're always reachable
   const renderedPanelHandles = useMemo(() => {
@@ -910,6 +959,32 @@ export function Grid({
               width={CELL_SIZE * dragGhost.widthCells}
               height={CELL_SIZE * dragGhost.heightCells}
             />
+          </div>
+        )}
+
+        {/* Panel drag ghost: lifted panel outline that follows the cursor */}
+        {panelDragGhost && (
+          <div
+            className="absolute border-2 border-dashed border-blue-400 bg-blue-50/40 rounded-sm pointer-events-none"
+            style={{
+              left: panelDragGhost.x,
+              top: panelDragGhost.y,
+              width: panelDragGhost.width * CELL_SIZE,
+              height: panelDragGhost.height * CELL_SIZE,
+              zIndex: 50,
+              boxShadow: '0 20px 40px -8px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15)',
+              transform: 'scale(1.015)',
+              transformOrigin: 'center center',
+            }}
+          >
+            {panelDragGhost.title && (
+              <span
+                className="absolute text-[10px] font-mono text-blue-600 bg-blue-50 px-1 rounded whitespace-nowrap"
+                style={{ left: 4, top: 0, transform: 'translateY(-100%)' }}
+              >
+                {panelDragGhost.title}
+              </span>
+            )}
           </div>
         )}
 
