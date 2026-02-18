@@ -9,6 +9,8 @@ _V_GLOBALS = {
     "pi": math.pi,
 }
 
+_vb_user_update = None
+
 
 class V:
     """Bind a property to a Python expression evaluated each step.
@@ -132,7 +134,10 @@ def _serialize_elem(elem, vb_id):
     pos = getattr(elem, 'position', (0, 0))
     if not isinstance(pos, (list, tuple)) or len(pos) < 2:
         pos = (0, 0)
-    row, col = int(pos[0]), int(pos[1])
+    try:
+        row, col = int(pos[0]), int(pos[1])
+    except (ValueError, TypeError):
+        row, col = 0, 0
 
     out = {
         "type": None,

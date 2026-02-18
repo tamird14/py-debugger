@@ -50,9 +50,19 @@ export async function executeVisualBuilderCode(code: string): Promise<ExecuteVis
       .replace(/'/g, "\\'")
       .replace(/\n/g, '\\n');
 
+    // Reset user update callback before running new code
+    await py.runPythonAsync('_vb_user_update = None');
+
     // Run user's visual builder code
     await py.runPythonAsync(`
 exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
+`);
+
+    // Capture user-defined update(scope, params) if present
+    await py.runPythonAsync(`
+_vb_user_update = globals().get('update', None)
+if _vb_user_update is not None and not callable(_vb_user_update):
+    _vb_user_update = None
 `);
 
     // Serialize and return
@@ -99,6 +109,8 @@ scope = json.loads('''${scopeEsc}''')
 params = json.loads('''${paramsEsc}''')
 for e in VisualElem._registry:
     e.update(scope, params)
+if _vb_user_update is not None:
+    _vb_user_update(scope, params)
 _serialize_visual_builder()
 `;
     const resultJson = await py.runPythonAsync(code);

@@ -378,9 +378,7 @@ export function useGridState() {
         const cellPos = { row: position.row + offset.rowDelta, col: position.col + offset.colDelta };
 
         let cellData: CellData = { ...arrayObj.data };
-        const arrayId = obj.data.arrayInfo?.id ?? '';
-        const isVbArray = arrayId.startsWith('vb-');
-        if (cellData.arrayInfo?.varName && !isVbArray) {
+        if (cellData.arrayInfo?.varName) {
           const arrVar = currentVariables[cellData.arrayInfo.varName];
           if (arrVar && (arrVar.type === 'arr[int]' || arrVar.type === 'arr[str]')) {
             const newValue = arrVar.value[cellData.arrayInfo.index];
@@ -393,7 +391,6 @@ export function useGridState() {
             cellData = { ...cellData, invalidReason: `Array "${cellData.arrayInfo.varName}" not available` };
           }
         }
-        // vb-* arrays: keep value from the builder (arr_viz[i]=x); already on arrayObj.data.arrayInfo.value
         cellData = { ...cellData, positionBinding: obj.positionBinding };
         const resolvedCellData = { ...cellData, invalidReason: cellData.invalidReason || invalidReason };
         cellMap.set(cellKey(cellPos.row, cellPos.col), resolvedCellData);

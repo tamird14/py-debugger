@@ -58,6 +58,12 @@ export const VISUAL_ELEM_SCHEMA: ClassDoc[] = [
     ],
   },
   {
+    className: 'update',
+    constructorParams: 'scope, params',
+    docstring: 'Define a top-level update(scope, params) function to run custom logic on every execution step. scope is a list of (func_name, line_number) tuples for the call stack. params is a dict of variable names to their current values. Use this to imperatively update element properties each step.',
+    properties: [],
+  },
+  {
     className: 'Panel',
     constructorParams: 'name: str = "Panel"',
     docstring: 'Container for grouping visual elements. Use add(elem) and remove(elem) to manage children.',
