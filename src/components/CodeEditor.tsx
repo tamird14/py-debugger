@@ -3,6 +3,7 @@ import Editor, { type Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import type * as MonacoTypes from 'monaco-editor';
 import { VISUAL_ELEM_SCHEMA } from '../types/visualBuilder';
+import { useTheme } from '../contexts/ThemeContext';
 
 type CodePanelTab = 'code' | 'visual-builder';
 
@@ -77,13 +78,14 @@ const SAMPLE_VISUAL_BUILDER = `# Visual Builder - create elements to show on the
 
 panel = Panel("Main")
 panel.position = (2, 2)
-panel.width = 10
-panel.height = 8
+panel.width = 12
+panel.height = 10
 
 r = Rect((0, 0))
 r.width = V("i")          # width tracks variable "i" each step
 r.height = 1
 r.color = (34, 197, 94)
+r.alpha = 0.7             # semi-transparent
 panel.add(r)
 
 l = Label("i = {i}")
@@ -94,11 +96,27 @@ v = Var("i")
 v.position = (2, 0)
 panel.add(v)
 
+# Circle with reactive alpha
+c = Circle((3, 0))
+c.width = 2
+c.height = 2
+c.color = (59, 130, 246)   # blue
+c.alpha = V("i / 10")      # fades in as i increases
+panel.add(c)
+
+# Arrow pointing right
+a = Arrow((3, 3))
+a.orientation = "right"
+a.color = (239, 68, 68)    # red
+a.alpha = 0.8
+panel.add(a)
+
 # Array: show a list variable (e.g. "arr") — run main Code "Analyze" first
 arr_viz = Array("arr")
-arr_viz.position = (5, 2)
+arr_viz.position = (7, 0)
 arr_viz.direction = "right"
 arr_viz.length = 7
+panel.add(arr_viz)
 `;
 
 export function CodeEditor({
@@ -118,6 +136,7 @@ export function CodeEditor({
   isAnalyzingVisualBuilder = false,
   visualBuilderError,
 }: CodeEditorProps) {
+  const { darkMode } = useTheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const visualBuilderEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
@@ -126,6 +145,7 @@ export function CodeEditor({
   const [showSamples, setShowSamples] = useState(false);
   const [activeTab, setActiveTab] = useState<CodePanelTab>('code');
   const [apiReferenceOpen, setApiReferenceOpen] = useState(true);
+  const monacoTheme = darkMode ? 'vs-dark' : 'vs';
 
   // Handle main code editor mount
   const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
@@ -337,17 +357,17 @@ export function CodeEditor({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
       {/* Tab bar + Header */}
-      <div className="flex-shrink-0 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center border-b border-gray-700">
+      <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700">
+        <div className="flex items-center border-b border-gray-300 dark:border-gray-700">
           <button
             type="button"
             onClick={() => setActiveTab('code')}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'code'
-                ? 'bg-gray-700 text-white border-b-2 border-emerald-500'
-                : 'text-gray-400 hover:text-gray-300'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-b-2 border-emerald-500'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             Code
@@ -357,8 +377,8 @@ export function CodeEditor({
             onClick={() => setActiveTab('visual-builder')}
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === 'visual-builder'
-                ? 'bg-gray-700 text-white border-b-2 border-emerald-500'
-                : 'text-gray-400 hover:text-gray-300'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-b-2 border-emerald-500'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             Visual Builder
@@ -366,7 +386,7 @@ export function CodeEditor({
         </div>
         <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-gray-300">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {activeTab === 'code' ? 'Python Code' : 'Visual Builder (Python)'}
             </span>
             {activeTab === 'code' && !isEditable && (
@@ -382,30 +402,30 @@ export function CodeEditor({
                   <button
                     type="button"
                     onClick={() => setShowSamples(!showSamples)}
-                    className="px-3 py-1 text-sm bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+                    className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                   >
                     Samples
                   </button>
                   {showSamples && (
-                    <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-10 min-w-[200px]">
+                    <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl z-10 min-w-[200px]">
                       <button
                         type="button"
                         onClick={() => loadSample(SAMPLE_CODE)}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         Bubble Sort
                       </button>
                       <button
                         type="button"
                         onClick={() => loadSample(SAMPLE_PREFIX_SUM)}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         Prefix Sum
                       </button>
                       <button
                         type="button"
                         onClick={() => loadSample(SAMPLE_BINARY_SEARCH)}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         Binary Search
                       </button>
@@ -441,14 +461,14 @@ export function CodeEditor({
                 <button
                   type="button"
                   onClick={loadVisualBuilderSample}
-                  className="px-3 py-1 text-sm bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+                  className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                 >
                   Sample
                 </button>
                 <button
                   type="button"
                   onClick={() => setApiReferenceOpen((o) => !o)}
-                  className="px-3 py-1 text-sm bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+                  className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                 >
                   {apiReferenceOpen ? 'Hide' : 'Show'} API Reference
                 </button>
@@ -477,7 +497,7 @@ export function CodeEditor({
             <Editor
               height="100%"
               defaultLanguage="python"
-              theme="vs-dark"
+              theme={monacoTheme}
               value={code}
               onChange={(value) => onChange(value || '')}
               onMount={handleEditorDidMount}
@@ -499,16 +519,16 @@ export function CodeEditor({
             />
           </div>
           {(error || output) && (
-            <div className="flex-shrink-0 border-t border-gray-700 max-h-32 overflow-auto">
+            <div className="flex-shrink-0 border-t border-gray-300 dark:border-gray-700 max-h-32 overflow-auto">
               {error && (
-                <div className="px-4 py-2 bg-red-900/30 text-red-400 text-sm font-mono">
+                <div className="px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-mono">
                   <span className="font-semibold">Error: </span>
                   {error}
                 </div>
               )}
               {output && !error && (
-                <div className="px-4 py-2 bg-gray-800 text-gray-300 text-sm font-mono">
-                  <span className="font-semibold text-gray-400">Output: </span>
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-mono">
+                  <span className="font-semibold text-gray-500 dark:text-gray-400">Output: </span>
                   {output}
                 </div>
               )}
@@ -524,7 +544,7 @@ export function CodeEditor({
             <Editor
               height="100%"
               defaultLanguage="python"
-              theme="vs-dark"
+              theme={monacoTheme}
               value={visualBuilderCode}
               onChange={(value) => onVisualBuilderCodeChange?.(value || '')}
               onMount={handleVisualBuilderEditorDidMount}
@@ -546,30 +566,30 @@ export function CodeEditor({
             />
           </div>
           {apiReferenceOpen && (
-            <div className="flex-shrink-0 border-t border-gray-700 max-h-48 overflow-auto bg-gray-800">
-              <div className="px-3 py-2 border-b border-gray-600 flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-400 uppercase">API Reference</span>
+            <div className="flex-shrink-0 border-t border-gray-300 dark:border-gray-700 max-h-48 overflow-auto bg-gray-50 dark:bg-gray-800">
+              <div className="px-3 py-2 border-b border-gray-300 dark:border-gray-600 flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">API Reference</span>
               </div>
-              <div className="px-3 py-2 text-sm text-gray-300 space-y-3">
+              <div className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 space-y-3">
                 {VISUAL_ELEM_SCHEMA.map((cls) => (
-                  <div key={cls.className} className="border-b border-gray-600 pb-2 last:border-0">
-                    <div className="font-mono font-medium text-gray-200">
+                  <div key={cls.className} className="border-b border-gray-300 dark:border-gray-600 pb-2 last:border-0">
+                    <div className="font-mono font-medium text-gray-900 dark:text-gray-200">
                       {cls.className}({cls.constructorParams})
                     </div>
-                    <div className="text-gray-400 text-xs mt-0.5">{cls.docstring}</div>
+                    <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{cls.docstring}</div>
                     <div className="mt-1.5 space-y-0.5">
                       {cls.properties.map((p) => (
                         <div key={p.name} className="font-mono text-xs flex gap-2">
-                          <span className="text-amber-300">{p.name}</span>
-                          <span className="text-gray-500">: {p.type}</span>
-                          <span className="text-gray-400">— {p.description}</span>
+                          <span className="text-amber-600 dark:text-amber-300">{p.name}</span>
+                          <span className="text-gray-400 dark:text-gray-500">: {p.type}</span>
+                          <span className="text-gray-500 dark:text-gray-400">— {p.description}</span>
                         </div>
                       ))}
                       {cls.methods?.map((m) => (
                         <div key={m.name} className="font-mono text-xs flex gap-2 mt-0.5">
-                          <span className="text-cyan-300">{m.name}</span>
-                          <span className="text-gray-500">{m.signature}</span>
-                          <span className="text-gray-400">— {m.docstring}</span>
+                          <span className="text-cyan-600 dark:text-cyan-300">{m.name}</span>
+                          <span className="text-gray-400 dark:text-gray-500">{m.signature}</span>
+                          <span className="text-gray-500 dark:text-gray-400">— {m.docstring}</span>
                         </div>
                       ))}
                     </div>
@@ -579,7 +599,7 @@ export function CodeEditor({
             </div>
           )}
           {visualBuilderError && (
-            <div className="flex-shrink-0 border-t border-gray-700 px-4 py-2 bg-red-900/30 text-red-400 text-sm font-mono">
+            <div className="flex-shrink-0 border-t border-gray-300 dark:border-gray-700 px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm font-mono">
               <span className="font-semibold">Error: </span>
               {visualBuilderError}
             </div>

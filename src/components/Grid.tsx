@@ -676,8 +676,8 @@ export function Grid({
           <div
             key={key}
             className={`
-              border border-gray-300 cursor-pointer transition-colors
-              ${isSelected ? 'bg-blue-100 border-blue-500 border-2' : 'bg-white hover:bg-gray-50'}
+              border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors
+              ${isSelected ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-500 border-2' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}
             `}
             style={{
               width: CELL_SIZE,
@@ -806,7 +806,7 @@ export function Grid({
     return panels.map((panel) => (
       <div
         key={panel.id}
-        className={`absolute border-2 border-dashed bg-slate-50/50 transition-all duration-300 ease-out ${
+        className={`absolute border-2 border-dashed bg-slate-50/50 dark:bg-slate-800/50 transition-all duration-300 ease-out ${
           panel.invalidReason ? 'opacity-50 grayscale' : ''
         } ${draggingPanelId === panel.id ? 'opacity-30' : ''}`}
         style={{
@@ -821,7 +821,7 @@ export function Grid({
           (['e', 's', 'se'] as const).map((handle) => (
             <div
               key={handle}
-              className="absolute bg-slate-400 rounded border border-white cursor-se-resize hover:bg-slate-500"
+              className="absolute bg-slate-400 dark:bg-slate-500 rounded border border-white dark:border-gray-700 cursor-se-resize hover:bg-slate-500 dark:hover:bg-slate-400"
               style={
                 handle === 'e'
                   ? { top: '50%', right: 0, transform: 'translateY(-50%)', width: HANDLE_SIZE, height: HANDLE_SIZE }
@@ -845,10 +845,10 @@ export function Grid({
     return panels.map((panel) => (
       <span
         key={panel.id}
-        className={`absolute text-[10px] font-mono bg-slate-50 px-1 rounded ${
+        className={`absolute text-[10px] font-mono bg-slate-50 dark:bg-slate-700 px-1 rounded ${
           panel.title
-            ? 'text-slate-600 hover:text-slate-900 hover:bg-blue-100'
-            : 'text-slate-400 hover:text-slate-600 hover:bg-blue-100'
+            ? 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-blue-100 dark:hover:bg-blue-900/40'
+            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'
         }`}
         style={{
           left: panel.col * CELL_SIZE + 4,
@@ -874,7 +874,7 @@ export function Grid({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-auto bg-gray-100"
+      className="w-full h-full overflow-auto bg-gray-100 dark:bg-gray-900"
       onWheel={handleWheel}
     >
       <div

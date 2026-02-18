@@ -1604,6 +1604,8 @@ export function useGridState() {
         const targetPosition = panelId ? { row: el.position[0], col: el.position[1] } : pos;
         const binding = createHardcodedBinding(targetPosition);
 
+        const alpha = el.alpha ?? 1;
+
         if (el.type === 'rect') {
           const color = el.color ? rgbToHex(el.color) : '#22c55e';
           next.set(gridId, {
@@ -1611,7 +1613,7 @@ export function useGridState() {
             data: {
               objectId: gridId,
               shape: 'rectangle',
-              style: { color },
+              style: { color, opacity: alpha },
               shapeProps: { width: el.width ?? 1, height: el.height ?? 1 },
               panelId,
               zOrder: z,
@@ -1619,8 +1621,43 @@ export function useGridState() {
             positionBinding: binding,
             zOrder: z++,
           });
+        } else if (el.type === 'circle') {
+          const color = el.color ? rgbToHex(el.color) : '#3b82f6';
+          next.set(gridId, {
+            id: gridId,
+            data: {
+              objectId: gridId,
+              shape: 'circle',
+              style: { color, opacity: alpha },
+              shapeProps: { width: el.width ?? 1, height: el.height ?? 1 },
+              panelId,
+              zOrder: z,
+            },
+            positionBinding: binding,
+            zOrder: z++,
+          });
+        } else if (el.type === 'arrow') {
+          const color = el.color ? rgbToHex(el.color) : '#10b981';
+          next.set(gridId, {
+            id: gridId,
+            data: {
+              objectId: gridId,
+              shape: 'arrow',
+              style: { color, opacity: alpha },
+              shapeProps: {
+                width: el.width ?? 1,
+                height: el.height ?? 1,
+                orientation: (el.orientation as 'up' | 'down' | 'left' | 'right') ?? 'up',
+                rotation: el.rotation ?? 0,
+              },
+              panelId,
+              zOrder: z,
+            },
+            positionBinding: binding,
+            zOrder: z++,
+          });
         } else if (el.type === 'label') {
-          const style: CellStyle = {};
+          const style: CellStyle = { opacity: alpha };
           if (el.color) style.color = rgbToHex(el.color);
           if (el.fontSize != null) style.fontSize = el.fontSize;
           next.set(gridId, {
@@ -1641,6 +1678,7 @@ export function useGridState() {
             data: {
               objectId: gridId,
               intVar: { name: el.varName ?? '', value: 0, display: (el.display as 'name-value' | 'value-only') ?? 'name-value' },
+              style: { opacity: alpha },
               panelId,
               zOrder: z,
             },

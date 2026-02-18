@@ -1,6 +1,6 @@
 // Visual Builder element types (serialized from Python)
 
-export type VisualBuilderElementType = 'rect' | 'label' | 'var' | 'panel' | 'array';
+export type VisualBuilderElementType = 'rect' | 'label' | 'var' | 'panel' | 'array' | 'circle' | 'arrow';
 
 export type ArrayDirection = 'right' | 'left' | 'down' | 'up';
 
@@ -24,6 +24,9 @@ export interface VisualBuilderElement {
   length?: number; // number of cells (used when no timeline yet)
   /** Per-cell values from the builder (e.g. arr_viz[0]=2). When set, these are shown instead of timeline. */
   values?: (number | string)[];
+  alpha?: number;
+  orientation?: 'up' | 'down' | 'left' | 'right';
+  rotation?: number;
 }
 
 // Schema for Monaco autocomplete, hover, and API reference panel
@@ -55,6 +58,7 @@ export const VISUAL_ELEM_SCHEMA: ClassDoc[] = [
     properties: [
       { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) on the grid.' },
       { name: 'visible', type: 'bool', description: 'Whether the element is shown.' },
+      { name: 'alpha', type: 'float', description: 'Opacity from 0.0 (transparent) to 1.0 (opaque). Default 1.0. Supports V() bindings.' },
     ],
   },
   {
@@ -126,6 +130,32 @@ export const VISUAL_ELEM_SCHEMA: ClassDoc[] = [
       { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout of cells.' },
       { name: 'length', type: 'int', description: 'Number of cells to reserve (default 5). Use ≥ max array length.' },
       { name: 'visible', type: 'bool', description: 'Show or hide the array.' },
+    ],
+  },
+  {
+    className: 'Circle',
+    constructorParams: 'pos: tuple[int, int] = (0, 0)',
+    docstring: 'A circle (or ellipse) shape on the grid.',
+    properties: [
+      { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the bounding box.' },
+      { name: 'width', type: 'int', description: 'Width in grid cells.' },
+      { name: 'height', type: 'int', description: 'Height in grid cells.' },
+      { name: 'color', type: 'tuple[int, int, int]', description: 'RGB fill color (0-255 per channel).' },
+      { name: 'visible', type: 'bool', description: 'Show or hide the circle.' },
+    ],
+  },
+  {
+    className: 'Arrow',
+    constructorParams: 'pos: tuple[int, int] = (0, 0)',
+    docstring: 'An arrow shape on the grid. Points in the given orientation and can be rotated.',
+    properties: [
+      { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the bounding box.' },
+      { name: 'width', type: 'int', description: 'Width in grid cells.' },
+      { name: 'height', type: 'int', description: 'Height in grid cells.' },
+      { name: 'color', type: 'tuple[int, int, int]', description: 'RGB fill color (0-255 per channel).' },
+      { name: 'orientation', type: 'str', description: '"up", "down", "left", or "right". Default "up".' },
+      { name: 'rotation', type: 'int', description: 'Additional rotation in degrees. Default 0.' },
+      { name: 'visible', type: 'bool', description: 'Show or hide the arrow.' },
     ],
   },
 ];

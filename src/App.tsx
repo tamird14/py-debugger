@@ -7,6 +7,7 @@ import { TimelineControls } from './components/TimelineControls';
 import { CodeEditor, SAMPLE_CODE } from './components/CodeEditor';
 import { VariablesPanel } from './components/VariablesPanel';
 import { useGridState } from './hooks/useGridState';
+import { useTheme } from './contexts/ThemeContext';
 import {
   executePythonCode,
   loadPyodide,
@@ -25,6 +26,7 @@ import type {
 } from './types/grid';
 
 function App() {
+  const { darkMode, toggleDarkMode } = useTheme();
   const {
     cells,
     overlayCells,
@@ -430,28 +432,28 @@ function App() {
     : undefined;
 
   return (
-    <div className="w-screen h-screen overflow-hidden flex flex-col bg-gray-100">
+    <div className="w-screen h-screen overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
-      <header className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm">
+      <header className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-indigo-600">Math-Insight</h1>
-          <span className="text-sm text-gray-400">Visual Python Debugger</span>
+          <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Math-Insight</h1>
+          <span className="text-sm text-gray-400 dark:text-gray-500">Visual Python Debugger</span>
           <Link
             to="/plan"
-            className="text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
           >
             About
           </Link>
           <div className="flex items-center gap-2">
             <button
               onClick={handleSave}
-              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-sm font-medium transition-colors"
             >
               Save
             </button>
             <button
               onClick={handleLoadClick}
-              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-sm font-medium transition-colors"
             >
               Load
             </button>
@@ -495,20 +497,29 @@ function App() {
           <div className="flex items-center gap-2">
             <button
               onClick={zoomOut}
-              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-sm font-medium transition-colors"
             >
               -
             </button>
-            <span className="text-sm text-gray-600 min-w-[60px] text-center">
+            <span className="text-sm text-gray-600 dark:text-gray-300 min-w-[60px] text-center">
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={zoomIn}
-              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-sm font-medium transition-colors"
             >
               +
             </button>
           </div>
+
+          {/* Dark mode toggle */}
+          <button
+            onClick={toggleDarkMode}
+            className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-sm font-medium transition-colors"
+            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {darkMode ? 'Light' : 'Dark'}
+          </button>
         </div>
       </header>
 
@@ -519,7 +530,7 @@ function App() {
           <Panel defaultSize={50} minSize={20}>
             <Group orientation="vertical" className="h-full">
               <Panel defaultSize={hasTimeline ? 70 : 100} minSize={30}>
-                <div className="h-full border-r border-gray-300">
+                <div className="h-full border-r border-gray-300 dark:border-gray-600">
                   <CodeEditor
                     code={code}
                     onChange={setCode}
@@ -542,12 +553,12 @@ function App() {
 
               {hasTimeline && (
                 <>
-                  <Separator className="h-1 bg-gray-300 hover:bg-gray-400 cursor-row-resize" />
+                  <Separator className="h-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 cursor-row-resize" />
                   <Panel defaultSize={30} minSize={15}>
-                    <div className="h-full border-t border-gray-700 bg-gray-50">
+                    <div className="h-full border-t border-gray-700 dark:border-gray-600 bg-gray-50 dark:bg-gray-800">
                       <div className="h-full flex flex-col">
-                        <div className="flex-shrink-0 px-3 py-1 bg-gray-200 border-b border-gray-300">
-                          <span className="text-xs font-semibold text-gray-600 uppercase">
+                        <div className="flex-shrink-0 px-3 py-1 bg-gray-200 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600">
+                          <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">
                             Variables (Step {currentStep + 1})
                           </span>
                         </div>
@@ -565,15 +576,15 @@ function App() {
             </Group>
           </Panel>
 
-          <Separator className="w-1 bg-gray-300 hover:bg-gray-400 cursor-col-resize" />
+          <Separator className="w-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 cursor-col-resize" />
 
           {/* Right panel - Visual Grid */}
           <Panel defaultSize={50} minSize={20}>
             <div className="h-full flex flex-col">
-              <div className="flex-shrink-0 px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Visual Panel</span>
+              <div className="flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Visual Panel</span>
                 {selectedCell && (
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     Cell: ({selectedCell.row}, {selectedCell.col})
                   </span>
                 )}
@@ -636,7 +647,7 @@ function App() {
       )}
 
       {/* Footer */}
-      <footer className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-2 text-xs text-gray-500">
+      <footer className="flex-shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
         <span className="mr-4">1. Write Python code in the editor</span>
         <span className="mr-4">2. Click "Analyze" to run and trace variables</span>
         <span className="mr-4">3. Use step controls to see execution</span>

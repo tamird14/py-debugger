@@ -61,10 +61,10 @@ export const GridCell = memo(function GridCell({
     // Shapes handle their own styling via SVG; don't style the cell
     if (isShapeCell) return '';
     if (customColor) return 'border-2';
-    if (isArrayCell) return 'bg-amber-50 border-amber-400';
-    if (isIntVarCell) return 'bg-emerald-50 border-emerald-400';
-    if (isSelected) return 'bg-blue-100';
-    return 'bg-white hover:bg-gray-50';
+    if (isArrayCell) return 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600';
+    if (isIntVarCell) return 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 dark:border-emerald-600';
+    if (isSelected) return 'bg-blue-100 dark:bg-blue-900/40';
+    return 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700';
   };
 
   const getCellStyle = (): React.CSSProperties => {
@@ -87,7 +87,7 @@ export const GridCell = memo(function GridCell({
     <div
       className={`
         border cursor-pointer transition-colors relative
-        ${isSelected && !isShapeCell && !customColor ? 'border-blue-500 border-2' : !isShapeCell && !customColor ? 'border-gray-300' : ''}
+        ${isSelected && !isShapeCell && !customColor ? 'border-blue-500 border-2' : !isShapeCell && !customColor ? 'border-gray-300 dark:border-gray-600' : ''}
         ${isShapeCell ? 'border-transparent' : ''}
         ${getCellBackground()}
         ${isInvalid ? 'opacity-50 grayscale' : ''}
@@ -204,7 +204,7 @@ export const GridCell = memo(function GridCell({
 
       {/* Panel display */}
       {isPanelCell && (
-        <div className="absolute inset-0 border-2 border-dashed border-slate-400 bg-slate-50/50">
+        <div className="absolute inset-0 border-2 border-dashed border-slate-400 dark:border-slate-500 bg-slate-50/50 dark:bg-slate-800/50">
           {cellData.panel!.title && (
             <span
               className="absolute -top-3 left-1 text-[10px] font-mono bg-slate-50 px-1"

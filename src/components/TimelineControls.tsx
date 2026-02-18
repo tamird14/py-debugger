@@ -23,9 +23,9 @@ export function TimelineControls({
   const canGoLast = currentStep < stepCount - 1;
 
   return (
-    <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 rounded-lg border border-gray-200">
+    <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
       {/* Step indicator */}
-      <span className="text-sm text-gray-600 font-medium min-w-[80px]">
+      <span className="text-sm text-gray-600 dark:text-gray-300 font-medium min-w-[80px]">
         Step {currentStep + 1} / {stepCount}
       </span>
 
@@ -37,8 +37,8 @@ export function TimelineControls({
           className={`
             px-2 py-1 rounded text-sm font-medium transition-colors
             ${canGoFirst
-              ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
-              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+              ? 'bg-white dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
             }
           `}
           title="First step"
@@ -51,8 +51,8 @@ export function TimelineControls({
           className={`
             px-2 py-1 rounded text-sm font-medium transition-colors
             ${canGoPrev
-              ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
-              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+              ? 'bg-white dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
             }
           `}
           title="Previous step"
@@ -65,8 +65,8 @@ export function TimelineControls({
           className={`
             px-2 py-1 rounded text-sm font-medium transition-colors
             ${canGoNext
-              ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
-              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+              ? 'bg-white dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
             }
           `}
           title="Next step"
@@ -79,8 +79,8 @@ export function TimelineControls({
           className={`
             px-2 py-1 rounded text-sm font-medium transition-colors
             ${canGoLast
-              ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300'
-              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+              ? 'bg-white dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
             }
           `}
           title="Last step"
@@ -97,7 +97,7 @@ export function TimelineControls({
           max={stepCount - 1}
           value={currentStep}
           onChange={(e) => onGoToStep(parseInt(e.target.value, 10))}
-          className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          className="w-24 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
           title={`Go to step ${currentStep + 1}`}
         />
       )}

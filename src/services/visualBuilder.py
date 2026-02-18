@@ -34,6 +34,7 @@ class VisualElem:
         object.__setattr__(self, '_bindings', {})
         self.position = (0, 0)
         self.visible = True
+        self.alpha = 1.0
         self._parent = None
         VisualElem._registry.append(self)
 
@@ -129,6 +130,28 @@ class Array(VisualElem):
         return 0
 
 
+class Circle(VisualElem):
+    def __init__(self, pos=(0, 0)):
+        super().__init__()
+        self.position = pos
+        self.width = 1
+        self.height = 1
+        self.color = (59, 130, 246)
+        self.visible = True
+
+
+class Arrow(VisualElem):
+    def __init__(self, pos=(0, 0)):
+        super().__init__()
+        self.position = pos
+        self.width = 1
+        self.height = 1
+        self.color = (16, 185, 129)
+        self.orientation = "up"
+        self.rotation = 0
+        self.visible = True
+
+
 def _serialize_elem(elem, vb_id):
     """Serialize one visual element to a dict for JSON."""
     pos = getattr(elem, 'position', (0, 0))
@@ -139,10 +162,17 @@ def _serialize_elem(elem, vb_id):
     except (ValueError, TypeError):
         row, col = 0, 0
 
+    alpha = getattr(elem, 'alpha', 1.0)
+    try:
+        alpha = float(alpha)
+    except (ValueError, TypeError):
+        alpha = 1.0
+
     out = {
         "type": None,
         "position": [row, col],
         "visible": getattr(elem, 'visible', True),
+        "alpha": alpha,
     }
 
     if isinstance(elem, Panel):
@@ -181,6 +211,26 @@ def _serialize_elem(elem, vb_id):
         out["length"] = int(getattr(elem, 'length', 5))
         cells = getattr(elem, '_cells', [])
         out["values"] = list(cells) if isinstance(cells, (list, tuple)) else []
+    elif isinstance(elem, Circle):
+        out["type"] = "circle"
+        out["width"] = int(getattr(elem, 'width', 1))
+        out["height"] = int(getattr(elem, 'height', 1))
+        c = getattr(elem, 'color', (59, 130, 246))
+        if isinstance(c, (list, tuple)) and len(c) >= 3:
+            out["color"] = [int(c[0]), int(c[1]), int(c[2])]
+        else:
+            out["color"] = [59, 130, 246]
+    elif isinstance(elem, Arrow):
+        out["type"] = "arrow"
+        out["width"] = int(getattr(elem, 'width', 1))
+        out["height"] = int(getattr(elem, 'height', 1))
+        c = getattr(elem, 'color', (16, 185, 129))
+        if isinstance(c, (list, tuple)) and len(c) >= 3:
+            out["color"] = [int(c[0]), int(c[1]), int(c[2])]
+        else:
+            out["color"] = [16, 185, 129]
+        out["orientation"] = str(getattr(elem, 'orientation', 'up'))
+        out["rotation"] = int(getattr(elem, 'rotation', 0))
     else:
         out["type"] = "rect"
         out["width"] = 1

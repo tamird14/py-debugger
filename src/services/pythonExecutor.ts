@@ -1,4 +1,6 @@
 import type { Timeline, VariableDictionary } from '../types/grid';
+import TRACER_CODE from './pythonTracer.py?raw';
+import ANALYZER_CODE from './pythonAnalyzer.py?raw';
 
 // Types for execution results
 /** Scope: list of [function_name, line_number] for the call stack (e.g. [["_main_", 5], ["foo", 12]]) */
@@ -72,127 +74,6 @@ export async function loadPyodide(): Promise<any> {
 export function isPyodideLoaded(): boolean {
   return pyodide !== null;
 }
-
-// Python code to instrument and trace execution
-const TRACER_CODE = `
-import sys
-import json
-from io import StringIO
-
-# Store for execution trace
-_trace_steps = []
-_output_capture = StringIO()
-_original_stdout = sys.stdout
-
-def _capture_variables(frame, exclude_vars=None):
-    """Capture variables from a frame, converting to our format."""
-    if exclude_vars is None:
-        exclude_vars = set()
-
-    result = {}
-    local_vars = frame.f_locals.copy()
-
-    for name, value in local_vars.items():
-        # Skip private/internal variables
-        if name.startswith('_'):
-            continue
-        if name in exclude_vars:
-            continue
-
-        # Handle different types
-        if isinstance(value, bool):
-            result[name] = {'type': 'int', 'value': 1 if value else 0}
-        elif isinstance(value, int):
-            result[name] = {'type': 'int', 'value': value}
-        elif isinstance(value, float):
-            result[name] = {'type': 'float', 'value': value}
-        elif isinstance(value, str):
-            result[name] = {'type': 'str', 'value': value}
-        elif isinstance(value, list):
-            # Check if it's a list of numbers
-            if all(isinstance(x, (int, float, bool)) for x in value):
-                int_values = [int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in value]
-                result[name] = {'type': 'arr[int]', 'value': int_values}
-            elif all(isinstance(x, str) for x in value):
-                result[name] = {'type': 'arr[str]', 'value': value}
-
-    return result
-
-def _trace_function(frame, event, arg):
-    """Trace function called for each line of code."""
-    global _trace_steps
-
-    # Only trace 'line' events in the main module
-    if event != 'line':
-        return _trace_function
-
-    # Get the code object
-    code = frame.f_code
-
-    # Skip internal modules and tracer code
-    if code.co_filename != '<exec>' and code.co_filename != '<string>':
-        return _trace_function
-
-    # Skip if we're in a function defined in our tracer
-    if code.co_name.startswith('_'):
-        return _trace_function
-
-    line_no = frame.f_lineno
-    variables = _capture_variables(frame, {'__builtins__', '__name__', '__doc__'})
-
-    # Capture call stack (scope)
-    scope = []
-    f = frame
-    while f is not None:
-        name = f.f_code.co_name
-        if name.startswith('_'):
-            f = f.f_back
-            continue
-        scope.insert(0, (name if name != '<module>' else '_main_', f.f_lineno))
-        f = f.f_back
-
-    _trace_steps.append({
-        'line': line_no,
-        'variables': variables,
-        'scope': scope
-    })
-
-    return _trace_function
-
-def _run_with_trace(code_str):
-    """Run code with tracing enabled."""
-    global _trace_steps, _output_capture
-    _trace_steps = []
-    _output_capture = StringIO()
-
-    # Redirect stdout
-    sys.stdout = _output_capture
-
-    try:
-        # Compile the code
-        compiled = compile(code_str, '<exec>', 'exec')
-
-        # Set up tracing
-        sys.settrace(_trace_function)
-
-        # Execute
-        exec_globals = {'__builtins__': __builtins__}
-        exec(compiled, exec_globals)
-
-    finally:
-        # Disable tracing
-        sys.settrace(None)
-        # Restore stdout
-        sys.stdout = _original_stdout
-
-    # Get final output
-    output = _output_capture.getvalue()
-
-    return {
-        'steps': _trace_steps,
-        'output': output
-    }
-`;
 
 // Convert Python trace result to our Timeline format
 function convertToTimeline(steps: any[]): { timeline: Timeline; executionSteps: ExecutionStep[] } {
@@ -306,51 +187,10 @@ export async function analyzeCode(code: string): Promise<VariableInfo[]> {
       .replace(/'/g, "\\'")
       .replace(/\n/g, '\\n');
 
+    await py.runPythonAsync(ANALYZER_CODE);
+
     const resultJson = await py.runPythonAsync(`
-import ast
 import json
-
-def analyze_variables(code_str):
-    try:
-        tree = ast.parse(code_str)
-    except SyntaxError:
-        return []
-
-    variables = []
-    seen = set()
-
-    class ScopeVisitor(ast.NodeVisitor):
-        def __init__(self):
-            self.scope_stack = []
-
-        def current_scope(self):
-            return self.scope_stack[-1] if self.scope_stack else 'global'
-
-        def visit_FunctionDef(self, node):
-            self.scope_stack.append(node.name)
-            self.generic_visit(node)
-            self.scope_stack.pop()
-
-        def visit_AsyncFunctionDef(self, node):
-            self.scope_stack.append(node.name)
-            self.generic_visit(node)
-            self.scope_stack.pop()
-
-        def visit_Name(self, node):
-            if isinstance(node.ctx, ast.Store) and not node.id.startswith('_'):
-                scope = self.current_scope()
-                key = (node.id, scope)
-                if key not in seen:
-                    variables.append({
-                        'name': node.id,
-                        'type': 'unknown',
-                        'scope': scope
-                    })
-                    seen.add(key)
-
-    ScopeVisitor().visit(tree)
-    return variables
-
 json.dumps(analyze_variables('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}'''))
 `);
 
