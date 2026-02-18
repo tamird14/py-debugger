@@ -73,6 +73,7 @@ print("Found at index:", found)
 
 const SAMPLE_VISUAL_BUILDER = `# Visual Builder - create elements to show on the grid
 # Click "Analyze" to add them to the visual panel.
+# Use V("expr") to bind any property to a live variable expression.
 
 panel = Panel("Main")
 panel.position = (2, 2)
@@ -80,7 +81,7 @@ panel.width = 10
 panel.height = 8
 
 r = Rect((0, 0))
-r.width = 2
+r.width = V("i")          # width tracks variable "i" each step
 r.height = 1
 r.color = (34, 197, 94)
 panel.add(r)

@@ -43,9 +43,15 @@ export interface ClassDoc {
 
 export const VISUAL_ELEM_SCHEMA: ClassDoc[] = [
   {
+    className: 'V',
+    constructorParams: 'expr: str',
+    docstring: 'Bind a property to a Python expression evaluated each step. The expression has access to all current variables plus math helpers (sqrt, floor, ceil, log, pow, abs, min, max, sum, round, len, pi). Examples: V("i"), V("i * 2 + 1"), V("(row, col)"), V("max(i, j)").',
+    properties: [],
+  },
+  {
     className: 'VisualElem',
     constructorParams: '',
-    docstring: 'Base class for all visual elements. Has update(scope, params) called each execution step.',
+    docstring: 'Base class for all visual elements. Has update(scope, params) called each execution step. Assign V("expr") to any property to make it reactive.',
     properties: [
       { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) on the grid.' },
       { name: 'visible', type: 'bool', description: 'Whether the element is shown.' },
