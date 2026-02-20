@@ -1765,7 +1765,7 @@ export function useGridState() {
           const length = Math.max(1, Math.min(50, el.length ?? 5));
           const direction = (el.direction === 'left' || el.direction === 'down' || el.direction === 'up' ? el.direction : 'right') as 'right' | 'left' | 'down' | 'up';
           const values = el.values ?? [];
-          const arrayElementType = el.elementType as ShapeType | undefined;
+          const arrayElementType: ShapeType | undefined = el.elementType === 'rect' ? 'rectangle' : el.elementType as ShapeType | undefined;
           const showIndex = el.showIndex ?? !arrayElementType;
           const hasAnyShapeCell = arrayElementType || values.some(v => typeof v === 'object' && v !== null && 'type' in v);
           for (let i = 0; i < length; i++) {
@@ -1781,7 +1781,7 @@ export function useGridState() {
 
             if (hasAnyShapeCell && typeof rawValue === 'object' && rawValue !== null) {
               const cfg = rawValue as ShapeArrayElementConfig;
-              const cellType = cfg.type ?? (arrayElementType === 'rect' ? 'rect' : arrayElementType);
+              const cellType = cfg.type ?? arrayElementType;
               const mappedType: ShapeType | undefined = cellType === 'rect' ? 'rectangle' : cellType as ShapeType | undefined;
               const elColor = cfg.color ? rgbToHex(cfg.color) : undefined;
               arrayInfoBase.elementType = mappedType;
@@ -1795,7 +1795,7 @@ export function useGridState() {
                 visible: cfg.visible,
               };
             } else if (arrayElementType) {
-              arrayInfoBase.elementType = arrayElementType === 'rect' ? 'rectangle' : arrayElementType as ShapeType;
+              arrayInfoBase.elementType = arrayElementType;
               arrayInfoBase.elementConfig = { width: 1, height: 1 };
             } else {
               arrayInfoBase.value = (typeof rawValue === 'number' || typeof rawValue === 'string') ? rawValue : 0;
