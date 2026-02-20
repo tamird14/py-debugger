@@ -1,7 +1,8 @@
 import { useRef, useCallback, useMemo, useEffect, useState, memo } from 'react';
 import { GridCell } from './GridCell';
 import type { CellPosition, CellData, ShapeProps, OccupantInfo } from '../types/grid';
-import { cellKey, getArrayOffset } from '../types/grid';
+import type { ArrayCellSize } from '../types/grid';
+import { cellKey, getArrayOffset, getAccumulatedArrayOffset } from '../types/grid';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -80,25 +81,49 @@ const GridArrayObject = memo(function GridArrayObject({
   const direction = obj.cellData.arrayInfo?.direction || 'right';
   const length = obj.arrayLength || 0;
 
-  // Compute bounding box across all array offsets
-  let minRowDelta = 0, minColDelta = 0, maxRowDelta = 0, maxColDelta = 0;
+  // Collect per-cell sizes from the cells map
+  const perCellSizes: ArrayCellSize[] = [];
   for (let i = 0; i < length; i++) {
-    const offset = getArrayOffset(direction, i);
+    const simpleOffset = getArrayOffset(direction, i);
+    const r = obj.row + simpleOffset.rowDelta;
+    const c = obj.col + simpleOffset.colDelta;
+    const cd = cells.get(cellKey(r, c));
+    if (cd?.arrayInfo?.elementConfig) {
+      perCellSizes.push({
+        width: cd.arrayInfo.elementConfig.width ?? 1,
+        height: cd.arrayInfo.elementConfig.height ?? 1,
+      });
+    } else {
+      perCellSizes.push({ width: 1, height: 1 });
+    }
+  }
+  const useAccum = perCellSizes.some(s => s.width > 1 || s.height > 1);
+
+  // Compute bounding box across all array offsets
+  let minRowDelta = 0, minColDelta = 0, maxRowEnd = 0, maxColEnd = 0;
+  for (let i = 0; i < length; i++) {
+    const offset = useAccum ? getAccumulatedArrayOffset(direction, i, perCellSizes) : getArrayOffset(direction, i);
+    const cellW = perCellSizes[i]?.width ?? 1;
+    const cellH = perCellSizes[i]?.height ?? 1;
     minRowDelta = Math.min(minRowDelta, offset.rowDelta);
     minColDelta = Math.min(minColDelta, offset.colDelta);
-    maxRowDelta = Math.max(maxRowDelta, offset.rowDelta);
-    maxColDelta = Math.max(maxColDelta, offset.colDelta);
+    maxRowEnd = Math.max(maxRowEnd, offset.rowDelta + cellH);
+    maxColEnd = Math.max(maxColEnd, offset.colDelta + cellW);
   }
 
   // Build per-cell wrappers
   const arrayCells: React.ReactNode[] = [];
   for (let i = 0; i < length; i++) {
-    const offset = getArrayOffset(direction, i);
+    const offset = useAccum ? getAccumulatedArrayOffset(direction, i, perCellSizes) : getArrayOffset(direction, i);
     const row = obj.row + offset.rowDelta;
     const col = obj.col + offset.colDelta;
     const cellData = cells.get(cellKey(row, col));
     if (!cellData) continue;
 
+    if (cellData.arrayInfo?.elementConfig?.visible === false) continue;
+
+    const cellW = perCellSizes[i]?.width ?? 1;
+    const cellH = perCellSizes[i]?.height ?? 1;
     const isSelected = selectedCell?.row === row && selectedCell?.col === col;
     arrayCells.push(
       <div
@@ -107,8 +132,8 @@ const GridArrayObject = memo(function GridArrayObject({
           position: 'absolute',
           left: (offset.colDelta - minColDelta) * CELL_SIZE,
           top: (offset.rowDelta - minRowDelta) * CELL_SIZE,
-          width: CELL_SIZE,
-          height: CELL_SIZE,
+          width: cellW * CELL_SIZE,
+          height: cellH * CELL_SIZE,
         }}
         onClick={() => handlers.onSelectCell({ row, col })}
         onContextMenu={(e) => handlers.onContextMenu(e, row, col)}
@@ -121,13 +146,15 @@ const GridArrayObject = memo(function GridArrayObject({
           isSelected={isSelected}
           onSelect={() => handlers.onSelectCell({ row, col })}
           size={CELL_SIZE}
+          width={cellW * CELL_SIZE}
+          height={cellH * CELL_SIZE}
         />
       </div>
     );
   }
 
-  const containerWidth = (maxColDelta - minColDelta + 1) * CELL_SIZE;
-  const containerHeight = (maxRowDelta - minRowDelta + 1) * CELL_SIZE;
+  const containerWidth = (maxColEnd - minColDelta) * CELL_SIZE;
+  const containerHeight = (maxRowEnd - minRowDelta) * CELL_SIZE;
 
   return (
     <div

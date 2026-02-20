@@ -386,18 +386,18 @@ export function ContextMenu({
       {menuLevel === 'main' && (
         <>
           <button
-            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 transition-colors text-left"
+            className="w-full px-3 py-2 flex items-center gap-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left"
             onClick={() => setMenuLevel('add')}
           >
             <div className="w-6 h-6 flex items-center justify-center text-blue-500 font-bold">
               +
             </div>
-            <span className="text-sm text-gray-700">Add</span>
-            <span className="ml-auto text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Add</span>
+            <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
           </button>
           <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-1">
             <button
-              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
               onClick={() => {
                 onSelect(null);
                 onClose();
@@ -406,7 +406,7 @@ export function ContextMenu({
               <div className="w-6 h-6 flex items-center justify-center text-red-500 font-bold">
                 ×
               </div>
-              <span className="text-sm text-red-600">Clear</span>
+              <span className="text-sm text-red-600 dark:text-red-400">Clear</span>
             </button>
           </div>
         </>
@@ -416,7 +416,7 @@ export function ContextMenu({
       {menuLevel === 'add' && (
         <>
           {renderBackButton('Back')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Add
           </div>
           <button
@@ -426,8 +426,8 @@ export function ContextMenu({
             <div className="w-6 h-6 flex items-center justify-center">
               <Circle />
             </div>
-            <span className="text-sm text-gray-700">Shape</span>
-            <span className="ml-auto text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Shape</span>
+            <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
           </button>
           {hasVariables && (
             <button
@@ -437,29 +437,29 @@ export function ContextMenu({
               <div className="w-6 h-6 flex items-center justify-center text-emerald-500 font-mono text-xs font-bold">
                 var
               </div>
-              <span className="text-sm text-gray-700">Variable</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Variable</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
             onClick={() => setMenuLevel('label-input')}
           >
-            <div className="w-6 h-6 flex items-center justify-center text-slate-500 font-mono text-xs font-bold">
+            <div className="w-6 h-6 flex items-center justify-center text-slate-500 dark:text-slate-400 font-mono text-xs font-bold">
               lbl
             </div>
-            <span className="text-sm text-gray-700">Label</span>
-            <span className="ml-auto text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Label</span>
+            <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
           </button>
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
             onClick={() => setMenuLevel('panel-input')}
           >
-            <div className="w-6 h-6 flex items-center justify-center text-slate-500 font-mono text-xs font-bold">
+            <div className="w-6 h-6 flex items-center justify-center text-slate-500 dark:text-slate-400 font-mono text-xs font-bold">
               pnl
             </div>
-            <span className="text-sm text-gray-700">Panel</span>
-            <span className="ml-auto text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Panel</span>
+            <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
           </button>
         </>
       )}
@@ -468,7 +468,7 @@ export function ContextMenu({
       {menuLevel === 'shapes' && (
         <>
           {renderBackButton('Add', 'add')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Shapes
           </div>
           {shapeItems.map(({ type, label, Icon, defaultColor }) => (
@@ -483,7 +483,7 @@ export function ContextMenu({
               <div className="w-6 h-6">
                 <Icon color={defaultColor} />
               </div>
-              <span className="text-sm text-gray-700">{label}</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">{label}</span>
             </button>
           ))}
         </>
@@ -497,25 +497,25 @@ export function ContextMenu({
           {/* Int Variables */}
           {intVariables.length > 0 && (
             <>
-              <div className="px-3 py-1 text-xs font-semibold text-emerald-600 uppercase tracking-wide">
+              <div className="px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
                 Int Variables
               </div>
               <div className="max-h-32 overflow-y-auto">
                 {intVariables.map(([name, variable]) => (
                   <button
                     key={name}
-                    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-emerald-50 transition-colors text-left"
+                    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-left"
                     onClick={() => {
                       onPlaceVariable(name, variable, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
                       onClose();
                     }}
                   >
-                    <div className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold bg-emerald-100 text-emerald-700">
+                    <div className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
                       i
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-mono text-gray-800">{name}</span>
-                      <span className="text-xs text-gray-400 ml-2">
+                      <span className="text-sm font-mono text-gray-800 dark:text-gray-100">{name}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">
                         = {(variable as { type: 'int'; value: number }).value}
                       </span>
                     </div>
@@ -528,25 +528,25 @@ export function ContextMenu({
           {/* Array Variables */}
           {arrayVariables.length > 0 && (
             <>
-              <div className="px-3 py-1 text-xs font-semibold text-amber-600 uppercase tracking-wide mt-1">
+              <div className="px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mt-1">
                 Array Variables
               </div>
               <div className="max-h-32 overflow-y-auto">
                 {arrayVariables.map(([name, variable]) => (
                   <button
                     key={name}
-                    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 transition-colors text-left"
+                    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left"
                     onClick={() => {
                       onPlaceVariable(name, variable, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
                       onClose();
                     }}
                   >
-                    <div className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold bg-amber-100 text-amber-700">
+                    <div className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
                       []
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-mono text-gray-800">{name}</span>
-                      <span className="text-xs text-gray-400 ml-2">
+                      <span className="text-sm font-mono text-gray-800 dark:text-gray-100">{name}</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">
                         [{(variable as { type: 'arr[int]'; value: number[] }).value.length}]
                       </span>
                     </div>
@@ -562,7 +562,7 @@ export function ContextMenu({
       {menuLevel === 'label-input' && (
         <>
           {renderBackButton('Add', 'add')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Label
           </div>
           <div className="px-3 py-2 space-y-2">
@@ -570,32 +570,32 @@ export function ContextMenu({
               type="text"
               value={labelText}
               onChange={(e) => setLabelText(e.target.value)}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono dark:bg-gray-700 dark:text-gray-200"
               placeholder="Label text"
             />
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Width</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-12">Width</label>
               <input
                 type="number"
                 min="1"
                 max="50"
                 value={labelWidth}
                 onChange={(e) => setLabelWidth(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Height</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-12">Height</label>
               <input
                 type="number"
                 min="1"
                 max="50"
                 value={labelHeight}
                 onChange={(e) => setLabelHeight(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 dark:text-gray-500">
               Use {'{var}'} to insert variables
             </p>
             <button
@@ -612,7 +612,7 @@ export function ContextMenu({
       {menuLevel === 'panel-input' && (
         <>
           {renderBackButton('Add', 'add')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Panel
           </div>
           <div className="px-3 py-2 space-y-2">
@@ -620,29 +620,29 @@ export function ContextMenu({
               type="text"
               value={panelTitle}
               onChange={(e) => setPanelTitle(e.target.value)}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono dark:bg-gray-700 dark:text-gray-200"
               placeholder="Panel title"
             />
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Width</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-12">Width</label>
               <input
                 type="number"
                 min="1"
                 max="50"
                 value={panelWidth}
                 onChange={(e) => setPanelWidth(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Height</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-12">Height</label>
               <input
                 type="number"
                 min="1"
                 max="50"
                 value={panelHeight}
                 onChange={(e) => setPanelHeight(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
             <button
@@ -662,7 +662,7 @@ export function ContextMenu({
             {getObjectTypeName()} Settings
           </div>
           {cellData?.invalidReason && (
-            <div className="px-3 py-2 text-xs text-red-600 border-b border-gray-200 bg-red-50">
+            <div className="px-3 py-2 text-xs text-red-600 dark:text-red-400 border-b border-gray-200 dark:border-gray-600 bg-red-50 dark:bg-red-900/20">
               {cellData.invalidReason}
             </div>
           )}
@@ -671,11 +671,11 @@ export function ContextMenu({
             onClick={() => setMenuLevel('settings-color')}
           >
             <div
-              className="w-6 h-6 rounded border border-gray-300"
+              className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
               style={{ backgroundColor: currentColor || '#94a3b8' }}
             />
-            <span className="text-sm text-gray-700">Color</span>
-            <span className="ml-auto text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Color</span>
+            <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
           </button>
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
@@ -683,33 +683,33 @@ export function ContextMenu({
           >
             <div className="w-6 h-6 flex items-center justify-center">
               <div
-                className="w-4 bg-gray-600 rounded"
+                className="w-4 bg-gray-600 dark:bg-gray-400 rounded"
                 style={{ height: currentLineWidth * 2 }}
               />
             </div>
-            <span className="text-sm text-gray-700">Line Thickness</span>
-            <span className="ml-auto text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Line Thickness</span>
+            <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
           </button>
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
             onClick={() => { setApplyError(null); setMenuLevel('settings-position'); }}
           >
-            <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+            <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
               ↔
             </div>
-            <span className="text-sm text-gray-700">Move</span>
-            <span className="ml-auto text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Move</span>
+            <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
           </button>
           {cellData?.shape && (
             <button
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
               onClick={() => { setApplyError(null); setMenuLevel('settings-size'); }}
             >
-              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                 size
               </div>
-              <span className="text-sm text-gray-700">Size</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Size</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           {cellData?.shape && (
@@ -717,11 +717,11 @@ export function ContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
               onClick={() => setMenuLevel('settings-rotation')}
             >
-              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                 rot
               </div>
-              <span className="text-sm text-gray-700">Rotation</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Rotation</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           {cellData?.shape === 'arrow' && (
@@ -729,11 +729,11 @@ export function ContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
               onClick={() => setMenuLevel('settings-orientation')}
             >
-              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                 dir
               </div>
-              <span className="text-sm text-gray-700">Orientation</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Orientation</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           {cellData?.arrayInfo && (
@@ -741,11 +741,11 @@ export function ContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
               onClick={() => setMenuLevel('settings-array-direction')}
             >
-              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                 dir
               </div>
-              <span className="text-sm text-gray-700">Array Direction</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Array Direction</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           {cellData?.intVar && (
@@ -753,11 +753,11 @@ export function ContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
               onClick={() => setMenuLevel('settings-int-display')}
             >
-              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                 txt
               </div>
-              <span className="text-sm text-gray-700">Variable Display</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Variable Display</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           {!cellData?.panel && panelOptions.length > 0 && (
@@ -765,11 +765,11 @@ export function ContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
               onClick={() => setMenuLevel('settings-panel')}
             >
-              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                 pnl
               </div>
-              <span className="text-sm text-gray-700">Assign Panel</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Assign Panel</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           {(cellData?.intVar || cellData?.arrayInfo) && (
@@ -777,16 +777,16 @@ export function ContextMenu({
               className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
               onClick={() => setMenuLevel('settings-font-size')}
             >
-              <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+              <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
                 font
               </div>
-              <span className="text-sm text-gray-700">Font Size</span>
-              <span className="ml-auto text-gray-400">→</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">Font Size</span>
+              <span className="ml-auto text-gray-400 dark:text-gray-500">→</span>
             </button>
           )}
           <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-1">
             <button
-              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
               onClick={() => {
                 onSelect(null);
                 onClose();
@@ -795,7 +795,7 @@ export function ContextMenu({
               <div className="w-6 h-6 flex items-center justify-center text-red-500 font-bold">
                 ×
               </div>
-              <span className="text-sm text-red-600">Delete</span>
+              <span className="text-sm text-red-600 dark:text-red-400">Delete</span>
             </button>
           </div>
         </>
@@ -805,7 +805,7 @@ export function ContextMenu({
       {menuLevel === 'settings-color' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Color
           </div>
           <div className="px-3 py-2 space-y-2">
@@ -814,17 +814,17 @@ export function ContextMenu({
                 type="color"
                 value={customColorValue}
                 onChange={(e) => setCustomColorValue(e.target.value)}
-                className="h-8 w-12 p-0 border border-gray-300 rounded"
+                className="h-8 w-12 p-0 border border-gray-300 dark:border-gray-600 rounded"
               />
               <input
                 type="text"
                 value={customColorValue}
                 onChange={(e) => setCustomColorValue(e.target.value)}
-                className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-16">Opacity</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-16">Opacity</label>
               <input
                 type="range"
                 min="0"
@@ -833,7 +833,7 @@ export function ContextMenu({
                 onChange={(e) => setCustomOpacityValue(e.target.value)}
                 className="flex-1"
               />
-              <span className="text-xs text-gray-500 w-10 text-right">
+              <span className="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">
                 {customOpacityValue}%
               </span>
             </div>
@@ -852,8 +852,8 @@ export function ContextMenu({
             {PRESET_COLORS.map(({ name, value }) => (
               <button
                 key={name}
-                className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left ${
-                  currentColor === value ? 'bg-blue-50' : ''
+                className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left ${
+                  currentColor === value ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                 }`}
                 onClick={() => {
                   onUpdateStyle({ color: value, opacity: currentOpacity });
@@ -861,12 +861,12 @@ export function ContextMenu({
                 }}
               >
                 <div
-                  className="w-6 h-6 rounded border border-gray-300"
+                  className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
                   style={{ backgroundColor: value || '#94a3b8' }}
                 />
-                <span className="text-sm text-gray-700">{name}</span>
+                <span className="text-sm text-gray-700 dark:text-gray-200">{name}</span>
                 {currentColor === value && (
-                  <span className="ml-auto text-blue-500">✓</span>
+                  <span className="ml-auto text-blue-500 dark:text-blue-400">✓</span>
                 )}
               </button>
             ))}
@@ -878,14 +878,14 @@ export function ContextMenu({
       {menuLevel === 'settings-thickness' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Line Thickness
           </div>
           {LINE_WIDTHS.map((width) => (
             <button
               key={width}
-              className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left ${
-                currentLineWidth === width ? 'bg-blue-50' : ''
+              className={`w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left ${
+                currentLineWidth === width ? 'bg-blue-50 dark:bg-blue-900/20' : ''
               }`}
               onClick={() => {
                 onUpdateStyle({ lineWidth: width });
@@ -894,13 +894,13 @@ export function ContextMenu({
             >
               <div className="w-6 h-6 flex items-center justify-center">
                 <div
-                  className="w-4 bg-gray-600 rounded"
+                  className="w-4 bg-gray-600 dark:bg-gray-400 rounded"
                   style={{ height: width * 2 }}
                 />
               </div>
-              <span className="text-sm text-gray-700">{width}px</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">{width}px</span>
               {currentLineWidth === width && (
-                <span className="ml-auto text-blue-500">✓</span>
+                <span className="ml-auto text-blue-500 dark:text-blue-400">✓</span>
               )}
             </button>
           ))}
@@ -911,12 +911,12 @@ export function ContextMenu({
       {menuLevel === 'settings-position' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Position Settings
           </div>
           <div className="px-3 py-2">
             {panelContext && (
-              <div className="mb-3 p-2 bg-blue-50 rounded text-xs text-blue-700">
+              <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300">
                 Editing relative to panel origin (0,0).
                 <button
                   className="ml-2 underline"
@@ -931,9 +931,9 @@ export function ContextMenu({
             )}
             {/* Current position display */}
             {currentBinding && (
-              <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
-                <span className="text-gray-500">Current: </span>
-                <span className="font-mono">
+              <div className="mb-3 p-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs">
+                <span className="text-gray-500 dark:text-gray-400">Current: </span>
+                <span className="font-mono dark:text-gray-200">
                   row={getPositionDisplayText(currentBinding.row)}, col={getPositionDisplayText(currentBinding.col)}
                 </span>
               </div>
@@ -941,7 +941,7 @@ export function ContextMenu({
 
             {/* Row: single expression input + variable helper */}
             <div className="mb-3">
-              <label className="text-xs text-gray-600 font-medium block mb-1">Row</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 font-medium block mb-1">Row</label>
               <div className="flex items-center gap-1">
                 <input
                   ref={rowInputRef}
@@ -949,13 +949,13 @@ export function ContextMenu({
                   value={rowExpression}
                   onChange={(e) => { setRowExpression(e.target.value); setRowExprError(null); }}
                   placeholder="e.g. 0, i, i + 1"
-                  className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
-                    rowExprError ? 'border-red-500' : 'border-gray-300'
+                  className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono dark:bg-gray-700 dark:text-gray-200 ${
+                    rowExprError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                 />
                 <button
                   type="button"
-                  className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
                   onClick={() => setVariablePickerFor((v) => (v === 'row' ? null : 'row'))}
                   title="Insert variable"
                 >
@@ -963,15 +963,15 @@ export function ContextMenu({
                 </button>
               </div>
               {variablePickerFor === 'row' && (
-                <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                <div className="mt-1 p-1 border border-gray-200 dark:border-gray-600 rounded max-h-24 overflow-y-auto dark:bg-gray-700">
                   {allVariableNames.length === 0 ? (
-                    <p className="text-xs text-gray-500">No variables</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">No variables</p>
                   ) : (
                     allVariableNames.map((name) => (
                       <button
                         key={name}
                         type="button"
-                        className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                        className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:text-gray-200"
                         onClick={() => insertVariableInto('row', name)}
                       >
                         {name}
@@ -985,7 +985,7 @@ export function ContextMenu({
 
             {/* Column: single expression input + variable helper */}
             <div className="mb-3">
-              <label className="text-xs text-gray-600 font-medium block mb-1">Column</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 font-medium block mb-1">Column</label>
               <div className="flex items-center gap-1">
                 <input
                   ref={colInputRef}
@@ -993,13 +993,13 @@ export function ContextMenu({
                   value={colExpression}
                   onChange={(e) => { setColExpression(e.target.value); setColExprError(null); }}
                   placeholder="e.g. 0, j, len(arr)"
-                  className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono ${
-                    colExprError ? 'border-red-500' : 'border-gray-300'
+                  className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono dark:bg-gray-700 dark:text-gray-200 ${
+                    colExprError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                 />
                 <button
                   type="button"
-                  className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
                   onClick={() => setVariablePickerFor((v) => (v === 'col' ? null : 'col'))}
                   title="Insert variable"
                 >
@@ -1007,15 +1007,15 @@ export function ContextMenu({
                 </button>
               </div>
               {variablePickerFor === 'col' && (
-                <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                <div className="mt-1 p-1 border border-gray-200 dark:border-gray-600 rounded max-h-24 overflow-y-auto dark:bg-gray-700">
                   {allVariableNames.length === 0 ? (
-                    <p className="text-xs text-gray-500">No variables</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">No variables</p>
                   ) : (
                     allVariableNames.map((name) => (
                       <button
                         key={name}
                         type="button"
-                        className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                        className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:text-gray-200"
                         onClick={() => insertVariableInto('col', name)}
                       >
                         {name}
@@ -1034,7 +1034,7 @@ export function ContextMenu({
             >
               Apply
             </button>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
               Number or expression (e.g. i+1, len(arr)). Use var to insert variables.
             </p>
           </div>
@@ -1045,13 +1045,13 @@ export function ContextMenu({
       {menuLevel === 'settings-size' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Shape Size
           </div>
           <div className="px-3 py-2 space-y-2">
             {isUniformShape ? (
               <div className="mb-2">
-                <label className="text-xs text-gray-600 font-medium block mb-1">
+                <label className="text-xs text-gray-600 dark:text-gray-300 font-medium block mb-1">
                   {cellData?.shape === 'circle' ? 'Radius (expression)' : 'Size (expression)'}
                 </label>
                 <div className="flex items-center gap-1">
@@ -1061,11 +1061,11 @@ export function ContextMenu({
                     value={shapeWidth}
                     onChange={(e) => { setShapeWidth(e.target.value); setShapeHeight(e.target.value); }}
                     placeholder="e.g. 2, len(arr)"
-                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
                   />
                   <button
                     type="button"
-                    className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                    className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
                     onClick={() => setSizePickerFor((v) => (v === 'width' ? null : 'width'))}
                     title="Insert variable"
                   >
@@ -1073,15 +1073,15 @@ export function ContextMenu({
                   </button>
                 </div>
                 {sizePickerFor === 'width' && (
-                  <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                  <div className="mt-1 p-1 border border-gray-200 dark:border-gray-600 rounded max-h-24 overflow-y-auto dark:bg-gray-700">
                     {allVariableNames.length === 0 ? (
-                      <p className="text-xs text-gray-500">No variables</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">No variables</p>
                     ) : (
                       allVariableNames.map((name) => (
                         <button
                           key={name}
                           type="button"
-                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:text-gray-200"
                           onClick={() => {
                             if (!widthInputRef.current) return;
                             const el = widthInputRef.current;
@@ -1104,7 +1104,7 @@ export function ContextMenu({
             ) : (
               <>
                 <div className="mb-2">
-                  <label className="text-xs text-gray-600 font-medium block mb-1">Width (expression)</label>
+                  <label className="text-xs text-gray-600 dark:text-gray-300 font-medium block mb-1">Width (expression)</label>
                   <div className="flex items-center gap-1">
                     <input
                       ref={widthInputRef}
@@ -1112,11 +1112,11 @@ export function ContextMenu({
                       value={shapeWidth}
                       onChange={(e) => setShapeWidth(e.target.value)}
                       placeholder="e.g. 2, len(arr)"
-                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
                     />
                     <button
                       type="button"
-                      className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                      className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
                       onClick={() => setSizePickerFor((v) => (v === 'width' ? null : 'width'))}
                       title="Insert variable"
                     >
@@ -1124,12 +1124,12 @@ export function ContextMenu({
                     </button>
                   </div>
                   {sizePickerFor === 'width' && (
-                    <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                    <div className="mt-1 p-1 border border-gray-200 dark:border-gray-600 rounded max-h-24 overflow-y-auto dark:bg-gray-700">
                       {allVariableNames.map((name) => (
                         <button
                           key={name}
                           type="button"
-                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:text-gray-200"
                           onClick={() => insertVariableIntoSize('width', name)}
                         >
                           {name}
@@ -1139,7 +1139,7 @@ export function ContextMenu({
                   )}
                 </div>
                 <div className="mb-2">
-                  <label className="text-xs text-gray-600 font-medium block mb-1">Height (expression)</label>
+                  <label className="text-xs text-gray-600 dark:text-gray-300 font-medium block mb-1">Height (expression)</label>
                   <div className="flex items-center gap-1">
                     <input
                       ref={heightInputRef}
@@ -1147,11 +1147,11 @@ export function ContextMenu({
                       value={shapeHeight}
                       onChange={(e) => setShapeHeight(e.target.value)}
                       placeholder="e.g. 1, len(arr)"
-                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
                     />
                     <button
                       type="button"
-                      className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-100"
+                      className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300"
                       onClick={() => setSizePickerFor((v) => (v === 'height' ? null : 'height'))}
                       title="Insert variable"
                     >
@@ -1159,12 +1159,12 @@ export function ContextMenu({
                     </button>
                   </div>
                   {sizePickerFor === 'height' && (
-                    <div className="mt-1 p-1 border border-gray-200 rounded max-h-24 overflow-y-auto">
+                    <div className="mt-1 p-1 border border-gray-200 dark:border-gray-600 rounded max-h-24 overflow-y-auto dark:bg-gray-700">
                       {allVariableNames.map((name) => (
                         <button
                           key={name}
                           type="button"
-                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50"
+                          className="block w-full text-left px-2 py-0.5 text-sm font-mono hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:text-gray-200"
                           onClick={() => insertVariableIntoSize('height', name)}
                         >
                           {name}
@@ -1190,17 +1190,17 @@ export function ContextMenu({
       {menuLevel === 'settings-rotation' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Shape Rotation
           </div>
           <div className="px-3 py-2 space-y-2">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-16">Degrees</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-16">Degrees</label>
               <input
                 type="number"
                 value={shapeRotation}
                 onChange={(e) => setShapeRotation(e.target.value)}
-                className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
             <button
@@ -1221,7 +1221,7 @@ export function ContextMenu({
       {menuLevel === 'settings-orientation' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Arrow Orientation
           </div>
           <div className="px-3 py-2">
@@ -1231,7 +1231,7 @@ export function ContextMenu({
                 onUpdateShapeProps({ orientation: e.target.value as ArrowOrientation });
                 onClose();
               }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
             >
               <option value="up">Up</option>
               <option value="right">Right</option>
@@ -1246,7 +1246,7 @@ export function ContextMenu({
       {menuLevel === 'settings-array-direction' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Array Direction
           </div>
           <div className="px-3 py-2">
@@ -1256,7 +1256,7 @@ export function ContextMenu({
                 onUpdateArrayDirection(e.target.value as 'right' | 'left' | 'down' | 'up');
                 onClose();
               }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
             >
               <option value="right">Right</option>
               <option value="left">Left</option>
@@ -1271,7 +1271,7 @@ export function ContextMenu({
       {menuLevel === 'settings-int-display' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Variable Display
           </div>
           <div className="px-3 py-2">
@@ -1281,7 +1281,7 @@ export function ContextMenu({
                 onUpdateIntVarDisplay(e.target.value as 'name-value' | 'value-only');
                 onClose();
               }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
             >
               <option value="name-value">name=value</option>
               <option value="value-only">value only</option>
@@ -1294,21 +1294,21 @@ export function ContextMenu({
       {menuLevel === 'settings-font-size' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Font Size
           </div>
           <div className="px-3 py-2 space-y-2">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Size</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-12">Size</label>
               <input
                 type="number"
                 min="8"
                 max="32"
                 value={fontSizeValue}
                 onChange={(e) => setFontSizeValue(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
-              <span className="text-xs text-gray-500">px</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">px</span>
             </div>
             <button
               onClick={() => {
@@ -1328,7 +1328,7 @@ export function ContextMenu({
       {menuLevel === 'settings-panel' && (
         <>
           {renderBackButton('Settings', 'settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Assign Panel
           </div>
           <div className="px-3 py-2">
@@ -1339,7 +1339,7 @@ export function ContextMenu({
                 onSetPanelForObject(nextPanel);
                 onClose();
               }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
             >
               <option value="">None</option>
               {panelOptions.map((panel) => (
@@ -1362,27 +1362,27 @@ export function ContextMenu({
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
             onClick={() => setMenuLevel('panel-settings-title')}
           >
-            <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+            <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
               Aa
             </div>
-            <span className="text-sm text-gray-700">Title</span>
-            <span className="ml-auto text-xs text-gray-400 font-mono">{panelSettingsData.title || '(none)'}</span>
-            <span className="text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Title</span>
+            <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 font-mono">{panelSettingsData.title || '(none)'}</span>
+            <span className="text-gray-400 dark:text-gray-500">→</span>
           </button>
           <button
             className="w-full px-3 py-2 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
             onClick={() => setMenuLevel('panel-settings-size')}
           >
-            <div className="w-6 h-6 flex items-center justify-center text-gray-500 font-mono text-xs">
+            <div className="w-6 h-6 flex items-center justify-center text-gray-500 dark:text-gray-400 font-mono text-xs">
               ⇔
             </div>
-            <span className="text-sm text-gray-700">Size</span>
-            <span className="ml-auto text-xs text-gray-400 font-mono">{panelSettingsData.width}×{panelSettingsData.height}</span>
-            <span className="text-gray-400">→</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">Size</span>
+            <span className="ml-auto text-xs text-gray-400 dark:text-gray-500 font-mono">{panelSettingsData.width}×{panelSettingsData.height}</span>
+            <span className="text-gray-400 dark:text-gray-500">→</span>
           </button>
           <div className="border-t border-gray-200 dark:border-gray-600 mt-1 pt-1">
             <button
-              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 transition-colors text-left"
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
               onClick={() => {
                 onDeletePanel?.(panelSettingsData.id, false);
                 onClose();
@@ -1391,10 +1391,10 @@ export function ContextMenu({
               <div className="w-6 h-6 flex items-center justify-center text-red-500 font-bold">
                 ×
               </div>
-              <span className="text-sm text-red-600">Delete Panel & All Objects</span>
+              <span className="text-sm text-red-600 dark:text-red-400">Delete Panel & All Objects</span>
             </button>
             <button
-              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 transition-colors text-left"
+              className="w-full px-3 py-2 flex items-center gap-3 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-left"
               onClick={() => {
                 onDeletePanel?.(panelSettingsData.id, true);
                 onClose();
@@ -1403,7 +1403,7 @@ export function ContextMenu({
               <div className="w-6 h-6 flex items-center justify-center text-amber-500 font-bold">
                 ⊘
               </div>
-              <span className="text-sm text-amber-600">Delete Panel Only (Keep Objects)</span>
+              <span className="text-sm text-amber-600 dark:text-amber-400">Delete Panel Only (Keep Objects)</span>
             </button>
           </div>
         </>
@@ -1413,7 +1413,7 @@ export function ContextMenu({
       {menuLevel === 'panel-settings-title' && panelSettingsData && (
         <>
           {renderBackButton('Panel Settings', 'panel-settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Panel Title
           </div>
           <div className="px-3 py-2 space-y-2">
@@ -1427,7 +1427,7 @@ export function ContextMenu({
                   onClose();
                 }
               }}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono dark:bg-gray-700 dark:text-gray-200"
               placeholder="Panel title"
               autoFocus
             />
@@ -1448,30 +1448,30 @@ export function ContextMenu({
       {menuLevel === 'panel-settings-size' && panelSettingsData && (
         <>
           {renderBackButton('Panel Settings', 'panel-settings')}
-          <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
             Panel Size
           </div>
           <div className="px-3 py-2 space-y-2">
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Width</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-12">Width</label>
               <input
                 type="number"
                 min="1"
                 max="50"
                 value={editPanelWidth}
                 onChange={(e) => setEditPanelWidth(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-600 w-12">Height</label>
+              <label className="text-xs text-gray-600 dark:text-gray-300 w-12">Height</label>
               <input
                 type="number"
                 min="1"
                 max="50"
                 value={editPanelHeight}
                 onChange={(e) => setEditPanelHeight(e.target.value)}
-                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
               />
             </div>
             <button

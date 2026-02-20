@@ -4,6 +4,17 @@ export type VisualBuilderElementType = 'rect' | 'label' | 'var' | 'panel' | 'arr
 
 export type ArrayDirection = 'right' | 'left' | 'down' | 'up';
 
+export interface ShapeArrayElementConfig {
+  type?: 'circle' | 'rect' | 'arrow';
+  color?: [number, number, number];
+  orientation?: 'up' | 'down' | 'left' | 'right';
+  rotation?: number;
+  width?: number;
+  height?: number;
+  alpha?: number;
+  visible?: boolean;
+}
+
 export interface VisualBuilderElement {
   type: VisualBuilderElementType;
   position: [number, number];
@@ -22,8 +33,12 @@ export interface VisualBuilderElement {
   /** Array: variable name and layout */
   direction?: ArrayDirection;
   length?: number; // number of cells (used when no timeline yet)
-  /** Per-cell values from the builder (e.g. arr_viz[0]=2). When set, these are shown instead of timeline. */
-  values?: (number | string)[];
+  /** Per-cell values from the builder. For value arrays: numbers/strings. For shape arrays: config dicts. */
+  values?: (number | string | ShapeArrayElementConfig)[];
+  /** Shape type for each array cell ('circle', 'rect', 'arrow'). When set, array renders shapes instead of values. */
+  elementType?: 'circle' | 'rect' | 'arrow';
+  /** Whether to show [i] index labels on array cells. */
+  showIndex?: boolean;
   alpha?: number;
   orientation?: 'up' | 'down' | 'left' | 'right';
   rotation?: number;
@@ -122,13 +137,15 @@ export const VISUAL_ELEM_SCHEMA: ClassDoc[] = [
   },
   {
     className: 'Array',
-    constructorParams: 'var_name: str = ""',
-    docstring: 'Displays an array variable (list) from the current execution step. Each cell shows one element.',
+    constructorParams: 'var_name: str = "", element_type: str | None = None',
+    docstring: 'Displays an array of values or visual shapes. Two approaches: (1) Dict config: set element_type="circle"/"rect"/"arrow", then arr[i] = {\'color\': (r,g,b), ...}. (2) Instance mode: arr[i] = Circle()/Rect()/Arrow() — shape position is controlled by the array, all other properties (color, size, alpha, V() bindings) come from the element. Elements with width/height > 1 shift subsequent cells accordingly.',
     properties: [
-      { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums").' },
+      { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums"). Ignored when element_type is set.' },
+      { name: 'element_type', type: 'str | None', description: 'Shape type for each cell: "circle", "rect", or "arrow". None for value arrays or instance mode (default).' },
       { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the first cell.' },
       { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout of cells.' },
-      { name: 'length', type: 'int', description: 'Number of cells to reserve (default 5). Use ≥ max array length.' },
+      { name: 'length', type: 'int', description: 'Number of cells to reserve (default 5). Use >= max array length.' },
+      { name: 'show_index', type: 'bool', description: 'Whether to show [i] index labels. Default True for value arrays, False for shape arrays.' },
       { name: 'visible', type: 'bool', description: 'Show or hide the array.' },
     ],
   },

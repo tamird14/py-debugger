@@ -117,6 +117,38 @@ arr_viz.position = (7, 0)
 arr_viz.direction = "right"
 arr_viz.length = 7
 panel.add(arr_viz)
+
+# Shape Array (dict config): uniform circles with per-element colors
+circles = Array(element_type="circle")
+circles.position = (5, 0)
+circles.length = 5
+circles.direction = "right"
+circles[0] = {"color": (239, 68, 68)}    # red
+circles[1] = {"color": (234, 179, 8)}    # yellow
+circles[2] = {"color": (34, 197, 94)}    # green
+circles[3] = {"color": (59, 130, 246)}   # blue
+circles[4] = {"color": (168, 85, 247)}   # purple
+panel.add(circles)
+
+# Shape Array (instance mode): mix shape types with variable sizes
+shapes = Array()
+shapes.position = (9, 0)
+shapes.direction = "right"
+shapes.length = 3
+shapes.show_index = True
+big_circle = Circle()
+big_circle.width = 2
+big_circle.height = 2
+big_circle.color = (59, 130, 246)
+shapes[0] = big_circle
+small_rect = Rect()
+small_rect.color = (234, 179, 8)
+shapes[1] = small_rect
+arrow = Arrow()
+arrow.orientation = "right"
+arrow.color = (239, 68, 68)
+shapes[2] = arrow
+panel.add(shapes)
 `;
 
 export function CodeEditor({

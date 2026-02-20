@@ -94,7 +94,7 @@ class Label(VisualElem):
         self.width = 1
         self.height = 1
         self.font_size = 14
-        self.color = (23, 23, 23)
+        self.color = None
         self.visible = True
 
 
@@ -107,27 +107,84 @@ class Var(VisualElem):
         self.visible = True
 
 
+_SHAPE_CLASSES = None
+
+def _get_shape_classes():
+    global _SHAPE_CLASSES
+    if _SHAPE_CLASSES is None:
+        _SHAPE_CLASSES = (Rect, Circle, Arrow)
+    return _SHAPE_CLASSES
+
+
 class Array(VisualElem):
-    def __init__(self, var_name=""):
+    def __init__(self, var_name="", element_type=None):
         super().__init__()
         self.var_name = var_name
         self.position = (0, 0)
         self.direction = "right"
         self.length = 5
         self.visible = True
-        self._cells = [0] * self.length
+        self.element_type = element_type
+        self.show_index = element_type is None
+        default = {} if element_type else 0
+        self._cells = [default] * self.length
+        object.__setattr__(self, '_cell_bindings', {})
 
     def __setitem__(self, index, value):
         n = len(self._cells)
+        default = {} if self.element_type else 0
         if index >= n:
-            self._cells.extend([0] * (index - n + 1))
+            self._cells.extend([default] * (index - n + 1))
             self.length = len(self._cells)
+
+        if isinstance(value, VisualElem):
+            if not isinstance(value, _get_shape_classes()):
+                raise ValueError(
+                    f"Only shape elements (Rect, Circle, Arrow) can be added to an array, got {type(value).__name__}"
+                )
+            owner = getattr(value, '_array_owner', None)
+            if owner is not None and owner is not self:
+                raise ValueError("Element is already in another array")
+            elem_parent = getattr(value, '_parent', None)
+            if elem_parent is not None:
+                my_parent = getattr(self, '_parent', None)
+                if elem_parent is my_parent:
+                    elem_parent.remove(value)
+                else:
+                    raise ValueError(
+                        "Element belongs to a different panel than the array"
+                    )
+            if value in VisualElem._registry:
+                VisualElem._registry.remove(value)
+            object.__setattr__(value, '_array_owner', self)
+            self._cells[index] = value
+            return
+
+        if isinstance(value, dict):
+            has_bindings = any(isinstance(v, V) for v in value.values())
+            if has_bindings:
+                self._cell_bindings[index] = dict(value)
+            elif index in self._cell_bindings:
+                del self._cell_bindings[index]
+
         self._cells[index] = value
 
     def __getitem__(self, index):
         if 0 <= index < len(self._cells):
             return self._cells[index]
-        return 0
+        return {} if self.element_type else 0
+
+    def update(self, scope, params):
+        super().update(scope, params)
+        for i, cell in enumerate(self._cells):
+            if isinstance(cell, VisualElem):
+                cell.update(scope, params)
+        for idx, original in self._cell_bindings.items():
+            if idx < len(self._cells):
+                resolved = {}
+                for k, v in original.items():
+                    resolved[k] = v.resolve(params) if isinstance(v, V) else v
+                self._cells[idx] = resolved
 
 
 class Circle(VisualElem):
@@ -195,11 +252,9 @@ def _serialize_elem(elem, vb_id):
         out["width"] = int(getattr(elem, 'width', 1))
         out["height"] = int(getattr(elem, 'height', 1))
         out["fontSize"] = int(getattr(elem, 'font_size', 14))
-        c = getattr(elem, 'color', (255, 255, 255))
+        c = getattr(elem, 'color', None)
         if isinstance(c, (list, tuple)) and len(c) >= 3:
             out["color"] = [int(c[0]), int(c[1]), int(c[2])]
-        else:
-            out["color"] = [255, 255, 255]
     elif isinstance(elem, Var):
         out["type"] = "var"
         out["varName"] = str(getattr(elem, 'var_name', ''))
@@ -209,8 +264,51 @@ def _serialize_elem(elem, vb_id):
         out["varName"] = str(getattr(elem, 'var_name', ''))
         out["direction"] = str(getattr(elem, 'direction', 'right'))
         out["length"] = int(getattr(elem, 'length', 5))
+        out["showIndex"] = bool(getattr(elem, 'show_index', True))
+        element_type = getattr(elem, 'element_type', None)
+        if element_type:
+            out["elementType"] = str(element_type)
         cells = getattr(elem, '_cells', [])
-        out["values"] = list(cells) if isinstance(cells, (list, tuple)) else []
+        serialized_values = []
+        for cell in (cells if isinstance(cells, (list, tuple)) else []):
+            if isinstance(cell, VisualElem):
+                sv = {}
+                if isinstance(cell, Circle):
+                    sv["type"] = "circle"
+                elif isinstance(cell, Arrow):
+                    sv["type"] = "arrow"
+                    sv["orientation"] = str(getattr(cell, 'orientation', 'up'))
+                    sv["rotation"] = int(getattr(cell, 'rotation', 0))
+                elif isinstance(cell, Rect):
+                    sv["type"] = "rect"
+                c = getattr(cell, 'color', None)
+                if isinstance(c, (list, tuple)) and len(c) >= 3:
+                    sv["color"] = [int(c[0]), int(c[1]), int(c[2])]
+                sv["width"] = int(getattr(cell, 'width', 1))
+                sv["height"] = int(getattr(cell, 'height', 1))
+                cell_alpha = getattr(cell, 'alpha', 1.0)
+                try:
+                    cell_alpha = float(cell_alpha)
+                except (ValueError, TypeError):
+                    cell_alpha = 1.0
+                sv["alpha"] = cell_alpha
+                sv["visible"] = bool(getattr(cell, 'visible', True))
+                serialized_values.append(sv)
+            elif isinstance(cell, dict):
+                sv = {}
+                c = cell.get('color')
+                if isinstance(c, (list, tuple)) and len(c) >= 3:
+                    sv["color"] = [int(c[0]), int(c[1]), int(c[2])]
+                ori = cell.get('orientation')
+                if ori is not None:
+                    sv["orientation"] = str(ori)
+                rot = cell.get('rotation')
+                if rot is not None:
+                    sv["rotation"] = int(rot)
+                serialized_values.append(sv)
+            else:
+                serialized_values.append(cell)
+        out["values"] = serialized_values
     elif isinstance(elem, Circle):
         out["type"] = "circle"
         out["width"] = int(getattr(elem, 'width', 1))
