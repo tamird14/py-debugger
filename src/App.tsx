@@ -27,6 +27,22 @@ import type {
 
 function App() {
   const { darkMode, toggleDarkMode } = useTheme();
+  
+  // Breakpoints state - set of line numbers with breakpoints
+  const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
+  
+  const toggleBreakpoint = useCallback((lineNumber: number) => {
+    setBreakpoints((prev) => {
+      const next = new Set(prev);
+      if (next.has(lineNumber)) {
+        next.delete(lineNumber);
+      } else {
+        next.add(lineNumber);
+      }
+      return next;
+    });
+  }, []);
+
   const {
     cells,
     overlayCells,
@@ -430,6 +446,30 @@ function App() {
   );
 
   const hasTimeline = timeline.length > 0;
+
+  // Skip to next breakpoint: find the next step whose lineNumber is in breakpoints
+  const skipToNextBreakpoint = useCallback(() => {
+    for (let i = currentStep + 1; i < executionSteps.length; i++) {
+      if (breakpoints.has(executionSteps[i].lineNumber)) {
+        goToStep(i);
+        return;
+      }
+    }
+    // No breakpoint hit — jump to last step
+    goToStep(executionSteps.length - 1);
+  }, [currentStep, executionSteps, breakpoints, goToStep]);
+
+  // Skip to previous breakpoint: find the previous step whose lineNumber is in breakpoints
+  const skipToPrevBreakpoint = useCallback(() => {
+    for (let i = currentStep - 1; i >= 0; i--) {
+      if (breakpoints.has(executionSteps[i].lineNumber)) {
+        goToStep(i);
+        return;
+      }
+    }
+    // No breakpoint hit — jump to first step
+    goToStep(0);
+  }, [currentStep, executionSteps, breakpoints, goToStep]);
   const contextMenuCellData = contextMenuCell
     ? getObjectAtCell(contextMenuCell.row, contextMenuCell.col)
     : undefined;
@@ -493,6 +533,9 @@ function App() {
               onPrevStep={prevStep}
               onNextStep={nextStep}
               onGoToStep={goToStep}
+              breakpoints={breakpoints}
+              onSkipToNextBreakpoint={skipToNextBreakpoint}
+              onSkipToPrevBreakpoint={skipToPrevBreakpoint}
             />
           )}
 
@@ -550,6 +593,8 @@ function App() {
                     onAnalyzeVisualBuilder={handleAnalyzeVisualBuilder}
                     isAnalyzingVisualBuilder={isAnalyzingVisualBuilder}
                     visualBuilderError={visualBuilderError}
+                    breakpoints={breakpoints}
+                    onToggleBreakpoint={toggleBreakpoint}
                   />
                 </div>
               </Panel>

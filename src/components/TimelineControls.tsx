@@ -4,6 +4,9 @@ interface TimelineControlsProps {
   onPrevStep: () => void;
   onNextStep: () => void;
   onGoToStep: (step: number) => void;
+  breakpoints?: Set<number>;
+  onSkipToNextBreakpoint?: () => void;
+  onSkipToPrevBreakpoint?: () => void;
 }
 
 export function TimelineControls({
@@ -12,6 +15,9 @@ export function TimelineControls({
   onPrevStep,
   onNextStep,
   onGoToStep,
+  breakpoints = new Set(),
+  onSkipToNextBreakpoint,
+  onSkipToPrevBreakpoint,
 }: TimelineControlsProps) {
   if (stepCount === 0) {
     return null;
@@ -21,6 +27,7 @@ export function TimelineControls({
   const canGoNext = currentStep < stepCount - 1;
   const canGoFirst = currentStep > 0;
   const canGoLast = currentStep < stepCount - 1;
+  const hasBreakpoints = breakpoints.size > 0;
 
   return (
     <div className="flex items-center gap-3 px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
@@ -86,6 +93,38 @@ export function TimelineControls({
           title="Last step"
         >
           {'>>'}
+        </button>
+      </div>
+
+      {/* Breakpoint navigation */}
+      <div className="flex items-center gap-1 border-l border-gray-300 dark:border-gray-500 pl-2 ml-1">
+        <button
+          onClick={onSkipToPrevBreakpoint}
+          disabled={!hasBreakpoints || !canGoPrev}
+          className={`
+            px-2 py-1 rounded text-sm font-medium transition-colors
+            ${hasBreakpoints && canGoPrev
+              ? 'bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
+            }
+          `}
+          title="Skip to previous breakpoint"
+        >
+          ●←
+        </button>
+        <button
+          onClick={onSkipToNextBreakpoint}
+          disabled={!hasBreakpoints || !canGoNext}
+          className={`
+            px-2 py-1 rounded text-sm font-medium transition-colors
+            ${hasBreakpoints && canGoNext
+              ? 'bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-600 cursor-not-allowed'
+            }
+          `}
+          title="Skip to next breakpoint"
+        >
+          →●
         </button>
       </div>
 

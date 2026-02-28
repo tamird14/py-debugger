@@ -24,6 +24,9 @@ interface CodeEditorProps {
   onAnalyzeVisualBuilder?: () => void;
   isAnalyzingVisualBuilder?: boolean;
   visualBuilderError?: string;
+  // Breakpoints
+  breakpoints?: Set<number>;
+  onToggleBreakpoint?: (lineNumber: number) => void;
 }
 
 // Sample code for demo
@@ -136,7 +139,7 @@ panel.add(arr_viz)
 
 # 2D Array: show a matrix — run "2D Array" sample + Analyze first
 mat = Array2D("matrix")
-mat.position = (9, 0)
+mat.position = (0, 7)
 mat.show_index = True
 panel.add(mat)
 
@@ -189,6 +192,8 @@ export function CodeEditor({
   onAnalyzeVisualBuilder,
   isAnalyzingVisualBuilder = false,
   visualBuilderError,
+  breakpoints = new Set(),
+  onToggleBreakpoint,
 }: CodeEditorProps) {
   const { darkMode } = useTheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -196,6 +201,7 @@ export function CodeEditor({
   const monacoRef = useRef<Monaco | null>(null);
   const visualBuilderMonacoRef = useRef<Monaco | null>(null);
   const decorationsRef = useRef<string[]>([]);
+  const breakpointDecorationsRef = useRef<string[]>([]);
   const [showSamples, setShowSamples] = useState(false);
   const [activeTab, setActiveTab] = useState<CodePanelTab>('code');
   const [apiReferenceOpen, setApiReferenceOpen] = useState(true);
@@ -220,6 +226,20 @@ export function CodeEditor({
         { open: '"', close: '"' },
         { open: "'", close: "'" },
       ],
+    });
+
+    // Handle gutter click for breakpoints
+    editor.onMouseDown((e) => {
+      const target = e.target;
+      if (
+        target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN ||
+        target.type === monaco.editor.MouseTargetType.GUTTER_LINE_NUMBERS
+      ) {
+        const lineNumber = target.position?.lineNumber;
+        if (lineNumber && onToggleBreakpoint) {
+          onToggleBreakpoint(lineNumber);
+        }
+      }
     });
   };
 
@@ -400,6 +420,26 @@ export function CodeEditor({
 
     decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations);
   }, [currentLine, lastExecutedLine]);
+
+  // Update breakpoint decorations when breakpoints change
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+
+    const monaco = monacoRef.current;
+    const editor = editorRef.current;
+
+    const breakpointDecorations: editor.IModelDeltaDecoration[] = [...breakpoints].map((line) => ({
+      range: new monaco.Range(line, 1, line, 1),
+      options: {
+        glyphMarginClassName: 'breakpoint-glyph',
+      },
+    }));
+
+    breakpointDecorationsRef.current = editor.deltaDecorations(
+      breakpointDecorationsRef.current,
+      breakpointDecorations
+    );
+  }, [breakpoints]);
 
   const loadSample = (sampleCode: string) => {
     onChange(sampleCode);
