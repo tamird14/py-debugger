@@ -51,6 +51,22 @@ for i in range(len(nums)):
 print("Prefix sums:", prefix)
 `;
 
+export const SAMPLE_2D_ARRAY = `# 2D Array Example - Matrix Rotation
+matrix = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+]
+n = len(matrix)
+result = [[0] * n for _ in range(n)]
+
+for i in range(n):
+    for j in range(n):
+        result[j][n - 1 - i] = matrix[i][j]
+
+print("Rotated:", result)
+`;
+
 export const SAMPLE_BINARY_SEARCH = `# Binary Search Example
 arr = [2, 3, 4, 10, 40, 50, 60]
 target = 10
@@ -117,6 +133,12 @@ arr_viz.position = (7, 0)
 arr_viz.direction = "right"
 arr_viz.length = 7
 panel.add(arr_viz)
+
+# 2D Array: show a matrix — run "2D Array" sample + Analyze first
+mat = Array2D("matrix")
+mat.position = (9, 0)
+mat.show_index = True
+panel.add(mat)
 
 # Shape Array (dict config): uniform circles with per-element colors
 circles = Array(element_type="circle")
@@ -460,6 +482,13 @@ export function CodeEditor({
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         Binary Search
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => loadSample(SAMPLE_2D_ARRAY)}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        2D Array
                       </button>
                     </div>
                   )}

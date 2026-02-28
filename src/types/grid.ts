@@ -6,7 +6,7 @@ export interface CellPosition {
 }
 
 // Variable dictionary types
-export type VariableType = 'int' | 'float' | 'str' | 'arr[int]' | 'arr[str]';
+export type VariableType = 'int' | 'float' | 'str' | 'arr[int]' | 'arr[str]' | 'arr2d[int]' | 'arr2d[str]';
 
 export interface IntVariable {
   type: 'int';
@@ -33,7 +33,17 @@ export interface StringArrayVariable {
   value: string[];
 }
 
-export type Variable = IntVariable | FloatVariable | ArrayVariable | StringVariable | StringArrayVariable;
+export interface Array2DVariable {
+  type: 'arr2d[int]';
+  value: number[][];
+}
+
+export interface StringArray2DVariable {
+  type: 'arr2d[str]';
+  value: string[][];
+}
+
+export type Variable = IntVariable | FloatVariable | ArrayVariable | StringVariable | StringArrayVariable | Array2DVariable | StringArray2DVariable;
 
 export interface VariableDictionary {
   [name: string]: Variable;
@@ -147,6 +157,17 @@ export interface CellData {
       visible?: boolean;
     };
     showIndex?: boolean;
+  };
+  // For 2D array variables
+  array2dInfo?: {
+    id: string;
+    row: number;
+    col: number;
+    numRows: number;
+    numCols: number;
+    value?: string | number;
+    varName?: string;
+    showIndices?: boolean;
   };
   // For int variables
   intVar?: {

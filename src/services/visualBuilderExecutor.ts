@@ -8,13 +8,15 @@ import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
  * Convert VariableDictionary (typed vars) to a plain dict for Python update(scope, params).
  * Python expects params to be name -> value (number, list of numbers, string, or list of strings).
  */
-function variableDictionaryToParams(vars: VariableDictionary): Record<string, number | number[] | string | string[]> {
-  const out: Record<string, number | number[] | string | string[]> = {};
+function variableDictionaryToParams(vars: VariableDictionary): Record<string, number | number[] | string | string[] | number[][] | string[][]> {
+  const out: Record<string, number | number[] | string | string[] | number[][] | string[][]> = {};
   for (const [name, v] of Object.entries(vars)) {
     if (v.type === 'int' || v.type === 'float') out[name] = v.value;
     else if (v.type === 'str') out[name] = v.value;
     else if (v.type === 'arr[int]') out[name] = v.value;
     else if (v.type === 'arr[str]') out[name] = v.value;
+    else if (v.type === 'arr2d[int]') out[name] = v.value;
+    else if (v.type === 'arr2d[str]') out[name] = v.value;
   }
   return out;
 }

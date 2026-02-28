@@ -48,6 +48,8 @@ export function VariablesPanel({ variables, previousVariables }: VariablesPanelP
                       ? 'bg-teal-100 text-teal-700'
                       : variable.type === 'arr[str]'
                       ? 'bg-indigo-100 text-indigo-700'
+                      : variable.type === 'arr2d[int]' || variable.type === 'arr2d[str]'
+                      ? 'bg-violet-100 text-violet-700'
                       : 'bg-amber-100 text-amber-700'
                   }`}
                 >
@@ -59,6 +61,10 @@ export function VariablesPanel({ variables, previousVariables }: VariablesPanelP
                     ? 'str'
                     : variable.type === 'arr[str]'
                     ? 'list[str]'
+                    : variable.type === 'arr2d[int]'
+                    ? 'list2d'
+                    : variable.type === 'arr2d[str]'
+                    ? 'list2d[str]'
                     : 'list'}
                 </span>
                 <span className="font-mono text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -73,9 +79,20 @@ export function VariablesPanel({ variables, previousVariables }: VariablesPanelP
                   <span className="text-blue-600">{variable.value}</span>
                 ) : variable.type === 'str' ? (
                   <span className="text-teal-600">"{variable.value}"</span>
+                ) : variable.type === 'arr2d[int]' || variable.type === 'arr2d[str]' ? (
+                  <span className="text-violet-600">
+                    {variable.value.length}×{variable.value[0]?.length ?? 0} [
+                    {variable.value.slice(0, 3).map((row, i) => (
+                      <span key={i}>
+                        {i > 0 ? ', ' : ''}[{(row as (number | string)[]).slice(0, 4).map((v, j) => (
+                          <span key={j}>{j > 0 ? ', ' : ''}{typeof v === 'string' ? `"${v}"` : v}</span>
+                        ))}{(row as (number | string)[]).length > 4 ? ', …' : ''}]
+                      </span>
+                    ))}{variable.value.length > 3 ? ', …' : ''}]
+                  </span>
                 ) : (
                   <span className="text-purple-600">
-                    [{variable.value.map((val) => (typeof val === 'string' ? `"${val}"` : val)).join(', ')}]
+                    [{(variable.value as (number | string)[]).map((val) => (typeof val === 'string' ? `"${val}"` : val)).join(', ')}]
                   </span>
                 )}
               </div>

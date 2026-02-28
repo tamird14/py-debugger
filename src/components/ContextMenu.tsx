@@ -130,7 +130,7 @@ export function ContextMenu({
 }: ContextMenuProps) {
   void _onMoveCell; // Kept for backward compatibility
   const menuRef = useRef<HTMLDivElement>(null);
-  const hasContent = !!(cellData?.shape || cellData?.arrayInfo || cellData?.intVar);
+  const hasContent = !!(cellData?.shape || cellData?.arrayInfo || cellData?.array2dInfo || cellData?.intVar);
   const isPanelSettings = !!panelSettingsData;
   const [menuLevel, setMenuLevel] = useState<MenuLevel>(isPanelSettings ? 'panel-settings' : hasContent ? 'settings' : 'main');
   const [labelText, setLabelText] = useState('Label');
@@ -206,10 +206,11 @@ export function ContextMenu({
   const variableEntries = Object.entries(variables);
   const intVariables = variableEntries.filter(([, v]) => v.type === 'int' || v.type === 'float');
   const arrayVariables = variableEntries.filter(([, v]) => v.type === 'arr[int]' || v.type === 'arr[str]');
+  const array2dVariables = variableEntries.filter(([, v]) => v.type === 'arr2d[int]' || v.type === 'arr2d[str]');
   const hasVariables = variableEntries.length > 0;
   const allVariableNames = useMemo(
-    () => [...intVariableNames, ...arrayVariables.map(([n]) => n)],
-    [intVariableNames, arrayVariables]
+    () => [...intVariableNames, ...arrayVariables.map(([n]) => n), ...array2dVariables.map(([n]) => n)],
+    [intVariableNames, arrayVariables, array2dVariables]
   );
 
   const getSizeInitial = (v: SizeValue | undefined): string => {
@@ -350,6 +351,8 @@ export function ContextMenu({
 
   const getObjectTypeName = () => {
     if (cellData?.shape) return `Shape (${cellData.shape})`;
+    if (cellData?.array2dInfo?.varName) return `2D Array (${cellData.array2dInfo.varName})`;
+    if (cellData?.array2dInfo) return 'Empty 2D Array';
     if (cellData?.arrayInfo?.varName) return `Array (${cellData.arrayInfo.varName})`;
     if (cellData?.arrayInfo) return 'Empty Array';
     if (cellData?.intVar) return `Variable (${cellData.intVar.name})`;
@@ -552,6 +555,40 @@ export function ContextMenu({
                     </div>
                   </button>
                 ))}
+              </div>
+            </>
+          )}
+
+          {/* 2D Array Variables */}
+          {array2dVariables.length > 0 && (
+            <>
+              <div className="px-3 py-1 text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide mt-1">
+                2D Array Variables
+              </div>
+              <div className="max-h-32 overflow-y-auto">
+                {array2dVariables.map(([name, variable]) => {
+                  const val2d = (variable as { type: 'arr2d[int]'; value: number[][] }).value;
+                  return (
+                    <button
+                      key={name}
+                      className="w-full px-3 py-2 flex items-center gap-3 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors text-left"
+                      onClick={() => {
+                        onPlaceVariable(name, variable, panelContext ? { id: panelContext.id, origin: panelContext.origin } : undefined);
+                        onClose();
+                      }}
+                    >
+                      <div className="w-6 h-6 flex items-center justify-center rounded text-xs font-bold bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">
+                        [][]
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-mono text-gray-800 dark:text-gray-100">{name}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">
+                          {val2d.length}×{val2d[0]?.length ?? 0}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </>
           )}

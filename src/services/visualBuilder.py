@@ -201,6 +201,33 @@ class Array(VisualElem):
                 self._cells[idx] = resolved
 
 
+class Array2D(VisualElem):
+    """Display a 2D list variable as a matrix on the grid."""
+    def __init__(self, var_name=""):
+        super().__init__()
+        self.var_name = var_name
+        self.position = (0, 0)
+        self._num_rows = 3
+        self._num_cols = 3
+        self._dims_manually_set = False
+        self.visible = True
+        self.show_index = True
+
+    def set_dims(self, rows, cols):
+        self._num_rows = rows
+        self._num_cols = cols
+        self._dims_manually_set = True
+
+    def update(self, scope, params):
+        if not self._dims_manually_set and self.var_name and self.var_name in params:
+            val = params[self.var_name]
+            if isinstance(val, (list, tuple)) and len(val) > 0:
+                self._num_rows = len(val)
+                if isinstance(val[0], (list, tuple)):
+                    self._num_cols = len(val[0])
+        super().update(scope, params)
+
+
 class Circle(VisualElem):
     def __init__(self, pos=(0, 0)):
         super().__init__()
@@ -323,6 +350,12 @@ def _serialize_elem(elem, vb_id):
             else:
                 serialized_values.append(cell)
         out["values"] = serialized_values
+    elif isinstance(elem, Array2D):
+        out["type"] = "array2d"
+        out["varName"] = str(getattr(elem, 'var_name', ''))
+        out["numRows"] = int(getattr(elem, '_num_rows', 3))
+        out["numCols"] = int(getattr(elem, '_num_cols', 3))
+        out["showIndex"] = bool(getattr(elem, 'show_index', True))
     elif isinstance(elem, Circle):
         out["type"] = "circle"
         out["width"] = int(getattr(elem, 'width', 1))

@@ -32,6 +32,9 @@ const THEME_COLORS = {
     arrayName: '#b45309',
     arrayValue: '#1f2937',
     arrayIndex: '#d97706',
+    array2dName: '#6d28d9',
+    array2dValue: '#1f2937',
+    array2dIndex: '#7c3aed',
     intVarText: '#065f46',
     intVarEquals: '#059669',
     intVarBorder: '#34d399',
@@ -42,6 +45,9 @@ const THEME_COLORS = {
     arrayName: '#fcd34d',
     arrayValue: '#f9fafb',
     arrayIndex: '#fcd34d',
+    array2dName: '#c4b5fd',
+    array2dValue: '#f9fafb',
+    array2dIndex: '#c4b5fd',
     intVarText: '#a7f3d0',
     intVarEquals: '#6ee7b7',
     intVarBorder: '#6ee7b7',
@@ -65,6 +71,7 @@ export const GridCell = memo(function GridCell({
   const arrowOrientation = cellData?.shapeProps?.orientation;
   const isShapeCell = !!ShapeComponent;
   const isArrayCell = !!cellData?.arrayInfo;
+  const is2DArrayCell = !!cellData?.array2dInfo;
   const isIntVarCell = !!cellData?.intVar;
   const isLabelCell = !!cellData?.label;
   const isPanelCell = !!cellData?.panel;
@@ -89,6 +96,7 @@ export const GridCell = memo(function GridCell({
     if (isShapeCell) return '';
     if (isShapeArray) return '';
     if (customColor) return 'border-2';
+    if (is2DArrayCell) return 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 dark:border-violet-600';
     if (isArrayCell) return 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600';
     if (isIntVarCell) return 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 dark:border-emerald-600';
     if (isSelected) return 'bg-blue-100 dark:bg-blue-900/40';
@@ -207,6 +215,41 @@ export const GridCell = memo(function GridCell({
                 style={{ color: customColor || t.arrayIndex, fontSize: Math.max(8, Math.round(customFontSize * 0.7)) }}
               >
                 [{info.index}]
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* 2D Array cell display */}
+      {is2DArrayCell && (() => {
+        const info = cellData.array2dInfo!;
+        const isAnchor = info.row === 0 && info.col === 0;
+        const showIndices = info.showIndices ?? true;
+        return (
+          <div className="absolute inset-0 flex flex-col items-center justify-between py-1">
+            {isAnchor && info.varName && (
+              <span
+                className="text-[8px] font-mono leading-none absolute -top-3 left-0"
+                style={{ color: customColor || t.array2dName }}
+              >
+                {info.varName}
+              </span>
+            )}
+            <div className="flex-1 flex items-center justify-center">
+              <span
+                className="font-mono font-bold"
+                style={{ color: customColor || t.array2dValue, fontSize: customFontSize }}
+              >
+                {info.value}
+              </span>
+            </div>
+            {showIndices && (
+              <span
+                className="font-mono leading-none"
+                style={{ color: customColor || t.array2dIndex, fontSize: Math.max(7, Math.round(customFontSize * 0.65)) }}
+              >
+                [{info.row}][{info.col}]
               </span>
             )}
           </div>

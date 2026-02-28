@@ -29,7 +29,13 @@ def _capture_variables(frame, exclude_vars=None):
         elif isinstance(value, str):
             result[name] = {'type': 'str', 'value': value}
         elif isinstance(value, list):
-            if all(isinstance(x, (int, float, bool)) for x in value):
+            if len(value) > 0 and all(isinstance(row, list) for row in value):
+                if all(isinstance(x, (int, float, bool)) for row in value for x in row):
+                    int_values = [[int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in row] for row in value]
+                    result[name] = {'type': 'arr2d[int]', 'value': int_values}
+                elif all(isinstance(x, str) for row in value for x in row):
+                    result[name] = {'type': 'arr2d[str]', 'value': value}
+            elif all(isinstance(x, (int, float, bool)) for x in value):
                 int_values = [int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in value]
                 result[name] = {'type': 'arr[int]', 'value': int_values}
             elif all(isinstance(x, str) for x in value):

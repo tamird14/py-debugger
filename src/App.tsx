@@ -49,6 +49,7 @@ function App() {
     goToStep,
     placeIntVariable,
     placeArrayVariable,
+    place2DArrayVariable,
     zoomIn,
     zoomOut,
     setZoom,
@@ -351,9 +352,11 @@ function App() {
         placeIntVariable(contextMenuCell, name, variable.value, panelContext);
       } else if (variable.type === 'arr[int]' || variable.type === 'arr[str]') {
         placeArrayVariable(contextMenuCell, name, variable.value, panelContext);
+      } else if (variable.type === 'arr2d[int]' || variable.type === 'arr2d[str]') {
+        place2DArrayVariable(contextMenuCell, name, variable.value as (number | string)[][], panelContext);
       }
     },
-    [contextMenuCell, placeIntVariable, placeArrayVariable]
+    [contextMenuCell, placeIntVariable, placeArrayVariable, place2DArrayVariable]
   );
 
   const handleZoom = useCallback(

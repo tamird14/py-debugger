@@ -1,6 +1,6 @@
 // Visual Builder element types (serialized from Python)
 
-export type VisualBuilderElementType = 'rect' | 'label' | 'var' | 'panel' | 'array' | 'circle' | 'arrow';
+export type VisualBuilderElementType = 'rect' | 'label' | 'var' | 'panel' | 'array' | 'array2d' | 'circle' | 'arrow';
 
 export type ArrayDirection = 'right' | 'left' | 'down' | 'up';
 
@@ -39,6 +39,9 @@ export interface VisualBuilderElement {
   elementType?: 'circle' | 'rect' | 'arrow';
   /** Whether to show [i] index labels on array cells. */
   showIndex?: boolean;
+  /** Array2D: number of rows and columns */
+  numRows?: number;
+  numCols?: number;
   alpha?: number;
   orientation?: 'up' | 'down' | 'left' | 'right';
   rotation?: number;
