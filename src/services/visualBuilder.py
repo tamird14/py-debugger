@@ -122,20 +122,30 @@ class Array(VisualElem):
         self.var_name = var_name
         self.position = (0, 0)
         self.direction = "right"
-        self.length = 5
+        self._length = 5
+        self._length_manually_set = False
         self.visible = True
         self.element_type = element_type
         self.show_index = element_type is None
         default = {} if element_type else 0
-        self._cells = [default] * self.length
+        self._cells = [default] * self._length
         object.__setattr__(self, '_cell_bindings', {})
+
+    @property
+    def length(self):
+        return self._length
+
+    @length.setter
+    def length(self, value):
+        self._length = value
+        self._length_manually_set = True
 
     def __setitem__(self, index, value):
         n = len(self._cells)
         default = {} if self.element_type else 0
         if index >= n:
             self._cells.extend([default] * (index - n + 1))
-            self.length = len(self._cells)
+            self._length = len(self._cells)
 
         if isinstance(value, VisualElem):
             if not isinstance(value, _get_shape_classes()):
@@ -175,6 +185,10 @@ class Array(VisualElem):
         return {} if self.element_type else 0
 
     def update(self, scope, params):
+        if not self._length_manually_set and self.var_name and self.var_name in params:
+            val = params[self.var_name]
+            if isinstance(val, (list, tuple)):
+                self._length = len(val)
         super().update(scope, params)
         for i, cell in enumerate(self._cells):
             if isinstance(cell, VisualElem):
