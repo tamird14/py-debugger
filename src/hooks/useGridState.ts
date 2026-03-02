@@ -568,8 +568,8 @@ export function useGridState() {
         };
         setOrOverlay(cellKey(position.row, position.col), resolvedCellData);
       } else {
-        const shapeW = resolveSizeValue(obj.data.shapeProps?.width, currentVariables, evaluateExpression) || 1;
-        const shapeH = resolveSizeValue(obj.data.shapeProps?.height, currentVariables, evaluateExpression) || 1;
+        const shapeW = resolveSizeValue(obj.data.shapeProps?.width, currentVariables, evaluateExpression) ?? 1;
+        const shapeH = resolveSizeValue(obj.data.shapeProps?.height, currentVariables, evaluateExpression) ?? 1;
         objW = shapeW;
         objH = shapeH;
         const rawW: SizeValue = obj.data.shapeProps?.width ?? 1;
@@ -787,8 +787,8 @@ export function useGridState() {
         }
       } else {
         // Single cell objects or shapes/labels with width/height
-        const width = resolveSizeValue(obj.data.label?.width ?? obj.data.shapeProps?.width, variables, evaluateExpression) || 1;
-        const height = resolveSizeValue(obj.data.label?.height ?? obj.data.shapeProps?.height, variables, evaluateExpression) || 1;
+        const width = resolveSizeValue(obj.data.label?.width ?? obj.data.shapeProps?.width, variables, evaluateExpression) ?? 1;
+        const height = resolveSizeValue(obj.data.label?.height ?? obj.data.shapeProps?.height, variables, evaluateExpression) ?? 1;
         for (let r = 0; r < height; r++) {
           for (let c = 0; c < width; c++) {
             for (let j = 0; j < length; j++) {
@@ -899,8 +899,8 @@ export function useGridState() {
             }
           }
         } else {
-          const width = resolveSizeValue(obj.data.label?.width ?? obj.data.shapeProps?.width, currentVariables, evaluateExpression) || 1;
-          const height = resolveSizeValue(obj.data.label?.height ?? obj.data.shapeProps?.height, currentVariables, evaluateExpression) || 1;
+          const width = resolveSizeValue(obj.data.label?.width ?? obj.data.shapeProps?.width, currentVariables, evaluateExpression) ?? 1;
+          const height = resolveSizeValue(obj.data.label?.height ?? obj.data.shapeProps?.height, currentVariables, evaluateExpression) ?? 1;
           for (let r = 0; r < height; r++) {
             for (let c = 0; c < width; c++) {
               if (pos.row + r === position.row && pos.col + c === position.col) {
@@ -1222,9 +1222,13 @@ export function useGridState() {
     position: CellPosition,
     vars: VariableDictionary
   ): { id: string; obj: GridObject; arrayId?: string } | null => {
+    let best: { id: string; obj: GridObject; arrayId?: string } | null = null;
+
     for (const [id, obj] of objectsMap) {
       if (obj.data.panel) continue;
       const pos = resolveObjectPosition(obj, objectsMap, vars);
+
+      let match: { id: string; obj: GridObject; arrayId?: string } | null = null;
 
       if (obj.data.arrayInfo) {
         const arrayId = obj.data.arrayInfo.id;
@@ -1235,7 +1239,7 @@ export function useGridState() {
         }
         const arrSizes = collectArrayCellSizes(arrayId, objectsMap);
         const useAccum = arrSizes.some(s => s.width > 1 || s.height > 1);
-        for (let i = 0; i < arrayLength; i++) {
+        outer: for (let i = 0; i < arrayLength; i++) {
           const offset = useAccum ? getAccumulatedArrayOffset(direction, i, arrSizes) : getArrayOffset(direction, i);
           const cellW = arrSizes[i]?.width ?? 1;
           const cellH = arrSizes[i]?.height ?? 1;
@@ -1243,7 +1247,8 @@ export function useGridState() {
             for (let c = 0; c < cellW; c++) {
               if (pos.row + offset.rowDelta + r === position.row &&
                   pos.col + offset.colDelta + c === position.col) {
-                return { id, obj, arrayId };
+                match = { id, obj, arrayId };
+                break outer;
               }
             }
           }
@@ -1255,7 +1260,8 @@ export function useGridState() {
             const cellRow = pos.row + o.data.array2dInfo.row;
             const cellCol = pos.col + o.data.array2dInfo.col;
             if (cellRow === position.row && cellCol === position.col) {
-              return { id, obj, arrayId };
+              match = { id, obj, arrayId };
+              break;
             }
           }
         }
@@ -1268,11 +1274,15 @@ export function useGridState() {
           vars, evaluateExpression) || 1;
         if (position.row >= pos.row && position.row < pos.row + height &&
             position.col >= pos.col && position.col < pos.col + width) {
-          return { id, obj };
+          match = { id, obj };
         }
       }
+
+      if (match && (best === null || (obj.zOrder ?? 0) > (best.obj.zOrder ?? 0))) {
+        best = match;
+      }
     }
-    return null;
+    return best;
   }, [resolveObjectPosition]);
 
   const updateCellStyle = useCallback((position: CellPosition, style: Partial<CellStyle>) => {

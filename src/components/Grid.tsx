@@ -12,6 +12,14 @@ const GRID_ROWS = 50;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+interface GhostArrayCell {
+  rowDelta: number;
+  colDelta: number;
+  width: number;
+  height: number;
+  cellData: CellData;
+}
+
 interface GridProps {
   cells: Map<string, CellData>;
   overlayCells?: Map<string, CellData>;
@@ -52,6 +60,7 @@ interface RenderableObject {
   heightCells?: number;
   isArrayStart?: boolean;
   arrayLength?: number;
+  is2DArrayStart?: boolean;
 }
 
 export type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
@@ -60,8 +69,8 @@ export type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 interface CellEventHandlers {
   onSelectCell: (position: CellPosition | null) => void;
   onContextMenu: (e: React.MouseEvent, row: number, col: number) => void;
-  onDragStart: (e: React.MouseEvent, grabRow: number, grabCol: number, originRow: number, originCol: number, cellData?: CellData, widthCells?: number, heightCells?: number) => void;
-  onResizeStart?: (e: React.MouseEvent, originRow: number, originCol: number, widthCells: number, heightCells: number, handle: ResizeHandle, cellData: CellData, isCircle: boolean) => void;
+  onDragStart: (e: React.MouseEvent, grabRow: number, grabCol: number, originRow: number, originCol: number, cellData?: CellData, widthCells?: number, heightCells?: number, ghostArrayCells?: GhostArrayCell[]) => void;
+  onResizeStart?: (e: React.MouseEvent, originRow: number, originCol: number, widthCells: number, heightCells: number, handle: ResizeHandle, cellData: CellData) => void;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
@@ -111,6 +120,23 @@ const GridArrayObject = memo(function GridArrayObject({
     maxColEnd = Math.max(maxColEnd, offset.colDelta + cellW);
   }
 
+  // Pre-compute ghost cells for drag (full array layout, relative to origin)
+  const ghostArrayCells: GhostArrayCell[] = [];
+  for (let i = 0; i < length; i++) {
+    const offset = useAccum ? getAccumulatedArrayOffset(direction, i, perCellSizes) : getArrayOffset(direction, i);
+    const r = obj.row + offset.rowDelta;
+    const c = obj.col + offset.colDelta;
+    const cd = cells.get(cellKey(r, c));
+    if (!cd || cd.arrayInfo?.elementConfig?.visible === false) continue;
+    ghostArrayCells.push({
+      rowDelta: offset.rowDelta,
+      colDelta: offset.colDelta,
+      width: perCellSizes[i]?.width ?? 1,
+      height: perCellSizes[i]?.height ?? 1,
+      cellData: cd,
+    });
+  }
+
   // Build per-cell wrappers
   const arrayCells: React.ReactNode[] = [];
   for (let i = 0; i < length; i++) {
@@ -137,7 +163,7 @@ const GridArrayObject = memo(function GridArrayObject({
         }}
         onClick={() => handlers.onSelectCell({ row, col })}
         onContextMenu={(e) => handlers.onContextMenu(e, row, col)}
-        onMouseDown={(e) => handlers.onDragStart(e, row, col, obj.row, obj.col, cellData)}
+        onMouseDown={(e) => handlers.onDragStart(e, row, col, obj.row, obj.col, cellData, undefined, undefined, ghostArrayCells)}
       >
         <GridCell
           row={row}
@@ -172,6 +198,84 @@ const GridArrayObject = memo(function GridArrayObject({
   );
 });
 
+/** Renders a 2D array variable as a grid of individually-interactive cells. */
+const GridArray2DObject = memo(function GridArray2DObject({
+  obj,
+  cells,
+  selectedCell,
+  handlers,
+}: {
+  obj: RenderableObject;
+  cells: Map<string, CellData>;
+  selectedCell: CellPosition | null;
+  handlers: CellEventHandlers;
+}) {
+  const info = obj.cellData.array2dInfo!;
+  const { numRows, numCols } = info;
+
+  // Collect all cells and compute ghost cells for drag (relative to origin obj.row/obj.col)
+  const ghostArrayCells: GhostArrayCell[] = [];
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < numCols; c++) {
+      const cd = cells.get(cellKey(obj.row + r, obj.col + c));
+      if (!cd?.array2dInfo) continue;
+      ghostArrayCells.push({ rowDelta: r, colDelta: c, width: 1, height: 1, cellData: cd });
+    }
+  }
+
+  const gridCells: React.ReactNode[] = [];
+  for (let r = 0; r < numRows; r++) {
+    for (let c = 0; c < numCols; c++) {
+      const row = obj.row + r;
+      const col = obj.col + c;
+      const cellData = cells.get(cellKey(row, col));
+      if (!cellData) continue;
+      const isSelected = selectedCell?.row === row && selectedCell?.col === col;
+      gridCells.push(
+        <div
+          key={`${r}-${c}`}
+          style={{
+            position: 'absolute',
+            left: c * CELL_SIZE,
+            top: r * CELL_SIZE,
+            width: CELL_SIZE,
+            height: CELL_SIZE,
+          }}
+          onClick={() => handlers.onSelectCell({ row, col })}
+          onContextMenu={(e) => handlers.onContextMenu(e, row, col)}
+          onMouseDown={(e) => handlers.onDragStart(e, row, col, obj.row, obj.col, cellData, undefined, undefined, ghostArrayCells)}
+        >
+          <GridCell
+            row={row}
+            col={col}
+            cellData={cellData}
+            isSelected={isSelected}
+            onSelect={() => handlers.onSelectCell({ row, col })}
+            size={CELL_SIZE}
+            width={CELL_SIZE}
+            height={CELL_SIZE}
+          />
+        </div>
+      );
+    }
+  }
+
+  return (
+    <div
+      className="absolute transition-all duration-300 ease-out"
+      style={{
+        left: obj.col * CELL_SIZE,
+        top: obj.row * CELL_SIZE,
+        width: numCols * CELL_SIZE,
+        height: numRows * CELL_SIZE,
+        zIndex: 10,
+      }}
+    >
+      {gridCells}
+    </div>
+  );
+});
+
 const HANDLE_SIZE = 8;
 const HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
@@ -183,10 +287,13 @@ const GridSingleObject = memo(function GridSingleObject({
   obj: RenderableObject;
   handlers: CellEventHandlers;
 }) {
-  const widthCells = Math.max(1, obj.widthCells || 1);
-  const heightCells = Math.max(1, obj.heightCells || 1);
+  const widthCells = obj.widthCells ?? 1;
+  const heightCells = obj.heightCells ?? 1;
+  
+  // Don't render objects with 0 width or height
+  if (widthCells <= 0 || heightCells <= 0) return null;
+  
   const canResize = !!(obj.cellData.sizeResizable && (obj.cellData.shape || obj.cellData.label) && handlers.onResizeStart);
-  const isCircle = obj.cellData.shape === 'circle';
 
   const getSubCell = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -257,7 +364,7 @@ const GridSingleObject = memo(function GridSingleObject({
             onMouseDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              handlers.onResizeStart?.(e, obj.row, obj.col, widthCells, heightCells, handle, obj.cellData, isCircle);
+              handlers.onResizeStart?.(e, obj.row, obj.col, widthCells, heightCells, handle, obj.cellData);
             }}
           />
         ))}
@@ -300,6 +407,7 @@ export function Grid({
     cellData: CellData;
     widthCells: number;
     heightCells: number;
+    arrayCells?: GhostArrayCell[];
   } | null>(null);
 
   const resizeStateRef = useRef<{
@@ -311,7 +419,6 @@ export function Grid({
     startMouseRow: number;
     startMouseCol: number;
     cellData: CellData;
-    isCircle: boolean;
     lastNewRow: number;
     lastNewCol: number;
     lastNewW: number;
@@ -406,7 +513,7 @@ export function Grid({
   );
 
   const handleDragStart = useCallback(
-    (e: React.MouseEvent, grabRow: number, grabCol: number, originRow: number, originCol: number, cellData?: CellData, widthCells?: number, heightCells?: number) => {
+    (e: React.MouseEvent, grabRow: number, grabCol: number, originRow: number, originCol: number, cellData?: CellData, widthCells?: number, heightCells?: number, ghostArrayCells?: GhostArrayCell[]) => {
       if (!cellData?.positionBinding) return;
       const rowAllowed = cellData.positionBinding.row.type === 'fixed' || cellData.positionBinding.row.type === 'hardcoded';
       const colAllowed = cellData.positionBinding.col.type === 'fixed' || cellData.positionBinding.col.type === 'hardcoded';
@@ -422,7 +529,7 @@ export function Grid({
         rowAllowed,
         colAllowed,
       };
-      setDragGhost({ row: originRow, col: originCol, cellData, widthCells: w, heightCells: h });
+      setDragGhost({ row: originRow, col: originCol, cellData, widthCells: w, heightCells: h, arrayCells: ghostArrayCells });
       setIsDragging(true);
     },
     [onDragBegin]
@@ -512,7 +619,7 @@ export function Grid({
   );
 
   const handleResizeStart = useCallback(
-    (e: React.MouseEvent, originRow: number, originCol: number, widthCells: number, heightCells: number, handle: ResizeHandle, cellData: CellData, isCircle: boolean) => {
+    (e: React.MouseEvent, originRow: number, originCol: number, widthCells: number, heightCells: number, handle: ResizeHandle, cellData: CellData) => {
       e.preventDefault();
       e.stopPropagation();
       onDragBegin?.();
@@ -527,7 +634,6 @@ export function Grid({
         startMouseRow: target.row,
         startMouseCol: target.col,
         cellData,
-        isCircle,
         lastNewRow: originRow,
         lastNewCol: originCol,
         lastNewW: widthCells,
@@ -562,11 +668,6 @@ export function Grid({
       if (state.handle.includes('n')) {
         newH = Math.max(1, state.startH - dRow);
         newRow = state.originRow + (state.startH - newH);
-      }
-      if (state.isCircle) {
-        const u = Math.max(1, Math.max(newW, newH));
-        newW = u;
-        newH = u;
       }
       resizeStateRef.current = { ...state, lastNewRow: newRow, lastNewCol: newCol, lastNewW: newW, lastNewH: newH };
       setResizeGhost((prev) => (prev ? { ...prev, row: newRow, col: newCol, widthCells: newW, heightCells: newH } : null));
@@ -758,17 +859,36 @@ export function Grid({
           cellData, isSelected,
           isArrayStart: true, arrayLength,
         });
+      } else if (cellData.array2dInfo) {
+        if (processedArrays.has(cellData.array2dInfo.id)) continue;
+        processedArrays.add(cellData.array2dInfo.id);
+
+        // Find the origin cell (row=0, col=0) position in the grid
+        let startRow = row, startCol = col;
+        for (const [k, cd] of cells) {
+          if (cd.array2dInfo?.id === cellData.array2dInfo.id && cd.array2dInfo.row === 0 && cd.array2dInfo.col === 0) {
+            const [r, c] = k.split(',').map(Number);
+            startRow = r;
+            startCol = c;
+            break;
+          }
+        }
+
+        objects.push({
+          key: `array2d-${cellData.array2dInfo.id}`,
+          row: startRow, col: startCol,
+          cellData, isSelected,
+          is2DArrayStart: true,
+        });
       } else {
         const w = cellData.label?.width ?? cellData.shapeProps?.width ?? 1;
         const h = cellData.label?.height ?? cellData.shapeProps?.height ?? 1;
         const baseWidth = typeof w === 'number' ? w : (w && 'value' in w ? (w as { value: number }).value : 1);
         const baseHeight = typeof h === 'number' ? h : (h && 'value' in h ? (h as { value: number }).value : 1);
-        const isUniformShape = cellData.shape === 'circle';
-        const uniformSize = Math.max(baseWidth, baseHeight);
         objects.push({
           key, row, col, cellData, isSelected,
-          widthCells: isUniformShape ? uniformSize : baseWidth,
-          heightCells: isUniformShape ? uniformSize : baseHeight,
+          widthCells: baseWidth,
+          heightCells: baseHeight,
         });
       }
     }
@@ -781,16 +901,14 @@ export function Grid({
       const h = cellData.label?.height ?? cellData.shapeProps?.height ?? 1;
       const baseWidth = typeof w === 'number' ? w : (w && 'value' in w ? (w as { value: number }).value : 1);
       const baseHeight = typeof h === 'number' ? h : (h && 'value' in h ? (h as { value: number }).value : 1);
-      const isUniformShape = cellData.shape === 'circle';
-      const uniformSize = Math.max(baseWidth, baseHeight);
       objects.push({
         key: 'overlay-' + key,
         row,
         col,
         cellData,
         isSelected,
-        widthCells: isUniformShape ? uniformSize : baseWidth,
-        heightCells: isUniformShape ? uniformSize : baseHeight,
+        widthCells: baseWidth,
+        heightCells: baseHeight,
       });
     }
 
@@ -810,6 +928,14 @@ export function Grid({
     return objectsToRender.map((obj) =>
       obj.isArrayStart && obj.arrayLength ? (
         <GridArrayObject
+          key={obj.key}
+          obj={obj}
+          cells={cells}
+          selectedCell={selectedCell}
+          handlers={cellEventHandlers}
+        />
+      ) : obj.is2DArrayStart ? (
+        <GridArray2DObject
           key={obj.key}
           obj={obj}
           cells={cells}
@@ -964,7 +1090,33 @@ export function Grid({
         )}
 
         {/* Drag ghost: greyed-out preview at mouse, does not erase other objects */}
-        {dragGhost && (
+        {dragGhost && dragGhost.arrayCells ? (
+          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 30, opacity: 0.4 }}>
+            {dragGhost.arrayCells.map((cell, i) => (
+              <div
+                key={i}
+                className="absolute"
+                style={{
+                  left: (dragGhost.col + cell.colDelta) * CELL_SIZE,
+                  top: (dragGhost.row + cell.rowDelta) * CELL_SIZE,
+                  width: cell.width * CELL_SIZE,
+                  height: cell.height * CELL_SIZE,
+                }}
+              >
+                <GridCell
+                  row={dragGhost.row + cell.rowDelta}
+                  col={dragGhost.col + cell.colDelta}
+                  cellData={cell.cellData}
+                  isSelected={false}
+                  onSelect={() => {}}
+                  size={CELL_SIZE}
+                  width={cell.width * CELL_SIZE}
+                  height={cell.height * CELL_SIZE}
+                />
+              </div>
+            ))}
+          </div>
+        ) : dragGhost ? (
           <div
             className="absolute pointer-events-none"
             style={{
@@ -987,7 +1139,7 @@ export function Grid({
               height={CELL_SIZE * dragGhost.heightCells}
             />
           </div>
-        )}
+        ) : null}
 
         {/* Panel drag ghost: lifted panel outline that follows the cursor */}
         {panelDragGhost && (
