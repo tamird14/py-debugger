@@ -30,6 +30,39 @@ interface CodeEditorProps {
 }
 
 // Sample code for demo
+export const ARRAY_SUM = `# sub array sum
+arr = [0, 2, 3, 4, 2, 1, 3, 2, 5, 6]
+n = len(arr)
+
+s = 6
+start, end = 0, 0
+cur_sum = 0
+while end <= n:
+    if start == end:
+        if end == n:
+            break
+        cur_sum += arr[end]
+        end += 1
+        continue
+
+    if cur_sum < s:
+        if end == n:
+            break
+        cur_sum += arr[end]
+        end += 1
+        continue
+
+    if cur_sum > s:
+        cur_sum -= arr[start]
+        start += 1
+        continue
+
+    print(f'found arr[{start}:{end}]')
+    cur_sum -= arr[start]
+    start += 1
+    continue
+`;
+
 export const SAMPLE_CODE = `# Bubble Sort Example
 arr = [64, 34, 25, 12, 22, 11, 90]
 n = len(arr)
@@ -502,6 +535,13 @@ export function CodeEditor({
                   </button>
                   {showSamples && (
                     <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl z-10 min-w-[200px]">
+                      <button
+                        type="button"
+                        onClick={() => loadSample(ARRAY_SUM)}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        Sub array sum
+                      </button>
                       <button
                         type="button"
                         onClick={() => loadSample(SAMPLE_CODE)}
