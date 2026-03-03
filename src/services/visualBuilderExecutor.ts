@@ -38,8 +38,7 @@ exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
 
     // Serialize and return
     const resultJson = await py.runPythonAsync('_serialize_visual_builder()');
-    const elements = JSON.parse(resultJson) as VisualBuilderElement[];
-    const elementsRaw: any[] = JSON.parse(resultJson); // each element is a dictionary
+    const elementsRaw: VisualBuilderElement[] = JSON.parse(resultJson);
     
     const wrappedElements = elementsRaw.map(el => {
       switch(el.type) {

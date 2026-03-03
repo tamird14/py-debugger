@@ -1,4 +1,5 @@
 import type { VisualBuilderElement } from "./visualBuilder";
+import type { CellData } from "./grid";
 
 export interface ShapeArrayElementConfig {
   type?: 'circle' | 'rect' | 'arrow';
@@ -12,7 +13,7 @@ export interface ShapeArrayElementConfig {
 }
 
 export class Array1D implements VisualBuilderElement {
-  type: 'array' = 'array';
+  type = 'array' as const;
   position: [number, number];
   visible: boolean = true;
   length: number;
@@ -29,7 +30,7 @@ export class Array1D implements VisualBuilderElement {
     this.length = Math.max(1, Math.min(50, el.length ?? 5));
     this.direction = (['left', 'down', 'up'].includes(el.direction!) ? el.direction! : 'right') as 'right' | 'left' | 'down' | 'up';
     this.values = el.values ?? [];
-    this.elementType = el.elementType === 'rect' ? 'rectangle' : el.elementType as any;
+    this.elementType = el.elementType;
     this.showIndex = el.showIndex ?? !this.elementType;
     this.varName = el.varName;
     this.alpha = el.alpha ?? 1;
@@ -37,14 +38,14 @@ export class Array1D implements VisualBuilderElement {
   }
 
   draw(idxStart: number = 0, VB_PREFIX: string = 'vb-') {
-    const cells: { cellId: string; data: any }[] = [];
+    const cells: { cellId: string; data: Partial<CellData> }[] = [];
     let idx = idxStart;
     const arrayId = `${VB_PREFIX}array-${idx++}`;
 
     for (let i = 0; i < this.length; i++) {
       const cellId = `${VB_PREFIX}${idx++}`;
       const rawValue = this.values[i];
-      const arrayInfoBase: any = {
+      const arrayInfoBase: NonNullable<CellData['arrayInfo']> = {
         id: arrayId,
         index: i,
         direction: this.direction,
@@ -68,7 +69,7 @@ export class Array1D implements VisualBuilderElement {
           visible: cfg.visible,
         };
       } else if (this.elementType) {
-        arrayInfoBase.elementType = this.elementType;
+        arrayInfoBase.elementType = this.elementType === 'rect' ? 'rectangle' : this.elementType;
         arrayInfoBase.elementConfig = { width: 1, height: 1 };
       } else {
         arrayInfoBase.value = typeof rawValue === 'number' || typeof rawValue === 'string' ? rawValue : 0;
@@ -91,7 +92,7 @@ export class Array1D implements VisualBuilderElement {
 }
 
 export class Array2D implements VisualBuilderElement {
-  type: 'array2d' = 'array2d';
+  type = 'array2d' as const;
   position: [number, number];
   visible: boolean = true;
   numRows: number;
@@ -112,9 +113,9 @@ export class Array2D implements VisualBuilderElement {
   }
 
   draw(idxStart: number = 0, VB_PREFIX: string = 'vb-') {
-    const cells: { cellId: string; data: any }[] = [];
+    const cells: { cellId: string; data: Partial<CellData> }[] = [];
     let idx = idxStart;
-    const { numRows, numCols, showIndex, varName, panelId } = this;
+    const { numRows, numCols, varName, panelId } = this;
 
     const arrayId = `${VB_PREFIX}array2d-${idx++}`;
     const showIndices = this.showIndex ?? true;

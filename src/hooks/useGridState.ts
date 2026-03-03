@@ -1,20 +1,16 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import type {
   CellPosition,
-  ShapeType,
   CellData,
   VariableDictionary,
-  CellStyle,
   Timeline,
   PositionBinding,
-  ShapeProps,
-  PositionComponent,
   SizeValue,
   OccupantInfo,
   ArrayCellSize,
 } from '../types/grid';
-import type { VisualBuilderElement, ShapeArrayElementConfig } from '../types/visualBuilder';
-import { cellKey, resolvePosition, createHardcodedBinding, getArrayOffset, getAccumulatedArrayOffset, resolveSizeValue } from '../types/grid';
+import type { VisualBuilderElement } from '../types/visualBuilder';
+import { cellKey, createHardcodedBinding, getArrayOffset, getAccumulatedArrayOffset, resolveSizeValue } from '../types/grid';
 import { evaluateExpression, getExpressionVariables } from '../utils/expressionEvaluator';
 
 const MIN_ZOOM = 0.5;
@@ -27,13 +23,6 @@ interface GridObject {
   data: CellData;
   positionBinding: PositionBinding;
   zOrder: number;
-}
-
-export interface GridObjectSnapshot {
-  id: string;
-  data: CellData;
-  positionBinding: PositionBinding;
-  zOrder?: number;
 }
 
 /**
@@ -60,14 +49,12 @@ function collectArrayCellSizes(arrayId: string, objectsMap: Map<string, GridObje
 export function useGridState() {
   // Objects are stored by ID, not position (allows position binding)
   const [objects, setObjects] = useState<Map<string, GridObject>>(new Map());
-  const [selectedCell, setSelectedCell] = useState<CellPosition | null>(null);
   const [zoom, setZoomLevel] = useState(1);
 
   // Timeline state
-  const [timeline, setTimeline] = useState<Timeline>([]);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [timeline] = useState<Timeline>([]);
+  const [currentStep] = useState(0);
 
-  const objectIdCounter = useRef(0);
   const zOrderCounter = useRef(0);
 
   const isSizeResizable = useCallback((w: SizeValue | undefined, h: SizeValue | undefined): boolean => {
@@ -78,8 +65,6 @@ export function useGridState() {
     };
     return noVars(w) && noVars(h);
   }, []);
-  const movePromptRef = useRef<{ key: string; inFlight: boolean }>({ key: '', inFlight: false });
-  const panelPromptRef = useRef<{ key: string; inFlight: boolean }>({ key: '', inFlight: false });
 
   const validateIntegerOverTimeline = useCallback((obj: GridObject, timelineData: Timeline): string | null => {
     const check = (value: number) => !Number.isInteger(value);
@@ -147,68 +132,6 @@ export function useGridState() {
     return null;
   }, []);
 
-  /** Validate proposed position/size over the full timeline. Returns first error message or null. Used to block Apply when invalid. */
-  const validateProposedOverTimeline = useCallback(
-    (
-      proposed: { row?: PositionComponent; col?: PositionComponent; width?: SizeValue; height?: SizeValue },
-      timelineData: Timeline
-    ): string | null => {
-      const check = (v: number) => !Number.isInteger(v);
-      const evalPos = (c: PositionComponent, vars: VariableDictionary): number => {
-        if (c.type === 'fixed' || c.type === 'hardcoded') return c.value;
-        if (c.type === 'variable') {
-          const x = vars[c.varName];
-          if (x && (x.type === 'int' || x.type === 'float')) return (x as { value: number }).value;
-          throw new Error(`Variable "${c.varName}" not available`);
-        }
-        return evaluateExpression(c.expression, vars);
-      };
-      const evalSize = (s: SizeValue | undefined, vars: VariableDictionary): number | undefined => {
-        if (s === undefined) return undefined;
-        if (typeof s === 'number') return s;
-        if (s.type === 'fixed') return s.value;
-        return evaluateExpression(s.expression, vars);
-      };
-      for (let step = 0; step < timelineData.length; step++) {
-        const vars = timelineData[step];
-        if (proposed.row !== undefined && (proposed.row.type === 'expression' || proposed.row.type === 'variable')) {
-          try {
-            const v = evalPos(proposed.row, vars);
-            if (check(v)) return `Row must be integer at every step (got ${v} at step ${step + 1})`;
-          } catch {
-            return `Row expression invalid at step ${step + 1}`;
-          }
-        }
-        if (proposed.col !== undefined && (proposed.col.type === 'expression' || proposed.col.type === 'variable')) {
-          try {
-            const v = evalPos(proposed.col, vars);
-            if (check(v)) return `Column must be integer at every step (got ${v} at step ${step + 1})`;
-          } catch {
-            return `Column expression invalid at step ${step + 1}`;
-          }
-        }
-        if (proposed.width !== undefined && typeof proposed.width !== 'number' && proposed.width.type === 'expression') {
-          try {
-            const v = evalSize(proposed.width, vars)!;
-            if (check(v)) return `Width must be integer at every step (got ${v} at step ${step + 1})`;
-          } catch {
-            return `Width expression invalid at step ${step + 1}`;
-          }
-        }
-        if (proposed.height !== undefined && typeof proposed.height !== 'number' && proposed.height.type === 'expression') {
-          try {
-            const v = evalSize(proposed.height, vars)!;
-            if (check(v)) return `Height must be integer at every step (got ${v} at step ${step + 1})`;
-          } catch {
-            return `Height expression invalid at step ${step + 1}`;
-          }
-        }
-      }
-      return null;
-    },
-    []
-  );
-
   const resolvePositionWithErrors = useCallback(
     (binding: PositionBinding, vars: VariableDictionary): { position: CellPosition; error?: string } => {
       const resolveComponent = (component: PositionBinding['row']): { value: number; error?: string } => {
@@ -247,56 +170,11 @@ export function useGridState() {
     []
   );
 
-  const resolveObjectPosition = useCallback(
-    (
-      obj: GridObject,
-      objectsMap: Map<string, GridObject>,
-      vars: VariableDictionary
-    ): CellPosition => {
-      let pos = resolvePosition(obj.positionBinding, vars, evaluateExpression);
-      if (obj.data.panelId) {
-        for (const [, panelObj] of objectsMap) {
-          if (panelObj.data.panel?.id === obj.data.panelId) {
-            const panelPos = resolvePosition(panelObj.positionBinding, vars, evaluateExpression);
-            pos = { row: pos.row + panelPos.row, col: pos.col + panelPos.col };
-            break;
-          }
-        }
-      }
-      return {
-        row: Math.max(0, Math.min(49, pos.row)),
-        col: Math.max(0, Math.min(49, pos.col)),
-      };
-    },
-    []
-  );
-
   // Current variables from timeline
   const currentVariables = useMemo((): VariableDictionary => {
     if (timeline.length === 0) return {};
     return timeline[Math.min(currentStep, timeline.length - 1)] || {};
   }, [timeline, currentStep]);
-
-  const getPanelContextAt = useCallback(
-    (position: CellPosition): { id: string; origin: CellPosition; width: number; height: number } | null => {
-      for (const [, obj] of objects) {
-        if (!obj.data.panel) continue;
-        const origin = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
-        const width = resolveSizeValue(obj.data.panel.width, currentVariables, evaluateExpression);
-        const height = resolveSizeValue(obj.data.panel.height, currentVariables, evaluateExpression);
-        if (
-          position.row >= origin.row &&
-          position.row < origin.row + height &&
-          position.col >= origin.col &&
-          position.col < origin.col + width
-        ) {
-          return { id: obj.data.panel.id, origin, width, height };
-        }
-      }
-      return null;
-    },
-    [objects, currentVariables]
-  );
 
   const renderLabelText = useCallback((template: string, vars: VariableDictionary): string => {
     return template.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (_match, varName) => {
@@ -585,69 +463,7 @@ export function useGridState() {
     }
 
     return { cells: cellMap, overlayCells: overlayMap, occupancyMap: occMap };
-  }, [objects, currentVariables, renderLabelText, timeline, validateIntegerOverTimeline, isSizeResizable]);
-
-  // Precompute all positions and sizes across timeline for objects with expression-based position/size
-  const precomputedBounds = useMemo((): Map<string, { positions: CellPosition[]; sizes: Array<{ w: number; h: number }> }> => {
-    const map = new Map<string, { positions: CellPosition[]; sizes: Array<{ w: number; h: number }> }>();
-    for (const [, obj] of objects) {
-      const hasExprPosition =
-        obj.positionBinding.row.type === 'expression' || obj.positionBinding.col.type === 'expression';
-      const w = obj.data.shapeProps?.width ?? obj.data.label?.width ?? obj.data.panel?.width;
-      const h = obj.data.shapeProps?.height ?? obj.data.label?.height ?? obj.data.panel?.height;
-      const hasExprSize =
-        (typeof w !== 'number' && w?.type === 'expression') ||
-        (typeof h !== 'number' && h?.type === 'expression');
-      if (!hasExprPosition && !hasExprSize) continue;
-      const positions: CellPosition[] = [];
-      const sizes: Array<{ w: number; h: number }> = [];
-      for (let step = 0; step < timeline.length; step++) {
-        const vars = timeline[step];
-        const pos = resolvePosition(obj.positionBinding, vars, evaluateExpression);
-        positions.push({ row: Math.max(0, Math.min(49, pos.row)), col: Math.max(0, Math.min(49, pos.col)) });
-        const width = resolveSizeValue(w, vars, evaluateExpression);
-        const height = resolveSizeValue(h, vars, evaluateExpression);
-        sizes.push({ w: width, h: height });
-      }
-      if (positions.length > 0) map.set(obj.id, { positions, sizes });
-    }
-    return map;
-  }, [objects, timeline]);
-
-  const getMinimumPanelSize = useCallback(
-    (panelId: string): { width: number; height: number } => {
-      let minW = 1;
-      let minH = 1;
-      for (const [, obj] of objects) {
-        if (obj.data.panelId !== panelId) continue;
-        const pre = precomputedBounds.get(obj.id);
-        if (pre) {
-          for (let i = 0; i < pre.positions.length; i++) {
-            const pos = pre.positions[i];
-            const s = pre.sizes[i] ?? { w: 1, h: 1 };
-            minW = Math.max(minW, pos.col + s.w);
-            minH = Math.max(minH, pos.row + s.h);
-          }
-        } else {
-          const pos = resolveObjectPosition(obj, objects, currentVariables);
-          const w = resolveSizeValue(
-            obj.data.label?.width ?? obj.data.shapeProps?.width,
-            currentVariables,
-            evaluateExpression
-          ) || 1;
-          const h = resolveSizeValue(
-            obj.data.label?.height ?? obj.data.shapeProps?.height,
-            currentVariables,
-            evaluateExpression
-          ) || 1;
-          minW = Math.max(minW, pos.col + w);
-          minH = Math.max(minH, pos.row + h);
-        }
-      }
-      return { width: minW, height: minH };
-    },
-    [objects, currentVariables, precomputedBounds]
-  );
+  }, [objects, currentVariables, renderLabelText, timeline, validateIntegerOverTimeline, isSizeResizable, resolvePositionWithErrors]);
 
   const panels = useMemo(() => {
     const result: Array<{
@@ -684,315 +500,7 @@ export function useGridState() {
     }
 
     return result;
-  }, [objects, currentVariables, timeline, validateIntegerOverTimeline, isSizeResizable]);
-
-  // Helper function to generate unique object ID
-  const generateObjectId = useCallback(() => {
-    return `obj-${objectIdCounter.current++}`;
-  }, []);
-
-  // Helper function to clear objects at positions
-  const clearOverlappingObjects = useCallback((
-    objectsMap: Map<string, GridObject>,
-    row: number,
-    startCol: number,
-    length: number,
-    variables: VariableDictionary
-  ): Map<string, GridObject> => {
-    const next = new Map(objectsMap);
-    const objectsToClear = new Set<string>();
-
-    // Find objects that would be at the target positions
-    for (const [id, obj] of next) {
-      const pos = resolveObjectPosition(obj, next, variables);
-
-      if (obj.data.panel) {
-        // Panels are containers; do not clear them when placing children.
-        continue;
-      }
-      if (obj.data.arrayInfo) {
-        // For arrays, check if any cell overlaps
-        const arrayId = obj.data.arrayInfo.id;
-        let arrayLength = 0;
-        let isFirstCell = true;
-        const direction = obj.data.arrayInfo.direction || 'right';
-
-        for (const [, o] of next) {
-          if (o.data.arrayInfo?.id === arrayId) {
-            arrayLength++;
-            if (o.data.arrayInfo.index < obj.data.arrayInfo.index) {
-              isFirstCell = false;
-            }
-          }
-        }
-
-        if (isFirstCell) {
-          const arrSizes = collectArrayCellSizes(arrayId, next);
-          for (let i = 0; i < arrayLength; i++) {
-            const offset = arrSizes.some(s => s.width > 1 || s.height > 1)
-              ? getAccumulatedArrayOffset(direction, i, arrSizes)
-              : getArrayOffset(direction, i);
-            const cellW = arrSizes[i]?.width ?? 1;
-            const cellH = arrSizes[i]?.height ?? 1;
-            for (let r = 0; r < cellH; r++) {
-              for (let c = 0; c < cellW; c++) {
-                const arrayRow = pos.row + offset.rowDelta + r;
-                const arrayCol = pos.col + offset.colDelta + c;
-                for (let j = 0; j < length; j++) {
-                  if (arrayRow === row && arrayCol === startCol + j) {
-                    if (i === 0 || obj.data.arrayInfo.index === 0) {
-                      objectsToClear.add(arrayId);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      } else if (obj.data.array2dInfo) {
-        const arrayId = obj.data.array2dInfo.id;
-        // Only process the anchor cell to avoid redundant work
-        if (obj.data.array2dInfo.row === 0 && obj.data.array2dInfo.col === 0) {
-          for (const [, o] of next) {
-            if (o.data.array2dInfo?.id === arrayId) {
-              const cellRow = pos.row + o.data.array2dInfo.row;
-              const cellCol = pos.col + o.data.array2dInfo.col;
-              for (let j = 0; j < length; j++) {
-                if (cellRow === row && cellCol === startCol + j) {
-                  objectsToClear.add(arrayId);
-                }
-              }
-            }
-          }
-        }
-      } else {
-        // Single cell objects or shapes/labels with width/height
-        const width = resolveSizeValue(obj.data.label?.width ?? obj.data.shapeProps?.width, variables, evaluateExpression) ?? 1;
-        const height = resolveSizeValue(obj.data.label?.height ?? obj.data.shapeProps?.height, variables, evaluateExpression) ?? 1;
-        for (let r = 0; r < height; r++) {
-          for (let c = 0; c < width; c++) {
-            for (let j = 0; j < length; j++) {
-              if (pos.row + r === row && pos.col + c === startCol + j) {
-                objectsToClear.add(id);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Clear identified objects
-    for (const [id, obj] of next) {
-      if (objectsToClear.has(id) ||
-          (obj.data.arrayInfo && objectsToClear.has(obj.data.arrayInfo.id)) ||
-          (obj.data.array2dInfo && objectsToClear.has(obj.data.array2dInfo.id))) {
-        next.delete(id);
-      }
-    }
-
-    return next;
-  }, []);
-
-  const selectCell = useCallback((position: CellPosition | null) => {
-  }, []);
-
-  const setShape = useCallback((position: CellPosition, shape: ShapeType, panelContext?: { id: string; origin: CellPosition }) => {
-
-  }, [generateObjectId, clearOverlappingObjects, currentVariables]);
-
-  const clearCell = useCallback((position: CellPosition): string | undefined => {
-    return "hitPanelId";
-  }, [currentVariables]);
-
-  const addPanel = useCallback((position: CellPosition, width: number, height: number, title?: string) => {
-    const objectId = generateObjectId();
-    const panelId = `panel-${objectIdCounter.current++}`;
-    const zOrder = zOrderCounter.current++;
-    setObjects((prev) => {
-      const next = clearOverlappingObjects(prev, position.row, position.col, width, currentVariables);
-      next.set(objectId, {
-        id: objectId,
-        data: {
-          objectId,
-          panel: { id: panelId, width, height, title },
-          shapeProps: { width, height },
-          zOrder,
-        },
-        positionBinding: createHardcodedBinding(position),
-        zOrder,
-      });
-      return next;
-    });
-  }, [generateObjectId, clearOverlappingObjects, currentVariables]);
-
-  // Keep loadVariables for backward compatibility - wraps single dict in array
-  const loadVariables = useCallback((dict: VariableDictionary) => {
-    setTimeline([dict]);
-    setCurrentStep(0);
-  }, []);
-
-  const nextStep = useCallback(() => {
-    setCurrentStep((prev) => Math.min(prev + 1, timeline.length - 1));
-  }, [timeline.length]);
-
-  const prevStep = useCallback(() => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
-  }, []);
-
-  const goToStep = useCallback((step: number) => {
-    setCurrentStep(Math.max(0, Math.min(step, timeline.length - 1)));
-  }, [timeline.length]);
-
-  const placeIntVariable = useCallback((position: CellPosition, name: string, value: number, panelContext?: { id: string; origin: CellPosition }) => {
-
-  }, [generateObjectId, clearOverlappingObjects, currentVariables]);
-
-  const placeArrayVariable = useCallback((position: CellPosition, name: string, values: Array<number | string>, panelContext?: { id: string; origin: CellPosition }) => {
-    const arrayId = `array-${objectIdCounter.current++}`;
-    const targetPosition = panelContext
-      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
-      : position;
-
-    const zOrder = zOrderCounter.current++;
-    setObjects((prev) => {
-      const next = clearOverlappingObjects(prev, position.row, position.col, values.length, currentVariables);
-      const binding = createHardcodedBinding(targetPosition);
-
-      for (let i = 0; i < values.length; i++) {
-        const objectId = generateObjectId();
-        next.set(objectId, {
-          id: objectId,
-          data: {
-            objectId,
-            arrayInfo: {
-              id: arrayId,
-              index: i,
-              value: values[i],
-              varName: name,
-              direction: 'right',
-            },
-            panelId: panelContext?.id,
-            zOrder,
-          },
-          positionBinding: binding,
-          zOrder,
-        });
-      }
-      return next;
-    });
-  }, [generateObjectId, clearOverlappingObjects, currentVariables]);
-
-  const place2DArrayVariable = useCallback((position: CellPosition, name: string, values: (number | string)[][], panelContext?: { id: string; origin: CellPosition }) => {
-    const arrayId = `array2d-${objectIdCounter.current++}`;
-    const targetPosition = panelContext
-      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
-      : position;
-
-    const numRows = values.length;
-    const numCols = values[0]?.length ?? 0;
-    const zOrder = zOrderCounter.current++;
-
-    setObjects((prev) => {
-      let next = clearOverlappingObjects(prev, position.row, position.col, numCols, currentVariables);
-      for (let r = 1; r < numRows; r++) {
-        next = clearOverlappingObjects(next, position.row + r, position.col, numCols, currentVariables);
-      }
-      const binding = createHardcodedBinding(targetPosition);
-
-      for (let r = 0; r < numRows; r++) {
-        for (let c = 0; c < numCols; c++) {
-          const objectId = generateObjectId();
-          next.set(objectId, {
-            id: objectId,
-            data: {
-              objectId,
-              array2dInfo: {
-                id: arrayId,
-                row: r,
-                col: c,
-                numRows,
-                numCols,
-                value: values[r]?.[c],
-                varName: name,
-                showIndices: true,
-              },
-              panelId: panelContext?.id,
-              zOrder,
-            },
-            positionBinding: binding,
-            zOrder,
-          });
-        }
-      }
-      return next;
-    });
-  }, [generateObjectId, clearOverlappingObjects, currentVariables]);
-
-  const setCellValue = useCallback((position: CellPosition, value: string | number) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-
-      for (const [, obj] of next) {
-        const pos = resolveObjectPosition(obj, next, currentVariables);
-
-        if (obj.data.arrayInfo) {
-          const arrayId = obj.data.arrayInfo.id;
-          let found = false;
-          const direction = obj.data.arrayInfo.direction || 'right';
-          const arrSizes = collectArrayCellSizes(arrayId, next);
-          const useAccum = arrSizes.some(s => s.width > 1 || s.height > 1);
-
-          for (const [oid, o] of next) {
-            if (o.data.arrayInfo?.id === arrayId) {
-              const idx = o.data.arrayInfo.index;
-              const offset = useAccum ? getAccumulatedArrayOffset(direction, idx, arrSizes) : getArrayOffset(direction, idx);
-              if (pos.row + offset.rowDelta === position.row && pos.col + offset.colDelta === position.col) {
-                next.set(oid, {
-                  ...o,
-                  data: {
-                    ...o.data,
-                    arrayInfo: {
-                      ...o.data.arrayInfo!,
-                      value,
-                    },
-                  },
-                });
-                found = true;
-                break;
-              }
-            }
-          }
-          if (found) break;
-        }
-      }
-
-      return next;
-    });
-  }, [currentVariables]);
-
-  const getObjectAtCell = useCallback(
-    (row: number, col: number): CellData | undefined => {
-      const list = occupancyMap.get(cellKey(row, col));
-      if (!list) return undefined;
-      for (let i = list.length - 1; i >= 0; i--) {
-        if (!list[i].isPanel) return list[i].cellData;
-      }
-      return undefined;
-    },
-    [occupancyMap]
-  );
-
-  const getOccupantAtCell = useCallback(
-    (row: number, col: number): OccupantInfo | undefined => {
-      const list = occupancyMap.get(cellKey(row, col));
-      if (!list) return undefined;
-      for (let i = list.length - 1; i >= 0; i--) {
-        if (!list[i].isPanel) return list[i];
-      }
-      return undefined;
-    },
-    [occupancyMap]
-  );
+  }, [objects, currentVariables, timeline, validateIntegerOverTimeline, isSizeResizable, resolvePositionWithErrors]);
 
   const zoomIn = useCallback(() => {
     setZoomLevel((prev) => Math.min(prev + ZOOM_STEP, MAX_ZOOM));
@@ -1006,394 +514,9 @@ export function useGridState() {
     setZoomLevel(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value)));
   }, []);
 
-  const findObjectByCell = useCallback((
-    objectsMap: Map<string, GridObject>,
-    position: CellPosition,
-    vars: VariableDictionary
-  ): { id: string; obj: GridObject; arrayId?: string } | null => {
-    let best: { id: string; obj: GridObject; arrayId?: string } | null = null;
-
-    for (const [id, obj] of objectsMap) {
-      if (obj.data.panel) continue;
-      const pos = resolveObjectPosition(obj, objectsMap, vars);
-
-      let match: { id: string; obj: GridObject; arrayId?: string } | null = null;
-
-      if (obj.data.arrayInfo) {
-        const arrayId = obj.data.arrayInfo.id;
-        const direction = obj.data.arrayInfo.direction || 'right';
-        let arrayLength = 0;
-        for (const [, o] of objectsMap) {
-          if (o.data.arrayInfo?.id === arrayId) arrayLength++;
-        }
-        const arrSizes = collectArrayCellSizes(arrayId, objectsMap);
-        const useAccum = arrSizes.some(s => s.width > 1 || s.height > 1);
-        outer: for (let i = 0; i < arrayLength; i++) {
-          const offset = useAccum ? getAccumulatedArrayOffset(direction, i, arrSizes) : getArrayOffset(direction, i);
-          const cellW = arrSizes[i]?.width ?? 1;
-          const cellH = arrSizes[i]?.height ?? 1;
-          for (let r = 0; r < cellH; r++) {
-            for (let c = 0; c < cellW; c++) {
-              if (pos.row + offset.rowDelta + r === position.row &&
-                  pos.col + offset.colDelta + c === position.col) {
-                match = { id, obj, arrayId };
-                break outer;
-              }
-            }
-          }
-        }
-      } else if (obj.data.array2dInfo) {
-        const arrayId = obj.data.array2dInfo.id;
-        for (const [, o] of objectsMap) {
-          if (o.data.array2dInfo?.id === arrayId) {
-            const cellRow = pos.row + o.data.array2dInfo.row;
-            const cellCol = pos.col + o.data.array2dInfo.col;
-            if (cellRow === position.row && cellCol === position.col) {
-              match = { id, obj, arrayId };
-              break;
-            }
-          }
-        }
-      } else {
-        const width = resolveSizeValue(
-          obj.data.label?.width ?? obj.data.shapeProps?.width,
-          vars, evaluateExpression) || 1;
-        const height = resolveSizeValue(
-          obj.data.label?.height ?? obj.data.shapeProps?.height,
-          vars, evaluateExpression) || 1;
-        if (position.row >= pos.row && position.row < pos.row + height &&
-            position.col >= pos.col && position.col < pos.col + width) {
-          match = { id, obj };
-        }
-      }
-
-      if (match && (best === null || (obj.zOrder ?? 0) > (best.obj.zOrder ?? 0))) {
-        best = match;
-      }
-    }
-    return best;
-  }, [resolveObjectPosition]);
-
-  const updateCellStyle = useCallback((position: CellPosition, style: Partial<CellStyle>) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-      const target = findObjectByCell(next, position, currentVariables);
-      if (!target) return next;
-
-      if (target.arrayId) {
-        for (const [oid, o] of next) {
-          if (o.data.arrayInfo?.id === target.arrayId || o.data.array2dInfo?.id === target.arrayId) {
-            next.set(oid, {
-              ...o,
-              data: { ...o.data, style: { ...o.data.style, ...style } },
-            });
-          }
-        }
-      } else {
-        next.set(target.id, {
-          ...target.obj,
-          data: { ...target.obj.data, style: { ...target.obj.data.style, ...style } },
-        });
-      }
-      return next;
-    });
-  }, [currentVariables, findObjectByCell]);
-
-  const setPositionBinding = useCallback((position: CellPosition, binding: PositionBinding) => {
-    const getPanelInfo = (panelId?: string): { id: string; origin: CellPosition; width: number; height: number } | null => {
-      if (!panelId) return null;
-      for (const [, pobj] of objects) {
-        if (pobj.data.panel?.id === panelId) {
-          const origin = resolvePosition(pobj.positionBinding, currentVariables, evaluateExpression);
-          const width = resolveSizeValue(pobj.data.panel.width, currentVariables, evaluateExpression);
-          const height = resolveSizeValue(pobj.data.panel.height, currentVariables, evaluateExpression);
-          return { id: panelId, origin, width, height };
-        }
-      }
-      return null;
-    };
-
-    const target = findObjectByCell(objects, position, currentVariables);
-    if (!target) return;
-
-    const panelInfo = getPanelInfo(target.obj.data.panelId);
-    let nextBinding = binding;
-    const rowFixed = binding.row.type === 'fixed' || binding.row.type === 'hardcoded';
-    const colFixed = binding.col.type === 'fixed' || binding.col.type === 'hardcoded';
-    if (panelInfo && rowFixed && colFixed) {
-      const rowValue = (binding.row as { value: number }).value - panelInfo.origin.row;
-      const colValue = (binding.col as { value: number }).value - panelInfo.origin.col;
-      nextBinding = createHardcodedBinding({
-        row: Math.max(0, rowValue),
-        col: Math.max(0, colValue),
-      });
-      const outOfBounds =
-        rowValue < 0 ||
-        colValue < 0 ||
-        rowValue >= panelInfo.height ||
-        colValue >= panelInfo.width;
-      if (outOfBounds) {
-        const promptKey = `${panelInfo.id}:${rowValue},${colValue}`;
-        if (panelPromptRef.current.inFlight && panelPromptRef.current.key === promptKey) {
-          return;
-        }
-        panelPromptRef.current = { key: promptKey, inFlight: true };
-        const extend = window.confirm('Target is outside the panel. Extend the panel to include it?');
-        panelPromptRef.current = { key: promptKey, inFlight: false };
-        if (!extend) return;
-        const minSize = getMinimumPanelSize(panelInfo.id);
-        const requestedW = Math.max(panelInfo.width, colValue + 1);
-        const requestedH = Math.max(panelInfo.height, rowValue + 1);
-        const newWidth = Math.max(requestedW, minSize.width);
-        const newHeight = Math.max(requestedH, minSize.height);
-        setObjects((prev) => {
-          const next = new Map(prev);
-          for (const [pid, pobj] of next) {
-            if (pobj.data.panel?.id === panelInfo.id) {
-              next.set(pid, {
-                ...pobj,
-                data: {
-                  ...pobj.data,
-                  panel: {
-                    ...pobj.data.panel,
-                    width: newWidth,
-                    height: newHeight,
-                  },
-                  shapeProps: { ...pobj.data.shapeProps, width: newWidth, height: newHeight },
-                },
-              });
-              break;
-            }
-          }
-          return next;
-        });
-      }
-    }
-
-    setObjects((prev) => {
-      const next = new Map(prev);
-      if (target.arrayId) {
-        for (const [oid, o] of next) {
-          if (o.data.arrayInfo?.id === target.arrayId || o.data.array2dInfo?.id === target.arrayId) {
-            next.set(oid, {
-              ...o,
-              positionBinding: nextBinding,
-            });
-          }
-        }
-      } else {
-        next.set(target.id, {
-          ...target.obj,
-          positionBinding: nextBinding,
-        });
-      }
-      return next;
-    });
-  }, [objects, currentVariables, resolveObjectPosition, getMinimumPanelSize, findObjectByCell]);
-
-  const updateShapeProps = useCallback((position: CellPosition, shapeProps: Partial<ShapeProps>) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-      const target = findObjectByCell(next, position, currentVariables);
-      if (!target || target.obj.data.arrayInfo) return next;
-
-      next.set(target.id, {
-        ...target.obj,
-        data: { ...target.obj.data, shapeProps: { ...target.obj.data.shapeProps, ...shapeProps } },
-      });
-      return next;
-    });
-  }, [currentVariables, findObjectByCell]);
-
-  const updateIntVarDisplay = useCallback((position: CellPosition, display: 'name-value' | 'value-only') => {
-
-  }, [currentVariables, findObjectByCell]);
-
-  const updateArrayDirection = useCallback((position: CellPosition, direction: 'right' | 'left' | 'down' | 'up') => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-
-      for (const [, obj] of next) {
-        const pos = resolveObjectPosition(obj, next, currentVariables);
-        if (!obj.data.arrayInfo) continue;
-
-        const arrayId = obj.data.arrayInfo.id;
-        let arrayLength = 0;
-        for (const [, o] of next) {
-          if (o.data.arrayInfo?.id === arrayId) arrayLength++;
-        }
-
-        const arrSizes = collectArrayCellSizes(arrayId, next);
-        const useAccum = arrSizes.some(s => s.width > 1 || s.height > 1);
-        const curDir = obj.data.arrayInfo.direction || 'right';
-        for (let i = 0; i < arrayLength; i++) {
-          const offset = useAccum ? getAccumulatedArrayOffset(curDir, i, arrSizes) : getArrayOffset(curDir, i);
-          const cellW = arrSizes[i]?.width ?? 1;
-          const cellH = arrSizes[i]?.height ?? 1;
-          let matched = false;
-          for (let r = 0; r < cellH && !matched; r++) {
-            for (let c = 0; c < cellW && !matched; c++) {
-              if (pos.row + offset.rowDelta + r === position.row && pos.col + offset.colDelta + c === position.col) {
-                matched = true;
-              }
-            }
-          }
-          if (matched) {
-            for (const [oid, o] of next) {
-              if (o.data.arrayInfo?.id === arrayId) {
-                next.set(oid, {
-                  ...o,
-                  data: {
-                    ...o.data,
-                    arrayInfo: {
-                      ...o.data.arrayInfo!,
-                      direction,
-                    },
-                  },
-                });
-              }
-            }
-            return next;
-          }
-        }
-      }
-
-      return next;
-    });
-  }, [currentVariables]);
-
-  const setPanelForObject = useCallback((position: CellPosition, panelId: string | null) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-      const target = findObjectByCell(next, position, currentVariables);
-      if (!target) return next;
-
-      if (target.arrayId) {
-        for (const [oid, o] of next) {
-          if (o.data.arrayInfo?.id === target.arrayId || o.data.array2dInfo?.id === target.arrayId) {
-            next.set(oid, {
-              ...o,
-              data: { ...o.data, panelId: panelId || undefined },
-            });
-          }
-        }
-      } else {
-        next.set(target.id, {
-          ...target.obj,
-          data: { ...target.obj.data, panelId: panelId || undefined },
-        });
-      }
-      return next;
-    });
-  }, [currentVariables, findObjectByCell]);
-
-  const movePanel = useCallback((panelId: string, to: CellPosition) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-      for (const [id, obj] of next) {
-        if (obj.data.panel?.id === panelId) {
-          next.set(id, {
-            ...obj,
-            positionBinding: createHardcodedBinding(to),
-          });
-          break;
-        }
-      }
-      return next;
-    });
-  }, []);
-
-  const updatePanel = useCallback((panelId: string, updates: { title?: string; width?: number; height?: number }) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-      for (const [id, obj] of next) {
-        if (obj.data.panel?.id === panelId) {
-          const updatedPanel = { ...obj.data.panel };
-          if (updates.title !== undefined) updatedPanel.title = updates.title;
-          if (updates.width !== undefined) updatedPanel.width = updates.width;
-          if (updates.height !== undefined) updatedPanel.height = updates.height;
-          next.set(id, {
-            ...obj,
-            data: {
-              ...obj.data,
-              panel: updatedPanel,
-              shapeProps: {
-                ...obj.data.shapeProps,
-                width: updatedPanel.width,
-                height: updatedPanel.height,
-              },
-            },
-          });
-          break;
-        }
-      }
-      return next;
-    });
-  }, []);
-
-  const deletePanel = useCallback((panelId: string, keepChildren: boolean) => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-      // Find panel origin and remove the panel object
-      let panelOrigin: CellPosition = { row: 0, col: 0 };
-      for (const [id, obj] of next) {
-        if (obj.data.panel?.id === panelId) {
-          panelOrigin = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
-          next.delete(id);
-          break;
-        }
-      }
-      // Handle children
-      for (const [id, obj] of next) {
-        if (obj.data.panelId === panelId) {
-          if (!keepChildren) {
-            next.delete(id);
-          } else {
-            // Convert relative position to absolute so objects stay in place
-            const childPos = resolvePosition(obj.positionBinding, currentVariables, evaluateExpression);
-            next.set(id, {
-              ...obj,
-              data: { ...obj.data, panelId: undefined },
-              positionBinding: createHardcodedBinding({
-                row: childPos.row + panelOrigin.row,
-                col: childPos.col + panelOrigin.col,
-              }),
-            });
-          }
-        }
-      }
-      return next;
-    });
-  }, [currentVariables]);
-
-  // Get list of numeric variable names (int and float) for binding UI
-  const intVariableNames = useMemo((): string[] => {
-    return Object.entries(currentVariables)
-      .filter(([, v]) => v.type === 'int' || v.type === 'float')
-      .map(([name]) => name);
-  }, [currentVariables]);
-
-  const getObjectsSnapshot = useCallback((): GridObjectSnapshot[] => {
-    return Array.from(objects.values()).map((obj) => ({
-      id: obj.id,
-      data: obj.data,
-      positionBinding: obj.positionBinding,
-      zOrder: obj.zOrder,
-    }));
-  }, [objects]);
-
-  const loadObjectsSnapshot = useCallback((snapshot: GridObjectSnapshot[]) => {
-
-
-  }, []);
-
   const VB_PREFIX = 'vb-';
 
   const loadVisualBuilderObjects = useCallback((elements: VisualBuilderElement[]) => {
-    function rgbToHex(rgb: [number, number, number]): string {
-      return '#' + rgb.map((x) => Math.max(0, Math.min(255, Math.floor(x))).toString(16).padStart(2, '0')).join('');
-    }
-
     setObjects((prev) => {
       const next = new Map(prev);
       for (const [id] of next) {
@@ -1455,13 +578,12 @@ export function useGridState() {
         const targetPosition = panelId ? { row: el.position[0], col: el.position[1] } : pos;
         const binding = createHardcodedBinding(targetPosition);
 
-        const alpha = el.alpha ?? 1;
-        if ('draw' in el && typeof (el as any).draw === 'function') {
-          const drawResult = (el as any).draw(idx, VB_PREFIX);
+        if ('draw' in el && typeof (el as Record<string, unknown>).draw === 'function') {
+          const drawResult = (el as Record<string, unknown> & { draw: (i: number, prefix: string) => Record<string, unknown> }).draw(idx, VB_PREFIX);
 
           if ('cells' in drawResult) {
-            // It's an array or 2D array
-            for (const cell of drawResult.cells) {
+            const { cells: drawCells, nextIdx } = drawResult as { cells: Array<{ cellId: string; data: CellData }>; nextIdx: number };
+            for (const cell of drawCells) {
               next.set(cell.cellId, {
                 id: cell.cellId,
                 data: { ...cell.data, objectId: cell.cellId, panelId, zOrder: z },
@@ -1469,12 +591,11 @@ export function useGridState() {
                 zOrder: z++,
               });
             }
-            idx = drawResult.nextIdx;
+            idx = nextIdx;
           } else {
-            // It's a simple shape
             next.set(gridId, {
               id: gridId,
-              data: { ...drawResult, objectId: gridId, panelId, zOrder: z },
+              data: { ...(drawResult as CellData), objectId: gridId, panelId, zOrder: z },
               positionBinding: binding,
               zOrder: z++,
             });

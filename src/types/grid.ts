@@ -1,4 +1,3 @@
-import type { Label } from "./label";
 
 export type ShapeType = 'circle' | 'square' | 'rectangle' | 'arrow';
 

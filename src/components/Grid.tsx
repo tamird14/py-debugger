@@ -279,7 +279,6 @@ const GridArray2DObject = memo(function GridArray2DObject({
 });
 
 const HANDLE_SIZE = 8;
-const HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
 /** Renders a single-origin object (shape, label, int variable). */
 const GridSingleObject = memo(function GridSingleObject({
@@ -305,21 +304,6 @@ const GridSingleObject = memo(function GridSingleObject({
       row: obj.row + Math.min(subRow, heightCells - 1),
       col: obj.col + Math.min(subCol, widthCells - 1),
     };
-  };
-
-  const getHandleStyle = (handle: ResizeHandle): React.CSSProperties => {
-    const w = CELL_SIZE * widthCells;
-    const h = CELL_SIZE * heightCells;
-    const x = (col: number) => (col === 0 ? 0 : col === 1 ? w / 2 - HANDLE_SIZE / 2 : w - HANDLE_SIZE);
-    const y = (row: number) => (row === 0 ? 0 : row === 1 ? h / 2 - HANDLE_SIZE / 2 : h - HANDLE_SIZE);
-    if (handle === 'n') return { top: 0, left: x(1), width: HANDLE_SIZE, height: HANDLE_SIZE };
-    if (handle === 's') return { bottom: 0, left: x(1), width: HANDLE_SIZE, height: HANDLE_SIZE };
-    if (handle === 'e') return { top: y(1), right: 0, width: HANDLE_SIZE, height: HANDLE_SIZE };
-    if (handle === 'w') return { top: y(1), left: 0, width: HANDLE_SIZE, height: HANDLE_SIZE };
-    if (handle === 'ne') return { top: 0, right: 0, width: HANDLE_SIZE, height: HANDLE_SIZE };
-    if (handle === 'nw') return { top: 0, left: 0, width: HANDLE_SIZE, height: HANDLE_SIZE };
-    if (handle === 'se') return { bottom: 0, right: 0, width: HANDLE_SIZE, height: HANDLE_SIZE };
-    return { bottom: 0, left: 0, width: HANDLE_SIZE, height: HANDLE_SIZE };
   };
 
   return (

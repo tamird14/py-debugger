@@ -52,13 +52,6 @@ export interface VisualBuilderElement extends VisualBuilderElementBase {
 }
 
 
-interface CellStyle {
-  color?: string;
-  opacity?: number;
-  fontSize?: number;
-}
-
-
 // Schema for Monaco autocomplete, hover, and API reference panel
 export interface PropertyDoc {
   name: string;
