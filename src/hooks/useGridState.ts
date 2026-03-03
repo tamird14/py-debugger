@@ -533,25 +533,7 @@ export function useGridState() {
       let objW = 1;
       let objH = 1;
 
-      if (obj.data.intVar) {
-        let cellData = { ...obj.data, positionBinding: obj.positionBinding };
-        const intVar = currentVariables[obj.data.intVar.name];
-        if (intVar && intVar.type === 'int') {
-          cellData = {
-            ...cellData,
-            intVar: { ...cellData.intVar!, value: intVar.value },
-          };
-        } else if (intVar && intVar.type === 'float') {
-          cellData = {
-            ...cellData,
-            intVar: { ...cellData.intVar!, value: Math.floor(intVar.value) },
-          };
-        } else {
-          cellData = { ...cellData, invalidReason: `Variable "${obj.data.intVar.name}" not available` };
-        }
-        resolvedCellData = { ...cellData, invalidReason: cellData.invalidReason || invalidReason };
-        setOrOverlay(cellKey(position.row, position.col), resolvedCellData);
-      } else if (obj.data.label) {
+      if (obj.data.label) {
         const renderedText = renderLabelText(obj.data.label.text, currentVariables);
         const labelW = resolveSizeValue(obj.data.label.width, currentVariables, evaluateExpression) || 1;
         const labelH = resolveSizeValue(obj.data.label.height, currentVariables, evaluateExpression) || 1;
@@ -862,26 +844,7 @@ export function useGridState() {
   }, [timeline.length]);
 
   const placeIntVariable = useCallback((position: CellPosition, name: string, value: number, panelContext?: { id: string; origin: CellPosition }) => {
-    const objectId = generateObjectId();
-    const zOrder = zOrderCounter.current++;
-    const targetPosition = panelContext
-      ? { row: position.row - panelContext.origin.row, col: position.col - panelContext.origin.col }
-      : position;
-    setObjects((prev) => {
-      const next = clearOverlappingObjects(prev, position.row, position.col, 1, currentVariables);
-      next.set(objectId, {
-        id: objectId,
-        data: {
-          objectId,
-          intVar: { name, value, display: 'name-value' },
-          panelId: panelContext?.id,
-          zOrder,
-        },
-        positionBinding: createHardcodedBinding(targetPosition),
-        zOrder,
-      });
-      return next;
-    });
+
   }, [generateObjectId, clearOverlappingObjects, currentVariables]);
 
   const placeArrayVariable = useCallback((position: CellPosition, name: string, values: Array<number | string>, panelContext?: { id: string; origin: CellPosition }) => {
@@ -1243,17 +1206,7 @@ export function useGridState() {
   }, [currentVariables, findObjectByCell]);
 
   const updateIntVarDisplay = useCallback((position: CellPosition, display: 'name-value' | 'value-only') => {
-    setObjects((prev) => {
-      const next = new Map(prev);
-      const target = findObjectByCell(next, position, currentVariables);
-      if (!target || !target.obj.data.intVar) return next;
 
-      next.set(target.id, {
-        ...target.obj,
-        data: { ...target.obj.data, intVar: { ...target.obj.data.intVar, display } },
-      });
-      return next;
-    });
   }, [currentVariables, findObjectByCell]);
 
   const updateArrayDirection = useCallback((position: CellPosition, direction: 'right' | 'left' | 'down' | 'up') => {

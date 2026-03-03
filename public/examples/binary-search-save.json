@@ -63,11 +63,6 @@
       "positionBinding": { "row": { "type": "hardcoded", "value": 8 }, "col": { "type": "hardcoded", "value": 5 } }
     },
     {
-      "id": "obj-7",
-      "data": { "objectId": "obj-7", "intVar": { "name": "target", "value": 10, "display": "name-value" } },
-      "positionBinding": { "row": { "type": "hardcoded", "value": 6 }, "col": { "type": "hardcoded", "value": 5 } }
-    },
-    {
       "id": "obj-8",
       "data": {
         "objectId": "obj-8",

@@ -37,9 +37,6 @@ const THEME_COLORS = {
     array2dName: '#6d28d9',
     array2dValue: '#1f2937',
     array2dIndex: '#7c3aed',
-    intVarText: '#065f46',
-    intVarEquals: '#059669',
-    intVarBorder: '#34d399',
     labelText: '#1f2937',
     panelTitle: '#64748b',
   },
@@ -50,9 +47,6 @@ const THEME_COLORS = {
     array2dName: '#c4b5fd',
     array2dValue: '#f9fafb',
     array2dIndex: '#c4b5fd',
-    intVarText: '#a7f3d0',
-    intVarEquals: '#6ee7b7',
-    intVarBorder: '#6ee7b7',
     labelText: '#f3f4f6',
     panelTitle: '#cbd5e1',
   },
@@ -74,8 +68,6 @@ export const GridCell = memo(function GridCell({
   const isShapeCell = !!ShapeComponent;
   const isArrayCell = !!cellData?.arrayInfo;
   const is2DArrayCell = !!cellData?.array2dInfo;
-  const isIntVarCell = !!cellData?.intVar;
-  const isLabelCell = !!cellData?.label;
   const isPanelCell = !!cellData?.panel;
 
   const customColor = cellData?.style?.color;
@@ -100,7 +92,6 @@ export const GridCell = memo(function GridCell({
     if (customColor) return 'border-2';
     if (is2DArrayCell) return 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 dark:border-violet-600';
     if (isArrayCell) return 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600';
-    if (isIntVarCell) return 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 dark:border-emerald-600';
     if (isSelected) return 'bg-blue-100 dark:bg-blue-900/40';
     return 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700';
   };
@@ -231,52 +222,6 @@ export const GridCell = memo(function GridCell({
           valueStyle={{ color: customColor || t.array2dValue, fontSize: customFontSize }} 
           indexStyle={{ color: customColor || t.array2dIndex, fontSize: Math.max(7, Math.round(customFontSize * 0.65)) }} />
       )}
-
-      {/* Int variable cell display */}
-      {isIntVarCell && (() => {
-        const displayMode = cellData.intVar!.display || 'name-value';
-        const text = displayMode === 'value-only'
-          ? `${cellData.intVar!.value}`
-          : `${cellData.intVar!.name}=${cellData.intVar!.value}`;
-        const charWidth = customFontSize * 0.6;
-        const textWidth = text.length * charWidth + 8; // +8 for padding
-        const cellsNeeded = Math.ceil(textWidth / size);
-        const totalWidth = cellsNeeded * size;
-        const bgColor = customColor ? `${customColor}20` : undefined;
-        const borderColor = customColor || t.intVarBorder;
-        const textColor = customColor || t.intVarText;
-
-        return (
-          <div
-            className="absolute inset-y-0 left-0 flex items-center z-10"
-            style={{ overflow: 'visible' }}
-          >
-            <div
-              className={`h-full flex items-center justify-center ${!customColor ? 'bg-emerald-50 dark:bg-emerald-900/30' : ''}`}
-              style={{
-                width: totalWidth,
-                backgroundColor: bgColor,
-                border: `${customLineWidth}px solid ${borderColor}`,
-              }}
-            >
-              <span
-                className="font-mono whitespace-nowrap px-1"
-                style={{ color: textColor, fontSize: customFontSize }}
-              >
-                {displayMode === 'value-only' ? (
-                  <span className="font-bold">{cellData.intVar!.value}</span>
-                ) : (
-                  <>
-                    <span className="font-semibold">{cellData.intVar!.name}</span>
-                    <span style={{ color: customColor || t.intVarEquals }}>=</span>
-                    <span className="font-bold">{cellData.intVar!.value}</span>
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Label display */}
       {!!cellData?.label && (

@@ -181,12 +181,6 @@ export interface CellData {
   };
   // For 2D array variables
   array2dInfo?: Array2dInfo;
-  // For int variables
-  intVar?: {
-    name: string;
-    value: number;
-    display?: 'name-value' | 'value-only';
-  };
   // For labels
   label?: LabelData;
   // For panels (container)
