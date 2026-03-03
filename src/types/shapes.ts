@@ -36,7 +36,8 @@ export class Rect extends BasicShape {
     return {
       shape: 'rectangle',
       style: { color: this.color ? this.rgbToHex(this.color) : '#ef0bef', opacity: this.alpha },
-      shapeProps: { width: this.width, height: this.height },
+      bounds: { width: this.width, height: this.height },
+      basicShape: this,
     };
   }
 
@@ -57,7 +58,8 @@ export class Circle extends BasicShape {
     return {
       shape: 'circle',
       style: { color: this.rgbToHex(this.color, '#3b82f6'), opacity: this.alpha },
-      shapeProps: { width: this.width, height: this.height },
+      bounds: { width: this.width, height: this.height },
+      basicShape: this,
     };
   }
 
@@ -82,12 +84,14 @@ export class Arrow extends BasicShape {
     return {
       shape: 'arrow',
       style: { color: this.rgbToHex(this.color, '#10b981'), opacity: this.alpha },
+      bounds: { width: this.width, height: this.height },
       shapeProps: {
         width: this.width,
         height: this.height,
         orientation: this.orientation,
         rotation: this.rotation,
       },
+      basicShape: this,
     };
   }
 

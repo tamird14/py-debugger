@@ -294,8 +294,6 @@ const GridSingleObject = memo(function GridSingleObject({
   
   // Don't render objects with 0 width or height
   if (widthCells <= 0 || heightCells <= 0) return null;
-  
-  const canResize = !!(obj.cellData.sizeResizable && (obj.cellData.shape || obj.cellData.label) && handlers.onResizeStart);
 
   const getSubCell = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -355,21 +353,7 @@ const GridSingleObject = memo(function GridSingleObject({
         width={CELL_SIZE * widthCells}
         height={CELL_SIZE * heightCells}
       />
-      {obj.isSelected && canResize &&
-        HANDLES.map((handle) => (
-          <div
-            key={handle}
-            role="button"
-            tabIndex={0}
-            className="absolute bg-blue-500 rounded border border-white cursor-se-resize hover:bg-blue-600"
-            style={getHandleStyle(handle)}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handlers.onResizeStart?.(e, obj.row, obj.col, widthCells, heightCells, handle, obj.cellData);
-            }}
-          />
-        ))}
+      
     </div>
   );
 });
@@ -885,10 +869,8 @@ export function Grid({
           is2DArrayStart: true,
         });
       } else {
-        const w = cellData.label?.width ?? cellData.shapeProps?.width ?? 1;
-        const h = cellData.label?.height ?? cellData.shapeProps?.height ?? 1;
-        const baseWidth = typeof w === 'number' ? w : (w && 'value' in w ? (w as { value: number }).value : 1);
-        const baseHeight = typeof h === 'number' ? h : (h && 'value' in h ? (h as { value: number }).value : 1);
+        const baseWidth = cellData.bounds?.width ?? 1;
+        const baseHeight = cellData.bounds?.height ?? 1;
         objects.push({
           key, row, col, cellData, isSelected,
           widthCells: baseWidth,
@@ -901,10 +883,8 @@ export function Grid({
     for (const [key, cellData] of overlayCells) {
       const [row, col] = key.split(',').map(Number);
       const isSelected = selectedCell?.row === row && selectedCell?.col === col;
-      const w = cellData.label?.width ?? cellData.shapeProps?.width ?? 1;
-      const h = cellData.label?.height ?? cellData.shapeProps?.height ?? 1;
-      const baseWidth = typeof w === 'number' ? w : (w && 'value' in w ? (w as { value: number }).value : 1);
-      const baseHeight = typeof h === 'number' ? h : (h && 'value' in h ? (h as { value: number }).value : 1);
+      const baseWidth = cellData.bounds?.width ?? 1;
+      const baseHeight = cellData.bounds?.height ?? 1;
       objects.push({
         key: 'overlay-' + key,
         row,

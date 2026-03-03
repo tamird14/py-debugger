@@ -1,3 +1,5 @@
+import type { Label } from "./label";
+
 export type ShapeType = 'circle' | 'square' | 'rectangle' | 'arrow';
 
 export interface CellPosition {
@@ -135,10 +137,18 @@ export interface LabelData {
   height?: SizeValue;   // in cells
 }
 
+export interface CellBounds {
+  width?: number;    // in cells
+  height?: number;   // in cells
+}
+
 export interface CellData {
   // Unique identifier for this object (for tracking across position changes)
   objectId?: string;
   shape?: ShapeType;
+
+  bounds?: CellBounds, 
+
   // For array variables
   arrayInfo?: {
     id: string;

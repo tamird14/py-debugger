@@ -1,8 +1,9 @@
 import { loadPyodide } from './pythonExecutor';
-import { Label, type VisualBuilderElement } from '../types/visualBuilder';
+import { type VisualBuilderElement } from '../types/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
 import { Arrow, Circle, Rect } from '../types/shapes';
 import { Array1D, Array2D } from '../types/arrayShapes';
+import { Label } from '../types/label';
 
 export interface ExecuteVisualBuilderResult {
   success: boolean;

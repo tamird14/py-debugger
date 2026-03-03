@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { CellData, ShapeType, ArrowOrientation } from '../types/grid';
 import { Circle, Square, Arrow } from './shapes';
 import { useTheme } from '../contexts/ThemeContext';
+import { LabelView } from '../types/LabelView';
 
 interface GridCellProps {
   row: number;
@@ -303,15 +304,11 @@ export const GridCell = memo(function GridCell({
       })()}
 
       {/* Label display */}
-      {isLabelCell && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span
-            className="font-mono text-center whitespace-pre-wrap"
-            style={{ color: customColor || t.labelText, fontSize: customFontSize }}
-          >
-            {cellData.label!.text}
-          </span>
-        </div>
+      {!!cellData?.label && (
+        <LabelView
+          text={cellData.label.text}
+          style={{ color: customColor || t.labelText, fontSize: customFontSize }}
+        />
       )}
 
       {/* Panel display */}
