@@ -51,14 +51,3 @@ export function ArrayValueView({
   );
 }
 
-export const VAR_SCHEMA: ClassDoc = {
-  className: 'Var',
-  constructorParams: 'var_name: str = ""',
-  docstring: 'Displays a variable value (int/float) from the current execution step.',
-  properties: [
-    { name: 'var_name', type: 'str', description: 'Name of the variable to display.' },
-    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).' },
-    { name: 'display', type: 'str', description: '"name-value" or "value-only".' },
-    { name: 'visible', type: 'bool', description: 'Show or hide the variable cell.' },
-  ],
-};

@@ -61,17 +61,3 @@ export function ArrayShapeView({
   );
 }
 
-export const ARRAY_SCHEMA: ClassDoc = {
-  className: 'Array',
-  constructorParams: 'var_name: str = "", element_type: str | None = None',
-  docstring: 'Displays an array of values or visual shapes. Two approaches: (1) Dict config: set element_type="circle"/"rect"/"arrow", then arr[i] = {\'color\': (r,g,b), ...}. (2) Instance mode: arr[i] = Circle()/Rect()/Arrow() — shape position is controlled by the array, all other properties (color, size, alpha, V() bindings) come from the element. Elements with width/height > 1 shift subsequent cells accordingly.',
-  properties: [
-    { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums"). Ignored when element_type is set.' },
-    { name: 'element_type', type: 'str | None', description: 'Shape type for each cell: "circle", "rect", or "arrow". None for value arrays or instance mode (default).' },
-    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the first cell.' },
-    { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout of cells.' },
-    { name: 'length', type: 'int', description: 'Number of cells to reserve (default 5). Use >= max array length.' },
-    { name: 'show_index', type: 'bool', description: 'Whether to show [i] index labels. Default True for value arrays, False for shape arrays.' },
-    { name: 'visible', type: 'bool', description: 'Show or hide the array.' },
-  ],
-};

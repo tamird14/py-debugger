@@ -68,9 +68,8 @@ export interface ClassDoc {
 }
 
 import { RECT_SCHEMA, CIRCLE_SCHEMA, ARROW_SCHEMA } from './shapes';
-import { LABEL_SCHEMA } from '../components/views/LabelView';
-import { VAR_SCHEMA } from '../components/views/ArrayValueView';
-import { ARRAY_SCHEMA } from '../components/views/ArrayShapeView';
+import { LABEL_SCHEMA } from './label';
+import { ARRAY_SCHEMA } from './arrayShapes';
 import { PANEL_SCHEMA } from '../components/views/PanelView';
 
 const VISUAL_ELEM_BASE_SCHEMA: ClassDoc = {
@@ -88,11 +87,10 @@ export const VISUAL_ELEM_SCHEMA: ClassDoc[] = [
   VISUAL_ELEM_BASE_SCHEMA,
   PANEL_SCHEMA,
   RECT_SCHEMA,
-  LABEL_SCHEMA,
-  VAR_SCHEMA,
-  ARRAY_SCHEMA,
   CIRCLE_SCHEMA,
   ARROW_SCHEMA,
+  LABEL_SCHEMA,
+  ARRAY_SCHEMA,
 ];
 
 export function rgbToHex(rgb?: [number, number, number], defaultColor: string = '#10b981') {

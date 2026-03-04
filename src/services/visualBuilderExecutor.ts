@@ -1,8 +1,6 @@
 import { loadPyodide } from './pythonExecutor';
 import { type VisualBuilderElement } from '../types/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
-import { Array1D, Array2D } from '../types/arrayShapes';
-import { Label } from '../types/label';
 import { getConstructor } from '../types/elementRegistry';
 
 export interface ExecuteVisualBuilderResult {
@@ -45,12 +43,7 @@ exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
       if (entry) {
         return new entry(el);
       }
-      switch(el.type) {
-        case 'label': return new Label(el);
-        case 'array': return new Array1D(el);
-        case 'array2d': return new Array2D(el);
-        default: return el;
-      }
+      return el;
     });
 
     return { success: true, elements: wrappedElements };
