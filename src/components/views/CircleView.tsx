@@ -1,18 +1,22 @@
-import { Circle } from '../shapes';
+import { Circle as CircleShape } from '../shapes';
+import { rgbToHex } from '../../types/visualBuilder';
+import type { Circle } from '../../types/shapes';
+import { registerRenderer } from './rendererRegistry';
 
 interface CircleViewProps {
-  color?: string;
-  opacity?: number;
-  strokeWidth?: number;
-  rotation?: number;
+  circle: Circle;
 }
 
-export function CircleView({ color, opacity, strokeWidth, rotation = 0 }: CircleViewProps) {
+export function CircleView({ circle }: CircleViewProps) {
   return (
-    <div style={{ transform: `rotate(${rotation}deg)`, width: '100%', height: '100%' }}>
-      <Circle color={color} opacity={opacity} strokeWidth={strokeWidth} />
+    <div style={{ width: '100%', height: '100%' }}>
+      <CircleShape
+        color={rgbToHex(circle.color, '#3b82f6')}
+        opacity={circle.alpha}
+        strokeWidth={1}
+      />
     </div>
   );
 }
 
-
+registerRenderer<Circle>('circle', (element) => <CircleView circle={element as Circle} />);

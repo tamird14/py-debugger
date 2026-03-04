@@ -3,14 +3,16 @@ import type { CellData } from '../types/grid';
 import { useTheme } from '../contexts/ThemeContext';
 import { Square } from './shapes';
 import {
-  CircleView,
-  ArrowView,
   ArrayValueView,
   Array2DView,
-  LabelView,
   PanelView,
 } from './views';
 import { renderElement } from './views/rendererRegistry';
+
+import './views/RectView';
+import './views/CircleView';
+import './views/ArrowView';
+import './views/LabelView';
 
 interface GridCellProps {
   row: number;
@@ -52,9 +54,7 @@ export const GridCell = memo(function GridCell({
 }: GridCellProps) {
   const { darkMode } = useTheme();
   const t = darkMode ? THEME_COLORS.dark : THEME_COLORS.light;
-  const shapeRotation = cellData?.shapeProps?.rotation || 0;
-  const arrowOrientation = cellData?.shapeProps?.orientation;
-  const isShapeCell = !!cellData?.shape;
+  const hasElementInfo = !!cellData?.elementInfo;
   const isArrayCell = !!cellData?.arrayInfo;
   const is2DArrayCell = !!cellData?.array2dInfo;
   const isPanelCell = !!cellData?.panel;
@@ -74,7 +74,7 @@ export const GridCell = memo(function GridCell({
   };
 
   const getCellBackground = () => {
-    if (isShapeCell) return '';
+    if (hasElementInfo) return '';
     if (isArrayCell || is2DArrayCell) return '';
     if (customColor) return 'border-2';
     return 'bg-white dark:bg-gray-800';
@@ -85,7 +85,7 @@ export const GridCell = memo(function GridCell({
       width: width || size,
       height: height || size,
     };
-    if (customColor && !isShapeCell && !isArrayCell && !is2DArrayCell) {
+    if (customColor && !hasElementInfo && !isArrayCell && !is2DArrayCell) {
       style.borderColor = withOpacity(customColor, Math.min(1, Math.max(0, customOpacity)));
       style.borderWidth = customLineWidth;
       style.backgroundColor = withOpacity(customColor, Math.min(1, Math.max(0, customOpacity * 0.12)));
@@ -94,38 +94,6 @@ export const GridCell = memo(function GridCell({
   };
 
   const isInvalid = !!cellData?.invalidReason;
-
-  if (cellData?.elementInfo) {
-    return renderElement(cellData.elementInfo);
-  }
-
-  const renderStandaloneShape = () => {
-    if (!cellData?.shape) return null;
-    switch (cellData.shape) {
-      case 'arrow':
-        return (
-          <ArrowView
-            color={customColor}
-            opacity={customOpacity}
-            strokeWidth={customLineWidth}
-            orientation={arrowOrientation}
-            rotation={shapeRotation}
-          />
-        );
-      case 'circle':
-        return (
-          <CircleView
-            color={customColor}
-            opacity={customOpacity}
-            strokeWidth={customLineWidth}
-            rotation={shapeRotation}
-          />
-        );
-      case 'square':
-      default:
-        return null;
-    }
-  };
 
   const renderArrayCell = () => {
     if (!isArrayCell) return null;
@@ -181,23 +149,16 @@ export const GridCell = memo(function GridCell({
     <div
       className={`
         border transition-colors relative
-        ${!isShapeCell && !isArrayCell && !is2DArrayCell && !customColor ? 'border-gray-300 dark:border-gray-600' : ''}
-        ${isShapeCell || isArrayCell || is2DArrayCell ? 'border-transparent' : ''}
+        ${!hasElementInfo && !isArrayCell && !is2DArrayCell && !customColor ? 'border-gray-300 dark:border-gray-600' : ''}
+        ${hasElementInfo || isArrayCell || is2DArrayCell ? 'border-transparent' : ''}
         ${getCellBackground()}
         ${isInvalid ? 'opacity-50 grayscale' : ''}
       `}
       style={getCellStyle()}
     >
-      {renderStandaloneShape()}
+      {hasElementInfo && renderElement(cellData!.elementInfo!)}
       {renderArrayCell()}
       {render2DArrayCell()}
-
-      {!!cellData?.label && (
-        <LabelView
-          text={cellData.label.text}
-          style={{ color: customColor || t.labelText, fontSize: customFontSize }}
-        />
-      )}
 
       {isPanelCell && (
         <PanelView
