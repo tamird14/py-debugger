@@ -2,7 +2,6 @@ import { memo } from 'react';
 import type { CellData, ArrowOrientation } from '../types/grid';
 import { useTheme } from '../contexts/ThemeContext';
 import {
-  RectView,
   CircleView,
   ArrowView,
   ArrayShapeView,
@@ -11,6 +10,7 @@ import {
   LabelView,
   PanelView,
 } from './views';
+import { renderElement } from './views/rendererRegistry';
 
 interface GridCellProps {
   row: number;
@@ -99,6 +99,10 @@ export const GridCell = memo(function GridCell({
 
   const isInvalid = !!cellData?.invalidReason;
 
+  if (cellData?.elementInfo){
+    return renderElement(cellData.elementInfo);
+  }
+
   const renderStandaloneShape = () => {
     if (!cellData?.shape) return null;
     switch (cellData.shape) {
@@ -122,15 +126,6 @@ export const GridCell = memo(function GridCell({
           />
         );
       case 'square':
-      case 'rectangle':
-        return (
-          <RectView
-            color={customColor}
-            opacity={customOpacity}
-            strokeWidth={customLineWidth}
-            rotation={shapeRotation}
-          />
-        );
       default:
         return null;
     }

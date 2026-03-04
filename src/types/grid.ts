@@ -1,3 +1,4 @@
+import type { VisualBuilderElementBase } from "./visualBuilder";
 
 export type ShapeType = 'circle' | 'square' | 'rectangle' | 'arrow';
 
@@ -153,6 +154,8 @@ export interface CellData {
   // Unique identifier for this object (for tracking across position changes)
   objectId?: string;
   shape?: ShapeType;
+
+  elementInfo?: VisualBuilderElementBase,
 
   bounds?: CellBounds, 
 

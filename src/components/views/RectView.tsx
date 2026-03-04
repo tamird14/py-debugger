@@ -1,30 +1,14 @@
 import { Square } from '../shapes';
-import type { ClassDoc } from '../../types/visualBuilder';
+import { rgbToHex } from '../../types/visualBuilder';
+import type { Rect } from '../../types/shapes';
+import { registerRenderer } from './rendererRegistry';
 
-interface RectViewProps {
-  color?: string;
-  opacity?: number;
-  strokeWidth?: number;
-  rotation?: number;
-}
-
-export function RectView({ color, opacity, strokeWidth, rotation = 0 }: RectViewProps) {
+export function RectView({ rect }: { rect: Rect }) {
   return (
-    <div style={{ transform: `rotate(${rotation}deg)`, width: '100%', height: '100%' }}>
-      <Square color={color} opacity={opacity} strokeWidth={strokeWidth} />
+    <div style={{ transform: `rotate(${0}deg)`, width: '100%', height: '100%' }}>
+      <Square color={rgbToHex(rect.color, '#ef0bef')} opacity={rect.alpha} strokeWidth={1} />
     </div>
   );
 }
 
-export const RECT_SCHEMA: ClassDoc = {
-  className: 'Rect',
-  constructorParams: 'pos: tuple[int, int] = (0, 0)',
-  docstring: 'A rectangle shape on the grid.',
-  properties: [
-    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the rectangle.' },
-    { name: 'width', type: 'int', description: 'Width in grid cells.' },
-    { name: 'height', type: 'int', description: 'Height in grid cells.' },
-    { name: 'color', type: 'tuple[int, int, int]', description: 'RGB fill color (0-255 per channel).' },
-    { name: 'visible', type: 'bool', description: 'Show or hide the rectangle.' },
-  ],
-};
+registerRenderer<Rect>('rect', (element) => <RectView rect={element as Rect} />);

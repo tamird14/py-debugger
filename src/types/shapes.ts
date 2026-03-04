@@ -1,4 +1,5 @@
-import type { VisualBuilderElementBase } from "./visualBuilder";
+import type { CellData } from "./grid";
+import type { ClassDoc, VisualBuilderElementBase } from "./visualBuilder";
 import { rgbToHex } from "./visualBuilder";
 
 export abstract class BasicShape implements VisualBuilderElementBase {
@@ -32,16 +33,29 @@ export class Rect extends BasicShape {
   }
 
   // Add a drawing method
-  draw() {
+  draw(): CellData {
     // return the object structure used in useGridState
     return {
       shape: 'rectangle',
+      elementInfo: this,
       style: { color: rgbToHex(this.color, '#ef0bef'), opacity: this.alpha },
       bounds: { width: this.width, height: this.height },
-      basicShape: this,
     };
   }
 }
+
+export const RECT_SCHEMA: ClassDoc = {
+  className: 'Rect',
+  constructorParams: 'pos: tuple[int, int] = (0, 0)',
+  docstring: 'A rectangle shape on the grid.',
+  properties: [
+    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the rectangle.' },
+    { name: 'width', type: 'int', description: 'Width in grid cells.' },
+    { name: 'height', type: 'int', description: 'Height in grid cells.' },
+    { name: 'color', type: 'tuple[int, int, int]', description: 'RGB fill color (0-255 per channel).' },
+    { name: 'visible', type: 'bool', description: 'Show or hide the rectangle.' },
+  ],
+};
 
 export class Circle extends BasicShape {
 
