@@ -1,6 +1,7 @@
 import { loadPyodide } from './pythonExecutor';
 import { type VisualBuilderElementBase } from '../types/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
+import VISUAL_BUILDER_SHAPES_PYTHON from './visualBuilderShapes.py?raw';
 import { getConstructor } from '../types/elementRegistry';
 
 export interface ExecuteVisualBuilderResult {
@@ -16,8 +17,9 @@ export async function executeVisualBuilderCode(code: string): Promise<ExecuteVis
   try {
     const py = await loadPyodide();
 
-    // Inject class definitions and serialization
+    // Inject class definitions and serialization (base first, then shapes)
     await py.runPythonAsync(VISUAL_BUILDER_PYTHON);
+    await py.runPythonAsync(VISUAL_BUILDER_SHAPES_PYTHON);
 
     // Reset registry so each run starts fresh
     await py.runPythonAsync('VisualElem._registry = []');
