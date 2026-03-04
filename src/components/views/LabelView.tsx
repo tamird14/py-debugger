@@ -1,5 +1,3 @@
-import type { ClassDoc } from '../../types/visualBuilder';
-
 interface LabelViewProps {
   text: string;
   style?: React.CSSProperties;

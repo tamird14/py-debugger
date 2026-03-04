@@ -1,5 +1,3 @@
-import type { ClassDoc } from '../../types/visualBuilder';
-
 interface ArrayValueViewProps {
   value?: string | number;
   varName?: string;

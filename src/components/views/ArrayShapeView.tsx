@@ -1,8 +1,5 @@
-import { Arrow } from '../shapes';
-import { CircleView } from './CircleView';
-import { RectView } from './RectView';
+import { Arrow, Square, Circle } from '../shapes';
 import type { ShapeType, ArrowOrientation } from '../../types/grid';
-import type { ClassDoc } from '../../types/visualBuilder';
 
 interface ArrayShapeViewProps {
   elementType: ShapeType;
@@ -39,9 +36,17 @@ export function ArrayShapeView({
       );
     }
     if (elementType === 'circle') {
-      return <CircleView color={color} opacity={alpha} rotation={rotation} />;
+      return (
+        <div style={{ transform: `rotate(${rotation}deg)`, width: '100%', height: '100%' }}>
+          <Circle color={color} opacity={alpha} />
+        </div>
+      );
     }
-    return <RectView color={color} opacity={alpha} rotation={rotation} />;
+    return (
+      <div style={{ transform: `rotate(${rotation}deg)`, width: '100%', height: '100%' }}>
+        <Square color={color} opacity={alpha} />
+      </div>
+    );
   };
 
   return (
