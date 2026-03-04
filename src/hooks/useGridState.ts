@@ -7,7 +7,7 @@ import type {
   SizeValue,
   OccupantInfo,
 } from '../types/grid';
-import type { VisualBuilderElement } from '../types/visualBuilder';
+import type { VisualBuilderElementBase } from '../types/visualBuilder';
 import { cellKey, createHardcodedBinding, resolveSizeValue } from '../types/grid';
 import { evaluateExpression } from '../utils/expressionEvaluator';
 import type { ArrayDrawResult } from '../types/arrayShapes';
@@ -368,7 +368,7 @@ export function useGridState() {
 
   const VB_PREFIX = 'vb-';
 
-  const loadVisualBuilderObjects = useCallback((elements: VisualBuilderElement[]) => {
+  const loadVisualBuilderObjects = useCallback((elements: VisualBuilderElementBase[]) => {
     setObjects((prev) => {
       const next = new Map(prev);
       for (const [id] of next) {
@@ -383,15 +383,16 @@ export function useGridState() {
       for (const el of elements) {
         if (el.type !== 'panel') continue;
         const [row, col] = el.position;
-        const width = el.width ?? 5;
-        const height = el.height ?? 5;
+        const elAny = el as any;
+        const width = elAny.width ?? 5;
+        const height = elAny.height ?? 5;
         const gridId = `${VB_PREFIX}panel-${idx++}`;
         panelIdMap.set(gridId, { gridId, origin: { row, col } });
         next.set(gridId, {
           id: gridId,
           data: {
             objectId: gridId,
-            panel: { id: gridId, width, height, title: el.name },
+            panel: { id: gridId, width, height, title: elAny.name },
             shapeProps: { width, height },
             zOrder: z,
           },

@@ -1,5 +1,5 @@
 import { registerVisualElement } from "./elementRegistry";
-import type { ClassDoc, VisualBuilderElement } from "./visualBuilder";
+import type { ClassDoc, VisualBuilderElementBase } from "./visualBuilder";
 import { rgbToHex } from "./visualBuilder";
 
 interface CellStyle {
@@ -8,7 +8,7 @@ interface CellStyle {
   fontSize?: number;
 }
 
-export class Label implements VisualBuilderElement {
+export class Label implements VisualBuilderElementBase {
   type: 'label' = 'label';
   position: [number, number];
   visible: boolean = true;
@@ -20,7 +20,7 @@ export class Label implements VisualBuilderElement {
   alpha: number;
   panelId?: string;
 
-  constructor(el: VisualBuilderElement) {
+  constructor(el: any) {
     this.position = el.position;
     this.visible = el.visible ?? true;
     this.label = el.label;

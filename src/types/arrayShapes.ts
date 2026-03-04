@@ -1,4 +1,4 @@
-import type { VisualBuilderElement } from "./visualBuilder";
+import type { VisualBuilderElementBase } from "./visualBuilder";
 import { rgbToHex } from "./visualBuilder";
 import type { CellData, CellStyle } from "./grid";
 import type { ClassDoc } from "./visualBuilder";
@@ -120,7 +120,7 @@ export class Array2DCell {
 
 // ========================= Array1D (Panel) =========================
 
-export class Array1D implements VisualBuilderElement {
+export class Array1D implements VisualBuilderElementBase {
   type = 'array' as const;
   position: [number, number];
   visible: boolean = true;
@@ -133,11 +133,11 @@ export class Array1D implements VisualBuilderElement {
   panelId?: string;
   style?: CellStyle;
 
-  constructor(el: VisualBuilderElement) {
+  constructor(el: any) {
     this.position = el.position;
     this.length = Math.max(1, Math.min(50, el.length ?? 5));
     this.direction = (['left', 'down', 'up'].includes(el.direction!) ? el.direction! : 'right') as 'right' | 'left' | 'down' | 'up';
-    this.values = (el.values ?? []).map(v =>
+    this.values = (el.values ?? []).map((v: unknown) =>
       typeof v === 'number' || typeof v === 'string' ? v : 0
     );
     this.showIndex = el.showIndex ?? true;
@@ -221,7 +221,7 @@ registerVisualElement('array', Array1D, ARRAY_SCHEMA);
 
 // ========================= Array2D (Panel) =========================
 
-export class Array2D implements VisualBuilderElement {
+export class Array2D implements VisualBuilderElementBase {
   type = 'array2d' as const;
   position: [number, number];
   visible: boolean = true;
@@ -233,7 +233,7 @@ export class Array2D implements VisualBuilderElement {
   panelId?: string;
   style?: CellStyle;
 
-  constructor(el: VisualBuilderElement) {
+  constructor(el: any) {
     this.position = el.position;
     this.numRows = Math.max(1, Math.min(50, el.numRows ?? 3));
     this.numCols = Math.max(1, Math.min(50, el.numCols ?? 3));

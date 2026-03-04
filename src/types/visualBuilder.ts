@@ -12,32 +12,6 @@ export interface VisualBuilderElementBase {
   panelId?: string;
 }
 
-export interface VisualBuilderElement extends VisualBuilderElementBase {
-  // Type-specific
-  width?: number;
-  height?: number;
-  color?: [number, number, number];
-  label?: string;
-  fontSize?: number;
-  varName?: string;
-  display?: 'name-value' | 'value-only';
-  name?: string;
-  children?: VisualBuilderElement[];
-  panelId?: string; // for children of a panel
-  /** Array: variable name and layout */
-  direction?: ArrayDirection;
-  length?: number;
-  /** Per-cell values from the builder. */
-  values?: (number | string)[];
-  /** Whether to show [i] index labels on array cells. */
-  showIndex?: boolean;
-  /** Array2D: number of rows and columns */
-  numRows?: number;
-  numCols?: number;
-  orientation?: 'up' | 'down' | 'left' | 'right';
-  rotation?: number;
-}
-
 
 // Schema for Monaco autocomplete, hover, and API reference panel
 export interface PropertyDoc {

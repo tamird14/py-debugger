@@ -1,11 +1,11 @@
 import { loadPyodide } from './pythonExecutor';
-import { type VisualBuilderElement } from '../types/visualBuilder';
+import { type VisualBuilderElementBase } from '../types/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
 import { getConstructor } from '../types/elementRegistry';
 
 export interface ExecuteVisualBuilderResult {
   success: boolean;
-  elements: VisualBuilderElement[];
+  elements: VisualBuilderElementBase[];
   error?: string;
 }
 
@@ -36,7 +36,7 @@ exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
 
     // Serialize and return
     const resultJson = await py.runPythonAsync('_serialize_visual_builder()');
-    const elementsRaw: VisualBuilderElement[] = JSON.parse(resultJson);
+    const elementsRaw: VisualBuilderElementBase[] = JSON.parse(resultJson);
     
     const wrappedElements = elementsRaw.map(el => {
       const entry = getConstructor(el.type);
