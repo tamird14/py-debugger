@@ -167,18 +167,8 @@ function App() {
                   overlayCells={overlayCells}
                   occupancyMap={occupancyMap}
                   panels={panels}
-                  selectedCell={null}
                   zoom={zoom}
-                  interactive={false}
-                  onSelectCell={() => {}}
-                  onContextMenu={() => {}}
                   onZoom={handleZoom}
-                  onMoveCell={() => {}}
-                  onMovePanel={undefined}
-                  onPanelContextMenu={undefined}
-                  onDragBegin={undefined}
-                  onUpdateShapeProps={undefined}
-                  onUpdatePanel={undefined}
                 />
               </div>
             </div>

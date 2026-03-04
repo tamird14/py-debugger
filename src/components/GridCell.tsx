@@ -16,8 +16,6 @@ interface GridCellProps {
   row: number;
   col: number;
   cellData?: CellData;
-  isSelected: boolean;
-  onSelect: () => void;
   size: number;
   width?: number;
   height?: number;
@@ -48,8 +46,6 @@ const THEME_COLORS = {
 
 export const GridCell = memo(function GridCell({
   cellData,
-  isSelected,
-  onSelect,
   size,
   width,
   height,
@@ -85,8 +81,7 @@ export const GridCell = memo(function GridCell({
     if (customColor) return 'border-2';
     if (is2DArrayCell) return 'bg-violet-50 dark:bg-violet-900/30 border-violet-400 dark:border-violet-600';
     if (isArrayCell) return 'bg-amber-50 dark:bg-amber-900/30 border-amber-400 dark:border-amber-600';
-    if (isSelected) return 'bg-blue-100 dark:bg-blue-900/40';
-    return 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700';
+    return 'bg-white dark:bg-gray-800';
   };
 
   const getCellStyle = (): React.CSSProperties => {
@@ -180,14 +175,13 @@ export const GridCell = memo(function GridCell({
   return (
     <div
       className={`
-        border cursor-pointer transition-colors relative
-        ${isSelected && !isShapeCell && !isShapeArray && !customColor ? 'border-blue-500 border-2' : !isShapeCell && !isShapeArray && !customColor ? 'border-gray-300 dark:border-gray-600' : ''}
+        border transition-colors relative
+        ${!isShapeCell && !isShapeArray && !customColor ? 'border-gray-300 dark:border-gray-600' : ''}
         ${isShapeCell || isShapeArray ? 'border-transparent' : ''}
         ${getCellBackground()}
         ${isInvalid ? 'opacity-50 grayscale' : ''}
       `}
       style={getCellStyle()}
-      onClick={onSelect}
     >
       {renderStandaloneShape()}
 

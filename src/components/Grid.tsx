@@ -1,6 +1,6 @@
-import { useRef, useCallback, useMemo, useEffect, useState, memo } from 'react';
+import { useRef, useCallback, useMemo, memo } from 'react';
 import { GridCell } from './GridCell';
-import type { CellPosition, CellData, ShapeProps, OccupantInfo } from '../types/grid';
+import type { CellData, OccupantInfo } from '../types/grid';
 import type { ArrayCellSize } from '../types/grid';
 import { cellKey, getArrayOffset, getAccumulatedArrayOffset } from '../types/grid';
 
@@ -12,32 +12,13 @@ const GRID_ROWS = 50;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface GhostArrayCell {
-  rowDelta: number;
-  colDelta: number;
-  width: number;
-  height: number;
-  cellData: CellData;
-}
-
 interface GridProps {
   cells: Map<string, CellData>;
   overlayCells?: Map<string, CellData>;
   occupancyMap?: Map<string, OccupantInfo[]>;
   panels: Array<PanelInfo>;
-  selectedCell: CellPosition | null;
   zoom: number;
-  /** When false, the panel is display-only (no click/drag/resize/context-menu). */
-  interactive?: boolean;
-  onSelectCell: (position: CellPosition | null) => void;
-  onContextMenu: (e: React.MouseEvent, position: CellPosition) => void;
   onZoom: (delta: number) => void;
-  onMoveCell: (from: CellPosition, to: CellPosition) => void;
-  onMovePanel?: (panelId: string, to: CellPosition) => void;
-  onPanelContextMenu?: (e: React.MouseEvent, panel: PanelInfo) => void;
-  onDragBegin?: () => void;
-  onUpdateShapeProps?: (position: CellPosition, shapeProps: Partial<ShapeProps>) => void;
-  onUpdatePanel?: (panelId: string, updates: { width?: number; height?: number }) => void;
 }
 
 export interface PanelInfo {
@@ -48,7 +29,6 @@ export interface PanelInfo {
   height: number;
   title?: string;
   invalidReason?: string;
-  sizeResizable?: boolean;
 }
 
 /** Describes a renderable object on the grid (computed from cells map). */
@@ -57,7 +37,6 @@ interface RenderableObject {
   row: number;
   col: number;
   cellData: CellData;
-  isSelected: boolean;
   widthCells?: number;
   heightCells?: number;
   isArrayStart?: boolean;
@@ -65,34 +44,19 @@ interface RenderableObject {
   is2DArrayStart?: boolean;
 }
 
-export type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
-
-/** Shared event handlers passed to object sub-components. */
-interface CellEventHandlers {
-  onSelectCell: (position: CellPosition | null) => void;
-  onContextMenu: (e: React.MouseEvent, row: number, col: number) => void;
-  onDragStart: (e: React.MouseEvent, grabRow: number, grabCol: number, originRow: number, originCol: number, cellData?: CellData, widthCells?: number, heightCells?: number, ghostArrayCells?: GhostArrayCell[]) => void;
-  onResizeStart?: (e: React.MouseEvent, originRow: number, originCol: number, widthCells: number, heightCells: number, handle: ResizeHandle, cellData: CellData) => void;
-}
-
 // ── Sub-components ─────────────────────────────────────────────────────────
 
-/** Renders an array variable as a group of individually-interactive cells. */
+/** Renders an array variable as a group of cells. */
 const GridArrayObject = memo(function GridArrayObject({
   obj,
   cells,
-  selectedCell,
-  handlers,
 }: {
   obj: RenderableObject;
   cells: Map<string, CellData>;
-  selectedCell: CellPosition | null;
-  handlers: CellEventHandlers;
 }) {
   const direction = obj.cellData.arrayInfo?.direction || 'right';
   const length = obj.arrayLength || 0;
 
-  // Collect per-cell sizes from the cells map
   const perCellSizes: ArrayCellSize[] = [];
   for (let i = 0; i < length; i++) {
     const simpleOffset = getArrayOffset(direction, i);
@@ -110,7 +74,6 @@ const GridArrayObject = memo(function GridArrayObject({
   }
   const useAccum = perCellSizes.some(s => s.width > 1 || s.height > 1);
 
-  // Compute bounding box across all array offsets
   let minRowDelta = 0, minColDelta = 0, maxRowEnd = 0, maxColEnd = 0;
   for (let i = 0; i < length; i++) {
     const offset = useAccum ? getAccumulatedArrayOffset(direction, i, perCellSizes) : getArrayOffset(direction, i);
@@ -122,24 +85,6 @@ const GridArrayObject = memo(function GridArrayObject({
     maxColEnd = Math.max(maxColEnd, offset.colDelta + cellW);
   }
 
-  // Pre-compute ghost cells for drag (full array layout, relative to origin)
-  const ghostArrayCells: GhostArrayCell[] = [];
-  for (let i = 0; i < length; i++) {
-    const offset = useAccum ? getAccumulatedArrayOffset(direction, i, perCellSizes) : getArrayOffset(direction, i);
-    const r = obj.row + offset.rowDelta;
-    const c = obj.col + offset.colDelta;
-    const cd = cells.get(cellKey(r, c));
-    if (!cd || cd.arrayInfo?.elementConfig?.visible === false) continue;
-    ghostArrayCells.push({
-      rowDelta: offset.rowDelta,
-      colDelta: offset.colDelta,
-      width: perCellSizes[i]?.width ?? 1,
-      height: perCellSizes[i]?.height ?? 1,
-      cellData: cd,
-    });
-  }
-
-  // Build per-cell wrappers
   const arrayCells: React.ReactNode[] = [];
   for (let i = 0; i < length; i++) {
     const offset = useAccum ? getAccumulatedArrayOffset(direction, i, perCellSizes) : getArrayOffset(direction, i);
@@ -152,7 +97,6 @@ const GridArrayObject = memo(function GridArrayObject({
 
     const cellW = perCellSizes[i]?.width ?? 1;
     const cellH = perCellSizes[i]?.height ?? 1;
-    const isSelected = selectedCell?.row === row && selectedCell?.col === col;
     arrayCells.push(
       <div
         key={i}
@@ -163,16 +107,11 @@ const GridArrayObject = memo(function GridArrayObject({
           width: cellW * CELL_SIZE,
           height: cellH * CELL_SIZE,
         }}
-        onClick={() => handlers.onSelectCell({ row, col })}
-        onContextMenu={(e) => handlers.onContextMenu(e, row, col)}
-        onMouseDown={(e) => handlers.onDragStart(e, row, col, obj.row, obj.col, cellData, undefined, undefined, ghostArrayCells)}
       >
         <GridCell
           row={row}
           col={col}
           cellData={cellData}
-          isSelected={isSelected}
-          onSelect={() => handlers.onSelectCell({ row, col })}
           size={CELL_SIZE}
           width={cellW * CELL_SIZE}
           height={cellH * CELL_SIZE}
@@ -200,30 +139,16 @@ const GridArrayObject = memo(function GridArrayObject({
   );
 });
 
-/** Renders a 2D array variable as a grid of individually-interactive cells. */
+/** Renders a 2D array variable as a grid of cells. */
 const GridArray2DObject = memo(function GridArray2DObject({
   obj,
   cells,
-  selectedCell,
-  handlers,
 }: {
   obj: RenderableObject;
   cells: Map<string, CellData>;
-  selectedCell: CellPosition | null;
-  handlers: CellEventHandlers;
 }) {
   const info = obj.cellData.array2dInfo!;
   const { numRows, numCols } = info;
-
-  // Collect all cells and compute ghost cells for drag (relative to origin obj.row/obj.col)
-  const ghostArrayCells: GhostArrayCell[] = [];
-  for (let r = 0; r < numRows; r++) {
-    for (let c = 0; c < numCols; c++) {
-      const cd = cells.get(cellKey(obj.row + r, obj.col + c));
-      if (!cd?.array2dInfo) continue;
-      ghostArrayCells.push({ rowDelta: r, colDelta: c, width: 1, height: 1, cellData: cd });
-    }
-  }
 
   const gridCells: React.ReactNode[] = [];
   for (let r = 0; r < numRows; r++) {
@@ -232,7 +157,6 @@ const GridArray2DObject = memo(function GridArray2DObject({
       const col = obj.col + c;
       const cellData = cells.get(cellKey(row, col));
       if (!cellData) continue;
-      const isSelected = selectedCell?.row === row && selectedCell?.col === col;
       gridCells.push(
         <div
           key={`${r}-${c}`}
@@ -243,16 +167,11 @@ const GridArray2DObject = memo(function GridArray2DObject({
             width: CELL_SIZE,
             height: CELL_SIZE,
           }}
-          onClick={() => handlers.onSelectCell({ row, col })}
-          onContextMenu={(e) => handlers.onContextMenu(e, row, col)}
-          onMouseDown={(e) => handlers.onDragStart(e, row, col, obj.row, obj.col, cellData, undefined, undefined, ghostArrayCells)}
         >
           <GridCell
             row={row}
             col={col}
             cellData={cellData}
-            isSelected={isSelected}
-            onSelect={() => handlers.onSelectCell({ row, col })}
             size={CELL_SIZE}
             width={CELL_SIZE}
             height={CELL_SIZE}
@@ -278,33 +197,16 @@ const GridArray2DObject = memo(function GridArray2DObject({
   );
 });
 
-const HANDLE_SIZE = 8;
-
 /** Renders a single-origin object (shape, label, int variable). */
 const GridSingleObject = memo(function GridSingleObject({
   obj,
-  handlers,
 }: {
   obj: RenderableObject;
-  handlers: CellEventHandlers;
 }) {
   const widthCells = obj.widthCells ?? 1;
   const heightCells = obj.heightCells ?? 1;
-  
-  // Don't render objects with 0 width or height
-  if (widthCells <= 0 || heightCells <= 0) return null;
 
-  const getSubCell = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const localX = e.clientX - rect.left;
-    const localY = e.clientY - rect.top;
-    const subCol = Math.floor(localX / CELL_SIZE);
-    const subRow = Math.floor(localY / CELL_SIZE);
-    return {
-      row: obj.row + Math.min(subRow, heightCells - 1),
-      col: obj.col + Math.min(subCol, widthCells - 1),
-    };
-  };
+  if (widthCells <= 0 || heightCells <= 0) return null;
 
   return (
     <div
@@ -316,28 +218,15 @@ const GridSingleObject = memo(function GridSingleObject({
         height: CELL_SIZE * heightCells,
         zIndex: 10,
       }}
-      onClick={() => {
-        handlers.onSelectCell({ row: obj.row, col: obj.col });
-      }}
-      onContextMenu={(e) => {
-        handlers.onContextMenu(e, obj.row, obj.col);
-      }}
-      onMouseDown={(e) => {
-        const cell = getSubCell(e);
-        handlers.onDragStart(e, cell.row, cell.col, obj.row, obj.col, obj.cellData, widthCells, heightCells);
-      }}
     >
       <GridCell
         row={obj.row}
         col={obj.col}
         cellData={obj.cellData}
-        isSelected={obj.isSelected}
-        onSelect={() => handlers.onSelectCell({ row: obj.row, col: obj.col })}
         size={CELL_SIZE}
         width={CELL_SIZE * widthCells}
         height={CELL_SIZE * heightCells}
       />
-      
     </div>
   );
 });
@@ -349,472 +238,61 @@ export function Grid({
   overlayCells = new Map(),
   occupancyMap = new Map(),
   panels,
-  selectedCell,
   zoom,
-  interactive = true,
-  onSelectCell,
-  onContextMenu,
   onZoom,
-  onMoveCell,
-  onMovePanel,
-  onPanelContextMenu,
-  onDragBegin,
-  onUpdateShapeProps,
-  onUpdatePanel,
 }: GridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragStateRef = useRef<{
-    objectOrigin: CellPosition;
-    grabOffset: CellPosition;
-    rowAllowed: boolean;
-    colAllowed: boolean;
-    lastTarget?: CellPosition;
-    committed?: boolean;
-  } | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragGhost, setDragGhost] = useState<{
-    row: number;
-    col: number;
-    cellData: CellData;
-    widthCells: number;
-    heightCells: number;
-    arrayCells?: GhostArrayCell[];
-  } | null>(null);
-
-  const resizeStateRef = useRef<{
-    originRow: number;
-    originCol: number;
-    startW: number;
-    startH: number;
-    handle: ResizeHandle;
-    startMouseRow: number;
-    startMouseCol: number;
-    cellData: CellData;
-    lastNewRow: number;
-    lastNewCol: number;
-    lastNewW: number;
-    lastNewH: number;
-  } | null>(null);
-  const [resizeGhost, setResizeGhost] = useState<{
-    row: number;
-    col: number;
-    widthCells: number;
-    heightCells: number;
-    cellData: CellData;
-  } | null>(null);
-  const [isResizing, setIsResizing] = useState(false);
-
-  const panelResizeRef = useRef<{
-    panelId: string;
-    originCol: number;
-    originRow: number;
-    startW: number;
-    startH: number;
-    handle: ResizeHandle;
-    startMouseRow: number;
-    startMouseCol: number;
-    lastNewW: number;
-    lastNewH: number;
-  } | null>(null);
-  const [isPanelResizing, setIsPanelResizing] = useState(false);
-
-  // Panel drag state
-  const panelDragRef = useRef<{
-    panelId: string;
-    startCell: CellPosition;
-    startMouseX: number;
-    startMouseY: number;
-    startPanelX: number;
-    startPanelY: number;
-    panelWidth: number;
-    panelHeight: number;
-    lastTarget?: CellPosition;
-  } | null>(null);
-  const [isPanelDragging, setIsPanelDragging] = useState(false);
-  const [panelDragGhost, setPanelDragGhost] = useState<{
-    panelId: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    title?: string;
-  } | null>(null);
-
-  // Set grabbing cursor on body during panel drag
-  useEffect(() => {
-    if (isPanelDragging) {
-      document.body.style.cursor = 'grabbing';
-      return () => { document.body.style.cursor = ''; };
-    }
-  }, [isPanelDragging]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
-      if (!interactive) return;
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
         onZoom(delta);
       }
     },
-    [interactive, onZoom]
+    [onZoom]
   );
 
-  const handleCellContextMenu = useCallback(
-    (e: React.MouseEvent, row: number, col: number) => {
-      e.preventDefault();
-      onSelectCell({ row, col });
-      onContextMenu(e, { row, col });
-    },
-    [onSelectCell, onContextMenu]
-  );
-
-  const getCellFromPointer = useCallback(
-    (clientX: number, clientY: number): CellPosition | null => {
-      const container = containerRef.current;
-      if (!container) return null;
-      const rect = container.getBoundingClientRect();
-      const x = (clientX - rect.left + container.scrollLeft) / zoom;
-      const y = (clientY - rect.top + container.scrollTop) / zoom;
-      const col = Math.floor(x / CELL_SIZE);
-      const row = Math.floor(y / CELL_SIZE);
-      if (row < 0 || col < 0 || row >= GRID_ROWS || col >= GRID_COLS) return null;
-      return { row, col };
-    },
-    [zoom]
-  );
-
-  const handleDragStart = useCallback(
-    (e: React.MouseEvent, grabRow: number, grabCol: number, originRow: number, originCol: number, cellData?: CellData, widthCells?: number, heightCells?: number, ghostArrayCells?: GhostArrayCell[]) => {
-      if (!cellData?.positionBinding) return;
-      const rowAllowed = cellData.positionBinding.row.type === 'fixed' || cellData.positionBinding.row.type === 'hardcoded';
-      const colAllowed = cellData.positionBinding.col.type === 'fixed' || cellData.positionBinding.col.type === 'hardcoded';
-      if (!rowAllowed && !colAllowed) return;
-      e.preventDefault();
-      e.stopPropagation();
-      onDragBegin?.();
-      const w = widthCells ?? 1;
-      const h = heightCells ?? 1;
-      dragStateRef.current = {
-        objectOrigin: { row: originRow, col: originCol },
-        grabOffset: { row: grabRow - originRow, col: grabCol - originCol },
-        rowAllowed,
-        colAllowed,
-      };
-      setDragGhost({ row: originRow, col: originCol, cellData, widthCells: w, heightCells: h, arrayCells: ghostArrayCells });
-      setIsDragging(true);
-    },
-    [onDragBegin]
-  );
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const dragState = dragStateRef.current;
-      if (!dragState) return;
-      const target = getCellFromPointer(e.clientX, e.clientY);
-      if (!target) return;
-      dragStateRef.current = { ...dragState, lastTarget: target };
-      setDragGhost((prev) => {
-        if (!prev) return null;
-        const newRow = dragState.rowAllowed ? target.row - dragState.grabOffset.row : prev.row;
-        const newCol = dragState.colAllowed ? target.col - dragState.grabOffset.col : prev.col;
-        return { ...prev, row: newRow, col: newCol };
-      });
-    };
-
-    const handleMouseUp = () => {
-      const dragState = dragStateRef.current;
-      setDragGhost(null);
-      if (dragState?.committed) {
-        dragStateRef.current = null;
-        setIsDragging(false);
-        return;
-      }
-      if (dragState?.lastTarget) {
-        const newOrigin = {
-          row: dragState.rowAllowed
-            ? dragState.lastTarget.row - dragState.grabOffset.row
-            : dragState.objectOrigin.row,
-          col: dragState.colAllowed
-            ? dragState.lastTarget.col - dragState.grabOffset.col
-            : dragState.objectOrigin.col,
-        };
-        if (newOrigin.row !== dragState.objectOrigin.row || newOrigin.col !== dragState.objectOrigin.col) {
-          dragStateRef.current = { ...dragState, committed: true };
-          onMoveCell(dragState.objectOrigin, newOrigin);
-        }
-      }
-      dragStateRef.current = null;
-      setIsDragging(false);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [getCellFromPointer, isDragging, onMoveCell]);
-
-  // Panel drag: start handler
-  const handlePanelDragStart = useCallback(
-    (e: React.MouseEvent, panelId: string, panelRow: number, panelCol: number) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onDragBegin?.();
-      const panel = panels.find((p) => p.id === panelId);
-      const panelX = panelCol * CELL_SIZE;
-      const panelY = panelRow * CELL_SIZE;
-      panelDragRef.current = {
-        panelId,
-        startCell: { row: panelRow, col: panelCol },
-        startMouseX: e.clientX,
-        startMouseY: e.clientY,
-        startPanelX: panelX,
-        startPanelY: panelY,
-        panelWidth: panel?.width ?? 1,
-        panelHeight: panel?.height ?? 1,
-      };
-      setPanelDragGhost({
-        panelId,
-        x: panelX,
-        y: panelY,
-        width: panel?.width ?? 1,
-        height: panel?.height ?? 1,
-        title: panel?.title,
-      });
-      setIsPanelDragging(true);
-    },
-    [onDragBegin, panels]
-  );
-
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent, originRow: number, originCol: number, widthCells: number, heightCells: number, handle: ResizeHandle, cellData: CellData) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onDragBegin?.();
-      const target = getCellFromPointer(e.clientX, e.clientY);
-      if (!target || !onUpdateShapeProps) return;
-      resizeStateRef.current = {
-        originRow,
-        originCol,
-        startW: widthCells,
-        startH: heightCells,
-        handle,
-        startMouseRow: target.row,
-        startMouseCol: target.col,
-        cellData,
-        lastNewRow: originRow,
-        lastNewCol: originCol,
-        lastNewW: widthCells,
-        lastNewH: heightCells,
-      };
-      setResizeGhost({ row: originRow, col: originCol, widthCells, heightCells, cellData });
-      setIsResizing(true);
-    },
-    [getCellFromPointer, onDragBegin, onUpdateShapeProps]
-  );
-
-  useEffect(() => {
-    if (!isResizing || !onUpdateShapeProps) return;
-    const state = resizeStateRef.current;
-    if (!state) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const target = getCellFromPointer(e.clientX, e.clientY);
-      if (!target) return;
-      const dCol = target.col - state.startMouseCol;
-      const dRow = target.row - state.startMouseRow;
-      let newW = state.startW;
-      let newH = state.startH;
-      let newRow = state.originRow;
-      let newCol = state.originCol;
-      if (state.handle.includes('e')) newW = Math.max(1, state.startW + dCol);
-      if (state.handle.includes('w')) {
-        newW = Math.max(1, state.startW - dCol);
-        newCol = state.originCol + (state.startW - newW);
-      }
-      if (state.handle.includes('s')) newH = Math.max(1, state.startH + dRow);
-      if (state.handle.includes('n')) {
-        newH = Math.max(1, state.startH - dRow);
-        newRow = state.originRow + (state.startH - newH);
-      }
-      resizeStateRef.current = { ...state, lastNewRow: newRow, lastNewCol: newCol, lastNewW: newW, lastNewH: newH };
-      setResizeGhost((prev) => (prev ? { ...prev, row: newRow, col: newCol, widthCells: newW, heightCells: newH } : null));
-    };
-
-    const handleMouseUp = () => {
-      const s = resizeStateRef.current;
-      setResizeGhost(null);
-      resizeStateRef.current = null;
-      setIsResizing(false);
-      if (!s) return;
-      const { lastNewRow, lastNewCol, lastNewW, lastNewH, originRow, originCol } = s;
-      if (lastNewRow !== originRow || lastNewCol !== originCol) {
-        onMoveCell({ row: originRow, col: originCol }, { row: lastNewRow, col: lastNewCol });
-      }
-      onUpdateShapeProps({ row: lastNewRow, col: lastNewCol }, { width: lastNewW, height: lastNewH });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [getCellFromPointer, isResizing, onMoveCell, onUpdateShapeProps]);
-
-  const handlePanelResizeStart = useCallback(
-    (e: React.MouseEvent, panelId: string, originRow: number, originCol: number, w: number, h: number, handle: ResizeHandle) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onDragBegin?.();
-      const target = getCellFromPointer(e.clientX, e.clientY);
-      if (!target || !onUpdatePanel) return;
-      panelResizeRef.current = {
-        panelId,
-        originRow,
-        originCol,
-        startW: w,
-        startH: h,
-        handle,
-        startMouseRow: target.row,
-        startMouseCol: target.col,
-        lastNewW: w,
-        lastNewH: h,
-      };
-      setIsPanelResizing(true);
-    },
-    [getCellFromPointer, onDragBegin, onUpdatePanel]
-  );
-
-  useEffect(() => {
-    if (!isPanelResizing || !onUpdatePanel) return;
-    const state = panelResizeRef.current;
-    if (!state) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const target = getCellFromPointer(e.clientX, e.clientY);
-      if (!target) return;
-      const dCol = target.col - state.startMouseCol;
-      const dRow = target.row - state.startMouseRow;
-      let newW = state.startW;
-      let newH = state.startH;
-      if (state.handle.includes('e')) newW = Math.max(1, state.startW + dCol);
-      if (state.handle.includes('w')) newW = Math.max(1, state.startW - dCol);
-      if (state.handle.includes('s')) newH = Math.max(1, state.startH + dRow);
-      if (state.handle.includes('n')) newH = Math.max(1, state.startH - dRow);
-      panelResizeRef.current = { ...state, lastNewW: newW, lastNewH: newH };
-    };
-
-    const handleMouseUp = () => {
-      const s = panelResizeRef.current;
-      panelResizeRef.current = null;
-      setIsPanelResizing(false);
-      if (s) onUpdatePanel(s.panelId, { width: s.lastNewW, height: s.lastNewH });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [getCellFromPointer, isPanelResizing, onUpdatePanel]);
-
-  // Panel drag: mousemove / mouseup effect
-  useEffect(() => {
-    if (!isPanelDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const state = panelDragRef.current;
-      if (!state) return;
-      // Compute smooth pixel-level ghost position (grid-space pixels)
-      const dx = (e.clientX - state.startMouseX) / zoom;
-      const dy = (e.clientY - state.startMouseY) / zoom;
-      const ghostX = state.startPanelX + dx;
-      const ghostY = state.startPanelY + dy;
-      // Compute cell-snapped target for the panel origin
-      const newCol = Math.max(0, Math.min(GRID_COLS - 1, Math.round(ghostX / CELL_SIZE)));
-      const newRow = Math.max(0, Math.min(GRID_ROWS - 1, Math.round(ghostY / CELL_SIZE)));
-      panelDragRef.current = { ...state, lastTarget: { row: newRow, col: newCol } };
-      setPanelDragGhost((prev) => prev ? { ...prev, x: ghostX, y: ghostY } : null);
-    };
-
-    const handleMouseUp = () => {
-      const state = panelDragRef.current;
-      if (state?.lastTarget && onMovePanel &&
-        (state.lastTarget.row !== state.startCell.row || state.lastTarget.col !== state.startCell.col)) {
-        onMovePanel(state.panelId, state.lastTarget);
-      }
-      panelDragRef.current = null;
-      setPanelDragGhost(null);
-      setIsPanelDragging(false);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [getCellFromPointer, isPanelDragging, onMovePanel, zoom]);
-
-  // Background grid cells (empty cells for selection and context menu)
   const gridBackground = useMemo(() => {
     const result: React.ReactNode[] = [];
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const key = cellKey(row, col);
-        const isSelected =
-          selectedCell?.row === row && selectedCell?.col === col;
         const hasContent = occupancyMap.has(key);
 
         result.push(
           <div
             key={key}
-            className={`
-              border border-gray-300 dark:border-gray-600 cursor-pointer transition-colors
-              ${isSelected ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-500 border-2' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'}
-            `}
+            className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 transition-colors"
             style={{
               width: CELL_SIZE,
               height: CELL_SIZE,
-              // Make background cells clickable but content renders on top
               zIndex: hasContent ? 0 : 1,
             }}
-            onClick={() => onSelectCell({ row, col })}
-            onContextMenu={(e) => handleCellContextMenu(e, row, col)}
           />
         );
       }
     }
     return result;
-  }, [selectedCell, occupancyMap, onSelectCell, handleCellContextMenu]);
+  }, [occupancyMap]);
 
-  // Collect unique objects for animated rendering
-  // Group array cells by their array ID to render them together
   const objectsToRender = useMemo((): RenderableObject[] => {
     const objects: RenderableObject[] = [];
     const processedArrays = new Set<string>();
 
     for (const [key, cellData] of cells) {
       const [row, col] = key.split(',').map(Number);
-      const isSelected = selectedCell?.row === row && selectedCell?.col === col;
 
       if (cellData.arrayInfo) {
         if (processedArrays.has(cellData.arrayInfo.id)) continue;
         processedArrays.add(cellData.arrayInfo.id);
 
-        // Count array length
         let arrayLength = 0;
         for (const [, cd] of cells) {
           if (cd.arrayInfo?.id === cellData.arrayInfo.id) arrayLength++;
         }
 
-        // Find the first cell (index 0) position
         let startRow = row, startCol = col;
         for (const [k, cd] of cells) {
           if (cd.arrayInfo?.id === cellData.arrayInfo.id && cd.arrayInfo.index === 0) {
@@ -828,14 +306,13 @@ export function Grid({
         objects.push({
           key: `array-${cellData.arrayInfo.id}`,
           row: startRow, col: startCol,
-          cellData, isSelected,
+          cellData,
           isArrayStart: true, arrayLength,
         });
       } else if (cellData.array2dInfo) {
         if (processedArrays.has(cellData.array2dInfo.id)) continue;
         processedArrays.add(cellData.array2dInfo.id);
 
-        // Find the origin cell (row=0, col=0) position in the grid
         let startRow = row, startCol = col;
         for (const [k, cd] of cells) {
           if (cd.array2dInfo?.id === cellData.array2dInfo.id && cd.array2dInfo.row === 0 && cd.array2dInfo.col === 0) {
@@ -849,24 +326,22 @@ export function Grid({
         objects.push({
           key: `array2d-${cellData.array2dInfo.id}`,
           row: startRow, col: startCol,
-          cellData, isSelected,
+          cellData,
           is2DArrayStart: true,
         });
       } else {
         const baseWidth = cellData.bounds?.width ?? 1;
         const baseHeight = cellData.bounds?.height ?? 1;
         objects.push({
-          key, row, col, cellData, isSelected,
+          key, row, col, cellData,
           widthCells: baseWidth,
           heightCells: baseHeight,
         });
       }
     }
 
-    // Add overlay cells (e.g. shape on top of array) so they render and array cells are not lost
     for (const [key, cellData] of overlayCells) {
       const [row, col] = key.split(',').map(Number);
-      const isSelected = selectedCell?.row === row && selectedCell?.col === col;
       const baseWidth = cellData.bounds?.width ?? 1;
       const baseHeight = cellData.bounds?.height ?? 1;
       objects.push({
@@ -874,7 +349,6 @@ export function Grid({
         row,
         col,
         cellData,
-        isSelected,
         widthCells: baseWidth,
         heightCells: baseHeight,
       });
@@ -882,16 +356,8 @@ export function Grid({
 
     objects.sort((a, b) => (a.cellData.zOrder ?? 0) - (b.cellData.zOrder ?? 0));
     return objects;
-  }, [cells, overlayCells, selectedCell]);
+  }, [cells, overlayCells]);
 
-  const cellEventHandlers = useMemo((): CellEventHandlers => ({
-    onSelectCell,
-    onContextMenu: handleCellContextMenu,
-    onDragStart: handleDragStart,
-    onResizeStart: onUpdateShapeProps ? handleResizeStart : undefined,
-  }), [onSelectCell, handleCellContextMenu, handleDragStart, handleResizeStart, onUpdateShapeProps]);
-
-  // Render objects via dedicated sub-components
   const renderedObjects = useMemo(() => {
     return objectsToRender.map((obj) =>
       obj.isArrayStart && obj.arrayLength ? (
@@ -899,37 +365,29 @@ export function Grid({
           key={obj.key}
           obj={obj}
           cells={cells}
-          selectedCell={selectedCell}
-          handlers={cellEventHandlers}
         />
       ) : obj.is2DArrayStart ? (
         <GridArray2DObject
           key={obj.key}
           obj={obj}
           cells={cells}
-          selectedCell={selectedCell}
-          handlers={cellEventHandlers}
         />
       ) : (
         <GridSingleObject
           key={obj.key}
           obj={obj}
-          handlers={cellEventHandlers}
         />
       )
     );
-  }, [objectsToRender, cells, selectedCell, cellEventHandlers]);
+  }, [objectsToRender, cells]);
 
-  const draggingPanelId = panelDragGhost?.panelId ?? null;
-
-  // Panel visuals (dashed border + background) - rendered below objects; resize handles when sizeResizable
   const renderedPanelBackgrounds = useMemo(() => {
     return panels.map((panel) => (
       <div
         key={panel.id}
         className={`absolute border-2 border-dashed bg-slate-50/50 dark:bg-slate-800/50 transition-all duration-300 ease-out ${
           panel.invalidReason ? 'opacity-50 grayscale' : ''
-        } ${draggingPanelId === panel.id ? 'opacity-30' : ''}`}
+        }`}
         style={{
           left: panel.col * CELL_SIZE,
           top: panel.row * CELL_SIZE,
@@ -937,61 +395,31 @@ export function Grid({
           height: panel.height * CELL_SIZE,
           zIndex: 5,
         }}
-      >
-        {panel.sizeResizable && onUpdatePanel &&
-          (['e', 's', 'se'] as const).map((handle) => (
-            <div
-              key={handle}
-              className="absolute bg-slate-400 dark:bg-slate-500 rounded border border-white dark:border-gray-700 cursor-se-resize hover:bg-slate-500 dark:hover:bg-slate-400"
-              style={
-                handle === 'e'
-                  ? { top: '50%', right: 0, transform: 'translateY(-50%)', width: HANDLE_SIZE, height: HANDLE_SIZE }
-                  : handle === 's'
-                  ? { left: '50%', bottom: 0, transform: 'translateX(-50%)', width: HANDLE_SIZE, height: HANDLE_SIZE }
-                  : { bottom: 0, right: 0, width: HANDLE_SIZE, height: HANDLE_SIZE }
-              }
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handlePanelResizeStart(e, panel.id, panel.row, panel.col, panel.width, panel.height, handle);
-              }}
-            />
-          ))}
-      </div>
+      />
     ));
-  }, [panels, onUpdatePanel, handlePanelResizeStart, draggingPanelId]);
+  }, [panels]);
 
-  // Panel drag handles - rendered above objects so they're always reachable
   const renderedPanelHandles = useMemo(() => {
-    if (!interactive) return [];
     return panels.map((panel) => (
       <span
         key={panel.id}
         className={`absolute text-[10px] font-mono bg-slate-50 dark:bg-slate-700 px-1 rounded ${
           panel.title
-            ? 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-blue-100 dark:hover:bg-blue-900/40'
-            : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/40'
+            ? 'text-slate-600 dark:text-slate-300'
+            : 'text-slate-400 dark:text-slate-500'
         }`}
         style={{
           left: panel.col * CELL_SIZE + 4,
           top: panel.row * CELL_SIZE,
           transform: 'translateY(-100%)',
-          pointerEvents: 'auto',
-          cursor: 'grab',
           userSelect: 'none',
           zIndex: 20,
-        }}
-        onMouseDown={(e) => handlePanelDragStart(e, panel.id, panel.row, panel.col)}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onPanelContextMenu?.(e, panel);
         }}
       >
         {panel.title || '⋮⋮'}
       </span>
     ));
-  }, [interactive, panels, handlePanelDragStart, onPanelContextMenu]);
+  }, [panels]);
 
   return (
     <div
@@ -1009,7 +437,7 @@ export function Grid({
       >
         {/* Background grid */}
         <div
-          className={`grid ${interactive ? '' : 'pointer-events-none'}`}
+          className="grid"
           style={{
             gridTemplateColumns: `repeat(${GRID_COLS}, ${CELL_SIZE}px)`,
             gridTemplateRows: `repeat(${GRID_ROWS}, ${CELL_SIZE}px)`,
@@ -1025,118 +453,14 @@ export function Grid({
           </div>
         </div>
 
-        {/* Animated objects layer */}
+        {/* Objects layer */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className={`relative w-full h-full ${interactive ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+          <div className="relative w-full h-full pointer-events-none">
             {renderedObjects}
           </div>
         </div>
 
-        {/* Resize ghost: greyed-out preview at new size during resize */}
-        {resizeGhost && (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              left: resizeGhost.col * CELL_SIZE,
-              top: resizeGhost.row * CELL_SIZE,
-              width: CELL_SIZE * resizeGhost.widthCells,
-              height: CELL_SIZE * resizeGhost.heightCells,
-              zIndex: 30,
-              opacity: 0.4,
-            }}
-          >
-            <GridCell
-              row={resizeGhost.row}
-              col={resizeGhost.col}
-              cellData={resizeGhost.cellData}
-              isSelected={false}
-              onSelect={() => {}}
-              size={CELL_SIZE}
-              width={CELL_SIZE * resizeGhost.widthCells}
-              height={CELL_SIZE * resizeGhost.heightCells}
-            />
-          </div>
-        )}
-
-        {/* Drag ghost: greyed-out preview at mouse, does not erase other objects */}
-        {dragGhost && dragGhost.arrayCells ? (
-          <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 30, opacity: 0.4 }}>
-            {dragGhost.arrayCells.map((cell, i) => (
-              <div
-                key={i}
-                className="absolute"
-                style={{
-                  left: (dragGhost.col + cell.colDelta) * CELL_SIZE,
-                  top: (dragGhost.row + cell.rowDelta) * CELL_SIZE,
-                  width: cell.width * CELL_SIZE,
-                  height: cell.height * CELL_SIZE,
-                }}
-              >
-                <GridCell
-                  row={dragGhost.row + cell.rowDelta}
-                  col={dragGhost.col + cell.colDelta}
-                  cellData={cell.cellData}
-                  isSelected={false}
-                  onSelect={() => {}}
-                  size={CELL_SIZE}
-                  width={cell.width * CELL_SIZE}
-                  height={cell.height * CELL_SIZE}
-                />
-              </div>
-            ))}
-          </div>
-        ) : dragGhost ? (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              left: dragGhost.col * CELL_SIZE,
-              top: dragGhost.row * CELL_SIZE,
-              width: CELL_SIZE * dragGhost.widthCells,
-              height: CELL_SIZE * dragGhost.heightCells,
-              zIndex: 30,
-              opacity: 0.4,
-            }}
-          >
-            <GridCell
-              row={dragGhost.row}
-              col={dragGhost.col}
-              cellData={dragGhost.cellData}
-              isSelected={false}
-              onSelect={() => {}}
-              size={CELL_SIZE}
-              width={CELL_SIZE * dragGhost.widthCells}
-              height={CELL_SIZE * dragGhost.heightCells}
-            />
-          </div>
-        ) : null}
-
-        {/* Panel drag ghost: lifted panel outline that follows the cursor */}
-        {panelDragGhost && (
-          <div
-            className="absolute border-2 border-dashed border-blue-400 bg-blue-50/40 rounded-sm pointer-events-none"
-            style={{
-              left: panelDragGhost.x,
-              top: panelDragGhost.y,
-              width: panelDragGhost.width * CELL_SIZE,
-              height: panelDragGhost.height * CELL_SIZE,
-              zIndex: 50,
-              boxShadow: '0 20px 40px -8px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.15)',
-              transform: 'scale(1.015)',
-              transformOrigin: 'center center',
-            }}
-          >
-            {panelDragGhost.title && (
-              <span
-                className="absolute text-[10px] font-mono text-blue-600 bg-blue-50 px-1 rounded whitespace-nowrap"
-                style={{ left: 4, top: 0, transform: 'translateY(-100%)' }}
-              >
-                {panelDragGhost.title}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Panel drag handles layer (above objects, always reachable) */}
+        {/* Panel handles layer */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="relative w-full h-full">
             {renderedPanelHandles}

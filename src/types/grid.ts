@@ -217,7 +217,6 @@ export interface OccupantInfo {
 
 export interface GridState {
   cells: Map<string, CellData>;
-  selectedCell: CellPosition | null;
   zoom: number;
 }
 
