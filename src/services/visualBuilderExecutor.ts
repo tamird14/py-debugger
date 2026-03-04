@@ -1,7 +1,6 @@
 import { loadPyodide } from './pythonExecutor';
 import { type VisualBuilderElement } from '../types/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
-import { Arrow, Circle, Rect } from '../types/shapes';
 import { Array1D, Array2D } from '../types/arrayShapes';
 import { Label } from '../types/label';
 import { getConstructor } from '../types/elementRegistry';
@@ -47,9 +46,6 @@ exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
         return new entry(el);
       }
       switch(el.type) {
-        //case 'rect': return new Rect(el);
-        case 'circle': return new Circle(el);
-        case 'arrow': return new Arrow(el);
         case 'label': return new Label(el);
         case 'array': return new Array1D(el);
         case 'array2d': return new Array2D(el);

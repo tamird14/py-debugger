@@ -26,6 +26,8 @@ export abstract class BasicShape implements VisualBuilderElementBase {
   }
 }
 
+// ========================= Rect Shape =========================
+
 export class Rect extends BasicShape {
 
   constructor(el: any) {
@@ -60,6 +62,8 @@ export const RECT_SCHEMA: ClassDoc = {
 
 registerVisualElement('rect', Rect, RECT_SCHEMA);
 
+// ========================= Circle Shape =========================
+
 export class Circle extends BasicShape {
 
   constructor(el: any) {
@@ -76,6 +80,23 @@ export class Circle extends BasicShape {
     };
   }
 }
+
+export const CIRCLE_SCHEMA: ClassDoc = {
+  className: 'Circle',
+  constructorParams: 'pos: tuple[int, int] = (0, 0)',
+  docstring: 'A circle (or ellipse) shape on the grid.',
+  properties: [
+    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the bounding box.' },
+    { name: 'width', type: 'int', description: 'Width in grid cells.' },
+    { name: 'height', type: 'int', description: 'Height in grid cells.' },
+    { name: 'color', type: 'tuple[int, int, int]', description: 'RGB fill color (0-255 per channel).' },
+    { name: 'visible', type: 'bool', description: 'Show or hide the circle.' },
+  ],
+};
+
+registerVisualElement('circle', Circle, CIRCLE_SCHEMA);
+
+// ========================= Arrow Shape =========================
 
 export class Arrow extends BasicShape {
   orientation: 'up' | 'down' | 'left' | 'right';
@@ -103,3 +124,20 @@ export class Arrow extends BasicShape {
     };
   }
 }
+
+export const ARROW_SCHEMA: ClassDoc = {
+  className: 'Arrow',
+  constructorParams: 'pos: tuple[int, int] = (0, 0)',
+  docstring: 'An arrow shape on the grid. Points in the given orientation and can be rotated.',
+  properties: [
+    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the bounding box.' },
+    { name: 'width', type: 'int', description: 'Width in grid cells.' },
+    { name: 'height', type: 'int', description: 'Height in grid cells.' },
+    { name: 'color', type: 'tuple[int, int, int]', description: 'RGB fill color (0-255 per channel).' },
+    { name: 'orientation', type: 'str', description: '"up", "down", "left", or "right". Default "up".' },
+    { name: 'rotation', type: 'int', description: 'Additional rotation in degrees. Default 0.' },
+    { name: 'visible', type: 'bool', description: 'Show or hide the arrow.' },
+  ],
+};
+
+registerVisualElement('arrow', Arrow, ARROW_SCHEMA);

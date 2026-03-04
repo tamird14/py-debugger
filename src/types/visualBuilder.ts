@@ -67,9 +67,7 @@ export interface ClassDoc {
   methods?: { name: string; signature: string; docstring: string }[];
 }
 
-import { RECT_SCHEMA } from './shapes';
-import { CIRCLE_SCHEMA } from '../components/views/CircleView';
-import { ARROW_SCHEMA } from '../components/views/ArrowView';
+import { RECT_SCHEMA, CIRCLE_SCHEMA, ARROW_SCHEMA } from './shapes';
 import { LABEL_SCHEMA } from '../components/views/LabelView';
 import { VAR_SCHEMA } from '../components/views/ArrayValueView';
 import { ARRAY_SCHEMA } from '../components/views/ArrayShapeView';

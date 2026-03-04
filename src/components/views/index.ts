@@ -1,6 +1,6 @@
 export { RectView } from './RectView';
-export { CircleView, CIRCLE_SCHEMA } from './CircleView';
-export { ArrowView, ARROW_SCHEMA } from './ArrowView';
+export { CircleView } from './CircleView';
+export { ArrowView } from './ArrowView';
 export { ArrayShapeView, ARRAY_SCHEMA } from './ArrayShapeView';
 export { ArrayValueView, VAR_SCHEMA } from './ArrayValueView';
 export { Array2DView } from './Array2DView';
