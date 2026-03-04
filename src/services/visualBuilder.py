@@ -1,60 +1,12 @@
-import math
-
-_V_GLOBALS = {
-    "__builtins__": {},
-    "abs": abs, "min": min, "max": max, "sum": sum,
-    "round": round, "len": len, "int": int, "float": float,
-    "sqrt": math.sqrt, "floor": math.floor, "ceil": math.ceil,
-    "log": math.log, "pow": pow,
-    "pi": math.pi,
-}
-
-_vb_user_update = None
-
-
-class V:
-    """Bind a property to a Python expression evaluated each step.
-    The expression string is eval'd with the current step's variables in scope,
-    plus math helpers (sqrt, floor, ceil, log, pow, abs, min, max, sum, round, len, pi).
-    """
-    def __init__(self, expr):
-        self.expr = expr
-
-    def resolve(self, params):
-        try:
-            return eval(self.expr, _V_GLOBALS, params)
-        except Exception:
-            return None
-
-
 class VisualElem:
     _registry = []
 
     def __init__(self):
-        object.__setattr__(self, '_bindings', {})
         self.position = (0, 0)
         self.visible = True
         self.alpha = 1.0
         self._parent = None
         VisualElem._registry.append(self)
-
-    def __setattr__(self, name, value):
-        if isinstance(value, V):
-            self._bindings[name] = value
-        else:
-            object.__setattr__(self, name, value)
-            if hasattr(self, '_bindings') and name in self._bindings:
-                del self._bindings[name]
-
-    def update(self, scope, params):
-        """Called each execution step. Resolves V() bindings automatically.
-        scope: list of (func_name, line_number) tuples for the call stack
-        params: dict of variable_name -> value at this step
-        """
-        for attr, binding in self._bindings.items():
-            resolved = binding.resolve(params)
-            if resolved is not None:
-                object.__setattr__(self, attr, resolved)
 
 
 class Panel(VisualElem):
@@ -129,7 +81,6 @@ class Array(VisualElem):
         self.show_index = element_type is None
         default = {} if element_type else 0
         self._cells = [default] * self._length
-        object.__setattr__(self, '_cell_bindings', {})
 
     @property
     def length(self):
@@ -170,13 +121,6 @@ class Array(VisualElem):
             self._cells[index] = value
             return
 
-        if isinstance(value, dict):
-            has_bindings = any(isinstance(v, V) for v in value.values())
-            if has_bindings:
-                self._cell_bindings[index] = dict(value)
-            elif index in self._cell_bindings:
-                del self._cell_bindings[index]
-
         self._cells[index] = value
 
     def __getitem__(self, index):
@@ -184,21 +128,6 @@ class Array(VisualElem):
             return self._cells[index]
         return {} if self.element_type else 0
 
-    def update(self, scope, params):
-        if not self._length_manually_set and self.var_name and self.var_name in params:
-            val = params[self.var_name]
-            if isinstance(val, (list, tuple)):
-                self._length = len(val)
-        super().update(scope, params)
-        for i, cell in enumerate(self._cells):
-            if isinstance(cell, VisualElem):
-                cell.update(scope, params)
-        for idx, original in self._cell_bindings.items():
-            if idx < len(self._cells):
-                resolved = {}
-                for k, v in original.items():
-                    resolved[k] = v.resolve(params) if isinstance(v, V) else v
-                self._cells[idx] = resolved
 
 
 class Array2D(VisualElem):
@@ -218,14 +147,6 @@ class Array2D(VisualElem):
         self._num_cols = cols
         self._dims_manually_set = True
 
-    def update(self, scope, params):
-        if not self._dims_manually_set and self.var_name and self.var_name in params:
-            val = params[self.var_name]
-            if isinstance(val, (list, tuple)) and len(val) > 0:
-                self._num_rows = len(val)
-                if isinstance(val[0], (list, tuple)):
-                    self._num_cols = len(val[0])
-        super().update(scope, params)
 
 
 class Circle(VisualElem):
