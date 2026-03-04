@@ -2,54 +2,6 @@
   "version": 1,
   "code": "# Prefix Sum Example\nnums = [1, 2, 3, 4, 5]\nprefix = [0] * len(nums)\ntotal = 0\n\nfor i in range(len(nums)):\n    total = total + nums[i]\n    prefix[i] = total\n\nprint(\"Prefix sums:\", prefix)\n",
   "isEditable": false,
-  "timeline": [
-    {
-      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
-      "prefix": { "type": "arr[int]", "value": [0, 0, 0, 0, 0] },
-      "total": { "type": "int", "value": 0 },
-      "i": { "type": "int", "value": 0 }
-    },
-    {
-      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
-      "prefix": { "type": "arr[int]", "value": [1, 0, 0, 0, 0] },
-      "total": { "type": "int", "value": 1 },
-      "i": { "type": "int", "value": 0 }
-    },
-    {
-      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
-      "prefix": { "type": "arr[int]", "value": [1, 3, 0, 0, 0] },
-      "total": { "type": "int", "value": 3 },
-      "i": { "type": "int", "value": 1 }
-    },
-    {
-      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
-      "prefix": { "type": "arr[int]", "value": [1, 3, 6, 0, 0] },
-      "total": { "type": "int", "value": 6 },
-      "i": { "type": "int", "value": 2 }
-    },
-    {
-      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
-      "prefix": { "type": "arr[int]", "value": [1, 3, 6, 10, 0] },
-      "total": { "type": "int", "value": 10 },
-      "i": { "type": "int", "value": 3 }
-    },
-    {
-      "nums": { "type": "arr[int]", "value": [1, 2, 3, 4, 5] },
-      "prefix": { "type": "arr[int]", "value": [1, 3, 6, 10, 15] },
-      "total": { "type": "int", "value": 15 },
-      "i": { "type": "int", "value": 4 }
-    }
-  ],
-  "currentStep": 0,
-  "executionSteps": [
-    { "lineNumber": 6, "variables": { "i": { "type": "int", "value": 0 } } },
-    { "lineNumber": 7, "variables": { "i": { "type": "int", "value": 0 } } },
-    { "lineNumber": 6, "variables": { "i": { "type": "int", "value": 1 } } },
-    { "lineNumber": 7, "variables": { "i": { "type": "int", "value": 1 } } },
-    { "lineNumber": 6, "variables": { "i": { "type": "int", "value": 2 } } },
-    { "lineNumber": 7, "variables": { "i": { "type": "int", "value": 2 } } }
-  ],
-  "output": "",
   "objects": [
     {
       "id": "obj-0",

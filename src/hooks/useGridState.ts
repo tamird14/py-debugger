@@ -3,7 +3,6 @@ import type {
   CellPosition,
   CellData,
   VariableDictionary,
-  Timeline,
   PositionBinding,
   SizeValue,
   OccupantInfo,
@@ -47,13 +46,8 @@ function collectArrayCellSizes(arrayId: string, objectsMap: Map<string, GridObje
 }
 
 export function useGridState() {
-  // Objects are stored by ID, not position (allows position binding)
   const [objects, setObjects] = useState<Map<string, GridObject>>(new Map());
   const [zoom, setZoomLevel] = useState(1);
-
-  // Timeline state
-  const [timeline] = useState<Timeline>([]);
-  const [currentStep] = useState(0);
 
   const zOrderCounter = useRef(0);
 
@@ -64,72 +58,6 @@ export function useGridState() {
       return getExpressionVariables(v.expression).length === 0;
     };
     return noVars(w) && noVars(h);
-  }, []);
-
-  const validateIntegerOverTimeline = useCallback((obj: GridObject, timelineData: Timeline): string | null => {
-    const check = (value: number) => !Number.isInteger(value);
-    for (let step = 0; step < timelineData.length; step++) {
-      const vars = timelineData[step];
-      const row = obj.positionBinding.row;
-      if (row.type === 'expression') {
-        try {
-          const v = evaluateExpression(row.expression, vars);
-          if (check(v)) return `Row must be integer at every step (got ${v} at step ${step + 1})`;
-        } catch {
-          return `Row expression invalid at step ${step + 1}`;
-        }
-      }
-      const col = obj.positionBinding.col;
-      if (col.type === 'expression') {
-        try {
-          const v = evaluateExpression(col.expression, vars);
-          if (check(v)) return `Column must be integer at every step (got ${v} at step ${step + 1})`;
-        } catch {
-          return `Column expression invalid at step ${step + 1}`;
-        }
-      }
-      if (obj.data.shapeProps) {
-        const w = obj.data.shapeProps.width;
-        if (w !== undefined && typeof w !== 'number' && w.type === 'expression') {
-          try {
-            const v = evaluateExpression(w.expression, vars);
-            if (check(v)) return `Width must be integer at every step (got ${v} at step ${step + 1})`;
-          } catch {
-            return `Width expression invalid at step ${step + 1}`;
-          }
-        }
-        const h = obj.data.shapeProps.height;
-        if (h !== undefined && typeof h !== 'number' && h.type === 'expression') {
-          try {
-            const v = evaluateExpression(h.expression, vars);
-            if (check(v)) return `Height must be integer at every step (got ${v} at step ${step + 1})`;
-          } catch {
-            return `Height expression invalid at step ${step + 1}`;
-          }
-        }
-      }
-      if (obj.data.panel) {
-        const w = obj.data.panel.width;
-        if (typeof w !== 'number' && w && 'expression' in w) {
-          try {
-            const v = evaluateExpression(w.expression, vars);
-            if (check(v)) return `Panel width must be integer at every step`;
-          } catch {
-            return `Panel width invalid at step ${step + 1}`;
-          }
-        }
-        const h = obj.data.panel.height;
-        if (typeof h !== 'number' && h && 'expression' in h) {
-          try {
-            const v = evaluateExpression(h.expression, vars);
-            if (check(v)) return `Panel height must be integer at every step`;
-          } catch {
-            return `Panel height invalid at step ${step + 1}`;
-          }
-        }
-      }
-    }
-    return null;
   }, []);
 
   const resolvePositionWithErrors = useCallback(
@@ -170,11 +98,7 @@ export function useGridState() {
     []
   );
 
-  // Current variables from timeline
-  const currentVariables = useMemo((): VariableDictionary => {
-    if (timeline.length === 0) return {};
-    return timeline[Math.min(currentStep, timeline.length - 1)] || {};
-  }, [timeline, currentStep]);
+  const currentVariables = useMemo((): VariableDictionary => ({}), []);
 
   const renderLabelText = useCallback((template: string, vars: VariableDictionary): string => {
     return template.replace(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g, (_match, varName) => {
@@ -249,10 +173,6 @@ export function useGridState() {
       const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
       let position = resolved.position;
       let invalidReason = resolved.error;
-      const timelineIntegerError = validateIntegerOverTimeline(obj, timeline);
-      if (timelineIntegerError) {
-        invalidReason = invalidReason ? `${invalidReason}; ${timelineIntegerError}` : timelineIntegerError;
-      }
       if (obj.data.panelId) {
         const panelInfo = panelPositions.get(obj.data.panelId);
         if (panelInfo) {
@@ -383,10 +303,6 @@ export function useGridState() {
       const resolved = resolvePositionWithErrors(obj.positionBinding, currentVariables);
       let position = resolved.position;
       let invalidReason = resolved.error;
-      const timelineIntegerError = validateIntegerOverTimeline(obj, timeline);
-      if (timelineIntegerError) {
-        invalidReason = invalidReason ? `${invalidReason}; ${timelineIntegerError}` : timelineIntegerError;
-      }
 
       if (obj.data.panelId) {
         const panelInfo = panelPositions.get(obj.data.panelId);
@@ -463,7 +379,7 @@ export function useGridState() {
     }
 
     return { cells: cellMap, overlayCells: overlayMap, occupancyMap: occMap };
-  }, [objects, currentVariables, renderLabelText, timeline, validateIntegerOverTimeline, isSizeResizable, resolvePositionWithErrors]);
+  }, [objects, currentVariables, renderLabelText, isSizeResizable, resolvePositionWithErrors]);
 
   const panels = useMemo(() => {
     const result: Array<{
@@ -483,10 +399,7 @@ export function useGridState() {
       const position = resolved.position;
       const width = resolveSizeValue(obj.data.panel.width, currentVariables, evaluateExpression);
       const height = resolveSizeValue(obj.data.panel.height, currentVariables, evaluateExpression);
-      const timelineErr = validateIntegerOverTimeline(obj, timeline);
-      const invalidReason = resolved.error
-        ? (timelineErr ? `${resolved.error}; ${timelineErr}` : resolved.error)
-        : timelineErr ?? undefined;
+      const invalidReason = resolved.error ?? undefined;
       result.push({
         id: obj.data.panel.id,
         row: position.row,
@@ -500,7 +413,7 @@ export function useGridState() {
     }
 
     return result;
-  }, [objects, currentVariables, timeline, validateIntegerOverTimeline, isSizeResizable, resolvePositionWithErrors]);
+  }, [objects, currentVariables, isSizeResizable, resolvePositionWithErrors]);
 
   const zoomIn = useCallback(() => {
     setZoomLevel((prev) => Math.min(prev + ZOOM_STEP, MAX_ZOOM));

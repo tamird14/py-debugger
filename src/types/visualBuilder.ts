@@ -37,7 +37,7 @@ export interface VisualBuilderElement extends VisualBuilderElementBase {
   panelId?: string; // for children of a panel
   /** Array: variable name and layout */
   direction?: ArrayDirection;
-  length?: number; // number of cells (used when no timeline yet)
+  length?: number;
   /** Per-cell values from the builder. For value arrays: numbers/strings. For shape arrays: config dicts. */
   values?: (number | string | ShapeArrayElementConfig)[];
   /** Shape type for each array cell ('circle', 'rect', 'arrow'). When set, array renders shapes instead of values. */

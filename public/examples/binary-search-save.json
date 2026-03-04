@@ -2,30 +2,6 @@
   "version": 1,
   "code": "# Binary Search Example\narr = [2, 3, 4, 10, 40, 50, 60]\ntarget = 10\nleft = 0\nright = len(arr) - 1\nmid = 0\nfound = -1\n\nwhile left <= right:\n    mid = (left + right) // 2\n    if arr[mid] == target:\n        found = mid\n        break\n    elif arr[mid] < target:\n        left = mid + 1\n    else:\n        right = mid - 1\n\nprint(\"Found at index:\", found)\n",
   "isEditable": false,
-  "timeline": [
-    {
-      "arr": { "type": "arr[int]", "value": [2, 3, 4, 10, 40, 50, 60] },
-      "target": { "type": "int", "value": 10 },
-      "left": { "type": "int", "value": 0 },
-      "right": { "type": "int", "value": 6 },
-      "mid": { "type": "int", "value": 3 },
-      "found": { "type": "int", "value": -1 }
-    },
-    {
-      "arr": { "type": "arr[int]", "value": [2, 3, 4, 10, 40, 50, 60] },
-      "target": { "type": "int", "value": 10 },
-      "left": { "type": "int", "value": 0 },
-      "right": { "type": "int", "value": 6 },
-      "mid": { "type": "int", "value": 3 },
-      "found": { "type": "int", "value": 3 }
-    }
-  ],
-  "currentStep": 0,
-  "executionSteps": [
-    { "lineNumber": 9, "variables": { "mid": { "type": "int", "value": 3 } } },
-    { "lineNumber": 11, "variables": { "found": { "type": "int", "value": 3 } } }
-  ],
-  "output": "",
   "objects": [
     {
       "id": "obj-0",

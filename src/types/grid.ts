@@ -50,9 +50,6 @@ export interface VariableDictionary {
   [name: string]: Variable;
 }
 
-// Timeline is a list of variable dictionaries (steps in time)
-export type Timeline = VariableDictionary[];
-
 // Numeric property metadata (for validation)
 export interface NumericPropertyMeta {
   mustBeInteger: boolean;
