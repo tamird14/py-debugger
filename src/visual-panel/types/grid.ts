@@ -1,4 +1,4 @@
-import type { VisualBuilderElementBase } from "../../api/visualBuilder";
+import type { RenderableElement } from "../views/rendererRegistry";
 
 export type ShapeType = 'circle' | 'square' | 'rectangle' | 'arrow';
 
@@ -155,7 +155,7 @@ export interface CellData {
   objectId?: string;
   shape?: ShapeType;
 
-  elementInfo?: VisualBuilderElementBase,
+  elementInfo?: RenderableElement,
 
   bounds?: CellBounds, 
 

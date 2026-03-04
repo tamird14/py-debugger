@@ -11,6 +11,7 @@ import type { VisualBuilderElementBase } from '../../api/visualBuilder';
 import { cellKey, createHardcodedBinding, resolveSizeValue } from '../types/grid';
 import { evaluateExpression } from '../../code-builder/expressionEvaluator';
 import type { ArrayDrawResult } from '../types/arrayShapes';
+import { PanelCell } from '../views/PanelView';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.0;
@@ -388,10 +389,12 @@ export function useGridState() {
         const height = elAny.height ?? 5;
         const gridId = `${VB_PREFIX}panel-${idx++}`;
         panelIdMap.set(gridId, { gridId, origin: { row, col } });
+        const panelCell = new PanelCell({ id: gridId, title: elAny.name });
         next.set(gridId, {
           id: gridId,
           data: {
             objectId: gridId,
+            elementInfo: panelCell as any,
             panel: { id: gridId, width, height, title: elAny.name },
             shapeProps: { width, height },
             zOrder: z,
@@ -444,10 +447,12 @@ export function useGridState() {
 
             const panelGridId = panelInfo.id;
             panelIdMap.set(panelGridId, { gridId: panelGridId, origin: { row: panelRow + (parentPanelId ? panelIdMap.get(parentPanelId)!.origin.row : 0), col: panelCol + (parentPanelId ? panelIdMap.get(parentPanelId)!.origin.col : 0) } });
+            const arrayPanelCell = new PanelCell({ id: panelGridId, title: panelInfo.title });
             next.set(panelGridId, {
               id: panelGridId,
               data: {
                 objectId: panelGridId,
+                elementInfo: arrayPanelCell as any,
                 panel: {
                   id: panelGridId,
                   width: panelInfo.width,

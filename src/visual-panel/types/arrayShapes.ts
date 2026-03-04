@@ -25,6 +25,7 @@ export interface ArrayDrawResult {
 // ========================= Array1DCell =========================
 
 export class Array1DCell {
+  type = 'array1dcell' as const;
   arrayId: string;
   index: number;
   direction: 'right' | 'left' | 'down' | 'up';
@@ -53,14 +54,7 @@ export class Array1DCell {
 
   draw(): Partial<CellData> {
     return {
-      arrayInfo: {
-        id: this.arrayId,
-        index: this.index,
-        direction: this.direction,
-        showIndex: this.showIndex,
-        value: this.value,
-        varName: this.varName,
-      },
+      elementInfo: this as any,
       style: this.style,
     };
   }
@@ -69,6 +63,7 @@ export class Array1DCell {
 // ========================= Array2DCell =========================
 
 export class Array2DCell {
+  type = 'array2dcell' as const;
   arrayId: string;
   row: number;
   col: number;
@@ -103,16 +98,7 @@ export class Array2DCell {
 
   draw(): Partial<CellData> {
     return {
-      array2dInfo: {
-        id: this.arrayId,
-        row: this.row,
-        col: this.col,
-        numRows: this.numRows,
-        numCols: this.numCols,
-        value: this.value,
-        varName: this.varName,
-        showIndices: this.showIndices,
-      },
+      elementInfo: this as any,
       style: this.style,
     };
   }
