@@ -118,7 +118,7 @@ Add a save \ load buttons. Saving saves the code from the visual builder into a 
 ## 4. The simple continuous animation mode
 
 Have a scrollbar to determine the time of the animation. Right clicking it, we can determine the end time in seconds, and next to the scrollbar there should have a play \ pause button. The scrollbar should move from 0 to 1 and when it is moved manually it triggers the `jump_to(time: float)` event. When the play button is used it advances according to the total time T (namely, if the jump between frames is t seconds, then it advances the internal time by t/T). It similarly triggers `jump_to(t)` and in both cases, after this function is done, the visual panel is updated.
-When entering this mode, this function is added automatically with an empty implementation (namely `pass`) in the visual builder. If the user tries to analyze the code and this function is not implemented, it should throw an informative error about this.
+When entering this mode, and calling analyze for the builder code, it should be validated that it has a `jump_to` function.
 
 Have a sample that shows a ball rotating around some center point with some nontrivial radius.
 
@@ -127,16 +127,37 @@ The 'save' option here should indicate that this is a "continuous animation mode
 Similarly, the API should show that the user should implement the `jump_to(t: float)` function.
 Both these update should be modular, since for each mode we change the save file \ API separately. This means, for example, that the API should be updated from a python file which belong to this mode, so it will be easy to update, or to generate new modes later.
 
+### Steps:
+
+- Add a scrollbar that runs from 0 to 1, which shows the current time.
+- When calling 'Analyze' on the visual builder, make sure that it has the `jump_to(t)` function implemented. This should not be implemented directly. Instead, the 'Analyze' event should trigger a validation process on the code being analyzed, and this validation that `jump_to` exists should be registered there.
+- add the `jump_to` section in the API. 
+- Handle the scrollbar event so that when changed, it calls `jump_to(t)` with the proper time, and afterwards update the visual panel.
+- Add the right click menu on scrollbar to control the maximum time in seconds (positive number).
+- Update the save\load feature to contain the mode, the current time and max time.
+- Add the play\pause feature
+- prepare a "mode choice" and make sure that these changes are modular enough so that when switching modes they are disabled. In particular, keep the code separate and only use interfaces to talk with the main program (e.g. as with the `jump_to` validation registration). The two possible modes right now should be 'simple' (the previous setting) and 'continuous animation'.
+
 ## 5. The simple discrete animation mode
 
 Now the control area should have button left, button right and in the middle we can choose an integer to jump directly to some point. Here too right clicking we can choose the maximal time T, an integer at most 1000. 
-Calling "analyze" will initialize the visual objects (time 0) then call `forward()` T times and save a trace of the objects for each time. When moving forward\backward\or jump in the control area, pull the state from this trace, and use it to update the visual panel.
+Calling "analyze" will initialize the visual objects and then call `step(t: int)` with t running from 0 to T. When moving forward\backward\or jump in the control area, pull the state from this trace, and use it to update the visual panel.
 
-As a sample case, have T=10, and in the timeline start with an empty array, and visualize it using a visual array. In the first 6 forward add an element with value `time()*2`, and in the last 4 pop the first element of the array.
+As a sample case, have T=10, and in the timeline start with an empty array, and visualize it using a visual array. In the first 6 steps add an element with value `t*2`, and in the last 4 pop the first element of the array.
 
 Here too, the json save file should contain the code, the mode, the max time and the current time (and not the whole trace). Once loaded, it should automatically analyze the code, set the max time and jump to the current time.
 
-Similarly, the API should indicate that the user should implement `forward` (or maybe call this function `step`? should think about this...) and that he can use the `visual.time()` function.
+
+### Steps:
+
+- Add a new mode 'discrete animation', which should start as the 'simple' mode
+- Create a timeline state file. It will contain a list of all the settings the visual objects can be in.
+- Add a registration to a validation that the builder code has a `jump_to(t: int)` function, and add it also to the API.
+- When analyzing the code, automatically run `jump_to(t: int)` with t go from 0 to 100. After each time save the state of the variables (make sure that it is a deep copy, and not shallow because of the arrays). Use the t=0 state automatically after the analysis.
+- Add the control area with the backward\forward\and the time in the middle.
+- When the user changes the time, either by using the buttons, or the middle number, use the corresponding state from the timeline to update the visual panel. Make sure that the user always enters a number between 0 and 100, and when the time is 0 or 100 disable the backward \ forward button respectively.
+- Add the right click menu to change the max time from 100 to general nonnegative T
+- update the save \ load process to save also the mode, the current time and max time.
 
 ## 6. The debugger mode
 
