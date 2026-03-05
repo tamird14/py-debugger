@@ -29,26 +29,16 @@ export interface ClassDoc {
 }
 
 import { getAllSchemas } from '../visual-panel/types/elementRegistry';
-import { PANEL_SCHEMA } from '../visual-panel/views/PanelView';
+import { PANEL_SCHEMA } from '../visual-panel/render-objects/panel';
 
-import '../visual-panel/types/shapes';
-import '../visual-panel/types/label';
-import '../visual-panel/types/arrayShapes';
-
-const VISUAL_ELEM_BASE_SCHEMA: ClassDoc = {
-  className: 'VisualElem',
-  constructorParams: '',
-  docstring: 'Base class for all visual elements. Provides shared properties like position, visibility, and alpha.',
-  properties: [
-    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) on the grid.' },
-    { name: 'visible', type: 'bool', description: 'Whether the element is shown.' },
-    { name: 'alpha', type: 'float', description: 'Opacity from 0.0 (transparent) to 1.0 (opaque). Default 1.0.' },
-  ],
-};
+import '../visual-panel/render-objects/rect/Rect';
+import '../visual-panel/render-objects/circle/Circle';
+import '../visual-panel/render-objects/arrow/Arrow';
+import '../visual-panel/render-objects/label/Label';
+import '../visual-panel/render-objects/array/arrayShapes';
 
 export function getVisualElemSchema(): ClassDoc[] {
   return [
-    VISUAL_ELEM_BASE_SCHEMA,
     PANEL_SCHEMA,
     ...getAllSchemas(),
   ];
