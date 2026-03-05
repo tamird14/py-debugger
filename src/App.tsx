@@ -56,7 +56,7 @@ function App() {
   }, []);
 
   const handleAnalyzeVisualBuilder = useCallback(async (codeOverride?: string) => {
-    const codeToAnalyze = codeOverride ?? visualBuilderCode;
+    const codeToAnalyze = typeof codeOverride === 'string' ? codeOverride : visualBuilderCode;
     if (!codeToAnalyze.trim()) return;
 
     setIsAnalyzingVisualBuilder(true);
