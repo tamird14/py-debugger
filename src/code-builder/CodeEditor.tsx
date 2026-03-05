@@ -5,10 +5,17 @@ import type * as MonacoTypes from 'monaco-editor';
 import { VISUAL_ELEM_SCHEMA } from '../api/visualBuilder';
 import { useTheme } from '../contexts/ThemeContext';
 
+interface SaveData {
+  mode?: string;
+  code?: string;
+}
+
 interface CodeEditorProps {
   code: string;
   onChange: (code: string) => void;
   onAnalyze: () => void;
+  onSave: () => void;
+  onLoad: (data: SaveData) => void;
   isAnalyzing: boolean;
   error?: string;
 }
@@ -69,7 +76,30 @@ mat.set_dims(3, 4)
 panel.add(mat)
 `;
 
-export function CodeEditor({ code, onChange, onAnalyze, isAnalyzing, error }: CodeEditorProps) {
+export function CodeEditor({ code, onChange, onAnalyze, onSave, onLoad, isAnalyzing, error }: CodeEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        onLoad(data);
+      } catch {
+        console.error('Failed to parse JSON file');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const { darkMode } = useTheme();
   const monacoTheme = darkMode ? 'vs-dark' : 'vs';
 
@@ -219,6 +249,27 @@ export function CodeEditor({ code, onChange, onAnalyze, isAnalyzing, error }: Co
           >
             Sample
           </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={handleLoadClick}
+            className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+          >
+            Load
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileChange}
+            className="hidden"
+          />
           <button
             type="button"
             onClick={onAnalyze}

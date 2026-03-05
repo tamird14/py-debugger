@@ -77,6 +77,33 @@ function App() {
     }
   }, [visualBuilderCode, loadVisualBuilderObjects]);
 
+  const handleSave = useCallback(() => {
+    const data = {
+      mode: 'simple',
+      code: visualBuilderCode,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'visual-builder.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [visualBuilderCode]);
+
+  const handleLoad = useCallback((data: { mode?: string; code?: string }) => {
+    if (!data.mode || !data.code) {
+      setVisualBuilderError('Invalid file: missing mode or code field');
+      return;
+    }
+    setVisualBuilderCode(data.code);
+    setTimeout(() => {
+      handleAnalyzeVisualBuilder();
+    }, 0);
+  }, [handleAnalyzeVisualBuilder]);
+
   const handleZoom = useCallback(
     (delta: number) => {
       setZoom(zoom + delta);
@@ -248,6 +275,8 @@ function App() {
                 code={visualBuilderCode}
                 onChange={setVisualBuilderCode}
                 onAnalyze={handleAnalyzeVisualBuilder}
+                onSave={handleSave}
+                onLoad={handleLoad}
                 isAnalyzing={isAnalyzingVisualBuilder}
                 error={visualBuilderError}
               />
