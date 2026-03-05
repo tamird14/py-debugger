@@ -1,7 +1,7 @@
 import { useRef, useCallback, useMemo, memo, forwardRef, useImperativeHandle } from 'react';
 import { GridCell } from './GridCell';
-import type { RenderableObjectData, OccupantInfo, PanelStyle } from '../types/grid';
-import { cellKey, PANEL_STYLE_DEFAULT } from '../types/grid';
+import type { RenderableObjectData, PanelStyle } from '../types/grid';
+import { PANEL_STYLE_DEFAULT } from '../types/grid';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -14,10 +14,11 @@ const GRID_ROWS = 50;
 interface GridProps {
   cells: Map<string, RenderableObjectData>;
   overlayCells?: Map<string, RenderableObjectData>;
-  occupancyMap?: Map<string, OccupantInfo[]>;
+  occupancyMap?: Map<string, unknown>; // kept for API compat
   panels: Array<PanelInfo>;
   zoom: number;
   onZoom: (delta: number) => void;
+  darkMode?: boolean;
 }
 
 export interface GridHandle {
@@ -83,10 +84,11 @@ const GridSingleObject = memo(function GridSingleObject({
 export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   cells,
   overlayCells = new Map(),
-  occupancyMap = new Map(),
+  occupancyMap: _occupancyMap = new Map(),
   panels,
   zoom,
   onZoom,
+  darkMode = false,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridContentRef = useRef<HTMLDivElement>(null);
@@ -118,28 +120,8 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
     [onZoom]
   );
 
-  const gridBackground = useMemo(() => {
-    const result: React.ReactNode[] = [];
-    for (let row = 0; row < GRID_ROWS; row++) {
-      for (let col = 0; col < GRID_COLS; col++) {
-        const key = cellKey(row, col);
-        const hasContent = occupancyMap.has(key);
-
-        result.push(
-          <div
-            key={key}
-            className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 transition-colors"
-            style={{
-              width: CELL_SIZE,
-              height: CELL_SIZE,
-              zIndex: hasContent ? 0 : 1,
-            }}
-          />
-        );
-      }
-    }
-    return result;
-  }, [occupancyMap]);
+  const gridLineColor = darkMode ? '#4b5563' : '#d1d5db';
+  const gridBgColor = darkMode ? '#1f2937' : '#ffffff';
 
   const objectsToRender = useMemo((): RenderableObject[] => {
     const objects: RenderableObject[] = [];
@@ -241,14 +223,14 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
       >
         {/* Background grid */}
         <div
-          className="grid"
           style={{
-            gridTemplateColumns: `repeat(${GRID_COLS}, ${CELL_SIZE}px)`,
-            gridTemplateRows: `repeat(${GRID_ROWS}, ${CELL_SIZE}px)`,
+            width: CELL_SIZE * GRID_COLS,
+            height: CELL_SIZE * GRID_ROWS,
+            backgroundColor: gridBgColor,
+            backgroundImage: `linear-gradient(to right, ${gridLineColor} 1px, transparent 1px), linear-gradient(to bottom, ${gridLineColor} 1px, transparent 1px)`,
+            backgroundSize: `${CELL_SIZE}px ${CELL_SIZE}px`,
           }}
-        >
-          {gridBackground}
-        </div>
+        />
 
         {/* Panel backgrounds layer (below objects) */}
         <div className="absolute inset-0 pointer-events-none">

@@ -278,6 +278,7 @@ function App() {
                   panels={panels}
                   zoom={zoom}
                   onZoom={handleZoom}
+                  darkMode={darkMode}
                 />
 
                 {apiReferenceOpen && (
