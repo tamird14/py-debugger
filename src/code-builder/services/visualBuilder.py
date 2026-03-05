@@ -1,3 +1,8 @@
+class PopupException(Exception):
+    """Exception type used to signal user-facing popup messages."""
+    pass
+
+
 class VisualElem:
     _registry = []
 

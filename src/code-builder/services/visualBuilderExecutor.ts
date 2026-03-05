@@ -3,6 +3,19 @@ import { type VisualBuilderElementBase } from '../../api/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
 import VISUAL_BUILDER_SHAPES_PYTHON from './visualBuilderShapes.py?raw';
 import { getConstructor } from '../../visual-panel/types/elementRegistry';
+import { getPythonFilesInOrder, registerPythonFile } from './pythonFileRegistry';
+
+registerPythonFile({
+  id: 'visualBuilder',
+  order: 0,
+  source: VISUAL_BUILDER_PYTHON,
+});
+
+registerPythonFile({
+  id: 'visualBuilderShapes',
+  order: 10,
+  source: VISUAL_BUILDER_SHAPES_PYTHON,
+});
 
 export interface ExecuteVisualBuilderResult {
   success: boolean;
@@ -17,9 +30,11 @@ export async function executeVisualBuilderCode(code: string): Promise<ExecuteVis
   try {
     const py = await loadPyodide();
 
-    // Inject class definitions and serialization (base first, then shapes)
-    await py.runPythonAsync(VISUAL_BUILDER_PYTHON);
-    await py.runPythonAsync(VISUAL_BUILDER_SHAPES_PYTHON);
+    // Inject registered Python files (base first, then shapes, then any extensions)
+    const pythonFiles = getPythonFilesInOrder();
+    for (const file of pythonFiles) {
+      await py.runPythonAsync(file.source);
+    }
 
     // Reset registry so each run starts fresh
     await py.runPythonAsync('VisualElem._registry = []');
@@ -52,9 +67,18 @@ exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     let cleanError = errorMessage;
-    if (errorMessage.includes('PythonError:')) {
+
+    if (errorMessage.includes('PopupException')) {
+      const parts = errorMessage.split('PopupException:');
+      const popupMsg = parts[1]?.trim() || 'An error occurred';
+      if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+        window.alert(popupMsg);
+      }
+      cleanError = popupMsg;
+    } else if (errorMessage.includes('PythonError:')) {
       cleanError = errorMessage.split('PythonError:')[1]?.trim() || errorMessage;
     }
+
     return {
       success: false,
       elements: [],
