@@ -104,7 +104,14 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
         behavior: 'smooth',
       });
     },
-    captureElement: () => gridContentRef.current,
+    captureElement: () => {
+      const container = containerRef.current;
+      if (container) {
+        container.style.overflow = 'hidden';
+        setTimeout(() => { container.style.overflow = 'auto'; }, 100);
+      }
+      return container;
+    },
   }), [zoom]);
 
   const handleWheel = useCallback(
