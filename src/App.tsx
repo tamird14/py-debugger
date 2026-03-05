@@ -55,14 +55,15 @@ function App() {
     }
   }, []);
 
-  const handleAnalyzeVisualBuilder = useCallback(async () => {
-    if (!visualBuilderCode.trim()) return;
+  const handleAnalyzeVisualBuilder = useCallback(async (codeOverride?: string) => {
+    const codeToAnalyze = codeOverride ?? visualBuilderCode;
+    if (!codeToAnalyze.trim()) return;
 
     setIsAnalyzingVisualBuilder(true);
     setVisualBuilderError(undefined);
 
     try {
-      const result = await executeVisualBuilderCode(visualBuilderCode);
+      const result = await executeVisualBuilderCode(codeToAnalyze);
 
       if (result.success) {
         loadVisualBuilderObjects(result.elements);
@@ -99,9 +100,7 @@ function App() {
       return;
     }
     setVisualBuilderCode(data.code);
-    setTimeout(() => {
-      handleAnalyzeVisualBuilder();
-    }, 0);
+    handleAnalyzeVisualBuilder(data.code);
   }, [handleAnalyzeVisualBuilder]);
 
   const handleZoom = useCallback(
