@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { Grid } from './visual-panel/components/Grid';
+import html2canvas from 'html2canvas';
+import { Grid, type GridHandle } from './visual-panel/components/Grid';
 import { CodeEditor, SAMPLE_VISUAL_BUILDER } from './code-builder/CodeEditor';
 import { useGridState } from './visual-panel/hooks/useGridState';
 import { useTheme } from './contexts/ThemeContext';
@@ -31,6 +32,10 @@ function App() {
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
+  const [apiPanelWidth, setApiPanelWidth] = useState(288);
+  const isResizingRef = useRef(false);
+  const apiPanelContainerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<GridHandle>(null);
 
   // Preload Pyodide on mount
   useEffect(() => {
@@ -79,6 +84,61 @@ function App() {
     [zoom, setZoom]
   );
 
+  const handleApiPanelResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    const startX = e.clientX;
+    const startWidth = apiPanelWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const delta = startX - moveEvent.clientX;
+      const newWidth = Math.max(200, Math.min(600, startWidth + delta));
+      setApiPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizingRef.current = false;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [apiPanelWidth]);
+
+  const handleAlignGrid = useCallback(() => {
+    gridRef.current?.alignGrid();
+  }, []);
+
+  const handleScreenshot = useCallback(async () => {
+    const element = gridRef.current?.captureElement();
+    if (!element) return;
+
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: null,
+        scale: 2,
+        logging: false,
+      });
+      
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        link.download = `visual-panel-${timestamp}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    } catch (err) {
+      console.error('Screenshot failed:', err);
+    }
+  }, []);
+
   return (
     <div className="w-screen h-screen overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
@@ -126,6 +186,20 @@ function App() {
             >
               +
             </button>
+            <button
+              onClick={handleAlignGrid}
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-sm font-medium transition-colors"
+              title="Align grid to viewport"
+            >
+              ⊞
+            </button>
+            <button
+              onClick={handleScreenshot}
+              className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-sm font-medium transition-colors"
+              title="Download screenshot"
+            >
+              📷
+            </button>
           </div>
 
           {/* Dark mode toggle */}
@@ -172,6 +246,7 @@ function App() {
               </div>
               <div className="flex-1 overflow-hidden relative">
                 <Grid
+                  ref={gridRef}
                   cells={cells}
                   overlayCells={overlayCells}
                   occupancyMap={occupancyMap}
@@ -181,42 +256,52 @@ function App() {
                 />
 
                 {apiReferenceOpen && (
-                  <div className="absolute top-0 right-0 h-full w-72 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-l border-gray-300 dark:border-gray-600 shadow-lg overflow-auto z-50">
-                    <div className="px-3 py-2 border-b border-gray-300 dark:border-gray-600 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800">
-                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">API Reference</span>
-                      <button
-                        type="button"
-                        onClick={() => setApiReferenceOpen(false)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm"
-                      >
-                        &times;
-                      </button>
-                    </div>
-                    <div className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 space-y-3">
-                      {VISUAL_ELEM_SCHEMA.map((cls) => (
-                        <div key={cls.className} className="border-b border-gray-300 dark:border-gray-600 pb-2 last:border-0">
-                          <div className="font-mono font-medium text-gray-900 dark:text-gray-200">
-                            {cls.className}({cls.constructorParams})
+                  <div
+                    ref={apiPanelContainerRef}
+                    className="absolute top-0 right-0 h-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-l border-gray-300 dark:border-gray-600 shadow-lg overflow-auto z-50 flex"
+                    style={{ width: apiPanelWidth }}
+                  >
+                    <div
+                      className="w-1 h-full cursor-ew-resize bg-transparent hover:bg-indigo-400 dark:hover:bg-indigo-500 transition-colors flex-shrink-0"
+                      onMouseDown={handleApiPanelResizeStart}
+                    />
+                    <div className="flex-1 overflow-auto">
+                      <div className="px-3 py-2 border-b border-gray-300 dark:border-gray-600 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">API Reference</span>
+                        <button
+                          type="button"
+                          onClick={() => setApiReferenceOpen(false)}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-sm"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                      <div className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 space-y-3">
+                        {VISUAL_ELEM_SCHEMA.map((cls) => (
+                          <div key={cls.className} className="border-b border-gray-300 dark:border-gray-600 pb-2 last:border-0">
+                            <div className="font-mono font-medium text-gray-900 dark:text-gray-200">
+                              {cls.className}({cls.constructorParams})
+                            </div>
+                            <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{cls.docstring}</div>
+                            <div className="mt-1.5 space-y-0.5">
+                              {cls.properties.map((p) => (
+                                <div key={p.name} className="font-mono text-xs">
+                                  <span className="text-amber-600 dark:text-amber-300">{p.name}</span>
+                                  <span className="text-gray-400 dark:text-gray-500">: {p.type}</span>
+                                  <div className="text-gray-500 dark:text-gray-400 pl-2">{p.description}</div>
+                                </div>
+                              ))}
+                              {cls.methods?.map((m) => (
+                                <div key={m.name} className="font-mono text-xs mt-0.5">
+                                  <span className="text-cyan-600 dark:text-cyan-300">{m.name}</span>
+                                  <span className="text-gray-400 dark:text-gray-500"> {m.signature}</span>
+                                  <div className="text-gray-500 dark:text-gray-400 pl-2">{m.docstring}</div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{cls.docstring}</div>
-                          <div className="mt-1.5 space-y-0.5">
-                            {cls.properties.map((p) => (
-                              <div key={p.name} className="font-mono text-xs">
-                                <span className="text-amber-600 dark:text-amber-300">{p.name}</span>
-                                <span className="text-gray-400 dark:text-gray-500">: {p.type}</span>
-                                <div className="text-gray-500 dark:text-gray-400 pl-2">{p.description}</div>
-                              </div>
-                            ))}
-                            {cls.methods?.map((m) => (
-                              <div key={m.name} className="font-mono text-xs mt-0.5">
-                                <span className="text-cyan-600 dark:text-cyan-300">{m.name}</span>
-                                <span className="text-gray-400 dark:text-gray-500"> {m.signature}</span>
-                                <div className="text-gray-500 dark:text-gray-400 pl-2">{m.docstring}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

@@ -1,11 +1,11 @@
-import { useRef, useCallback, useMemo, memo } from 'react';
+import { useRef, useCallback, useMemo, memo, forwardRef, useImperativeHandle } from 'react';
 import { GridCell } from './GridCell';
 import type { RenderableObjectData, OccupantInfo, PanelStyle } from '../types/grid';
 import { cellKey, PANEL_STYLE_DEFAULT } from '../types/grid';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const CELL_SIZE = 40;
+export const CELL_SIZE = 40;
 const GRID_COLS = 50;
 const GRID_ROWS = 50;
 
@@ -18,6 +18,11 @@ interface GridProps {
   panels: Array<PanelInfo>;
   zoom: number;
   onZoom: (delta: number) => void;
+}
+
+export interface GridHandle {
+  alignGrid: () => void;
+  captureElement: () => HTMLDivElement | null;
 }
 
 export interface PanelInfo {
@@ -75,15 +80,32 @@ const GridSingleObject = memo(function GridSingleObject({
 
 // ── Main Grid component ────────────────────────────────────────────────────
 
-export function Grid({
+export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   cells,
   overlayCells = new Map(),
   occupancyMap = new Map(),
   panels,
   zoom,
   onZoom,
-}: GridProps) {
+}, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const gridContentRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    alignGrid: () => {
+      const container = containerRef.current;
+      if (!container) return;
+      const scaledCellSize = CELL_SIZE * zoom;
+      const offsetLeft = container.scrollLeft % scaledCellSize;
+      const offsetTop = container.scrollTop % scaledCellSize;
+      container.scrollTo({
+        left: container.scrollLeft - offsetLeft,
+        top: container.scrollTop - offsetTop,
+        behavior: 'smooth',
+      });
+    },
+    captureElement: () => gridContentRef.current,
+  }), [zoom]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -209,6 +231,7 @@ export function Grid({
       onWheel={handleWheel}
     >
       <div
+        ref={gridContentRef}
         className="origin-top-left relative"
         style={{
           transform: `scale(${zoom})`,
@@ -250,4 +273,4 @@ export function Grid({
       </div>
     </div>
   );
-}
+});
