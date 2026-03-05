@@ -5,99 +5,6 @@ export interface CellPosition {
   col: number;
 }
 
-// Variable dictionary types
-export type VariableType = 'int' | 'float' | 'str' | 'arr[int]' | 'arr[str]' | 'arr2d[int]' | 'arr2d[str]';
-
-export interface IntVariable {
-  type: 'int';
-  value: number;
-}
-
-export interface FloatVariable {
-  type: 'float';
-  value: number;
-}
-
-export interface ArrayVariable {
-  type: 'arr[int]';
-  value: number[];
-}
-
-export interface StringVariable {
-  type: 'str';
-  value: string;
-}
-
-export interface StringArrayVariable {
-  type: 'arr[str]';
-  value: string[];
-}
-
-export interface Array2DVariable {
-  type: 'arr2d[int]';
-  value: number[][];
-}
-
-export interface StringArray2DVariable {
-  type: 'arr2d[str]';
-  value: string[][];
-}
-
-export type Variable = IntVariable | FloatVariable | ArrayVariable | StringVariable | StringArrayVariable | Array2DVariable | StringArray2DVariable;
-
-export interface VariableDictionary {
-  [name: string]: Variable;
-}
-
-// Numeric property metadata (for validation)
-export interface NumericPropertyMeta {
-  mustBeInteger: boolean;
-  canBeExpression: boolean;
-}
-
-export const POSITION_PROPERTY_META: NumericPropertyMeta = { mustBeInteger: true, canBeExpression: true };
-export const SIZE_PROPERTY_META: NumericPropertyMeta = { mustBeInteger: true, canBeExpression: true };
-
-// Unified numeric value: fixed number or expression (variable name is just expression "i")
-export interface NumericFixed {
-  type: 'fixed';
-  value: number;
-}
-
-export interface NumericExpr {
-  type: 'expression';
-  expression: string;
-}
-
-export type NumericExpression = NumericFixed | NumericExpr;
-
-// Legacy position types (kept for backward compatibility with saved JSON files)
-export interface PositionValue {
-  type: 'hardcoded';
-  value: number;
-}
-
-export interface PositionVarBinding {
-  type: 'variable';
-  varName: string;
-}
-
-export interface PositionExpression {
-  type: 'expression';
-  expression: string;
-}
-
-export type PositionComponent =
-  | NumericExpression
-  | PositionValue
-  | PositionVarBinding
-  | PositionExpression;
-
-export interface PositionBinding {
-  row: PositionComponent;
-  col: PositionComponent;
-}
-
 export interface ArrayInfo {
   id: string;
   startRow: number;
@@ -115,12 +22,9 @@ export interface CellStyle {
 
 export type ArrowOrientation = 'up' | 'down' | 'left' | 'right';
 
-// Size can be fixed number (legacy) or NumericExpression
-export type SizeValue = number | NumericExpression;
-
 export interface ShapeProps {
-  width?: SizeValue;    // in cells
-  height?: SizeValue;   // in cells
+  width?: number;    // in cells
+  height?: number;   // in cells
   rotation?: number;    // degrees
   orientation?: ArrowOrientation;
 }
@@ -148,8 +52,8 @@ export interface RenderableObjectData {
   // For panels (container)
   panel?: {
     id: string;
-    width: SizeValue;
-    height: SizeValue;
+    width: number;
+    height: number;
     title?: string;
     panelStyle?: PanelStyle;
   };
@@ -159,12 +63,8 @@ export interface RenderableObjectData {
   style?: CellStyle;
   // Shape-specific props
   shapeProps?: ShapeProps;
-  // Raw size binding for editing (expressions); shapeProps.width/height may be resolved numbers for display
-  shapeSizeBinding?: { width: SizeValue; height: SizeValue };
   // Invalid computation reason (for grayed-out rendering)
   invalidReason?: string;
-  // Position binding (if set, position is computed from variables)
-  positionBinding?: PositionBinding;
   // Render/drag order (higher = on top)
   zOrder?: number;
 }
@@ -194,33 +94,6 @@ export function cellKey(row: number, col: number): string {
 export function parseKey(key: string): CellPosition {
   const [row, col] = key.split(',').map(Number);
   return { row, col };
-}
-
-// Create a hardcoded position binding from a CellPosition
-export function createHardcodedBinding(position: CellPosition): PositionBinding {
-  return {
-    row: { type: 'fixed', value: position.row },
-    col: { type: 'fixed', value: position.col },
-  };
-}
-
-// Resolve SizeValue (number or NumericExpression) to a number
-export function resolveSizeValue(
-  value: SizeValue | undefined,
-  variables: VariableDictionary,
-  expressionEvaluator?: (expression: string, vars: VariableDictionary) => number
-): number {
-  if (value === undefined) return 1;
-  if (typeof value === 'number') return Math.max(1, Math.min(50, Math.floor(value)));
-  if (value.type === 'fixed') return Math.max(1, Math.min(50, value.value));
-  if (value.type === 'expression' && expressionEvaluator) {
-    try {
-      return Math.max(1, Math.min(50, Math.floor(expressionEvaluator(value.expression, variables))));
-    } catch {
-      return 1;
-    }
-  }
-  return 1;
 }
 
 export function getArrayOffset(direction: 'right' | 'left' | 'down' | 'up', index: number): { rowDelta: number; colDelta: number } {
