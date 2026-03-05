@@ -1,10 +1,23 @@
 import type { VisualBuilderElementBase } from "../../api/visualBuilder";
 import { rgbToHex } from "../../api/visualBuilder";
-import type { RenderableObjectData, CellStyle, PanelStyle, VariableDictionary, ResolvableElement } from "./grid";
-import { PANEL_STYLE_1D, PANEL_STYLE_2D } from "./grid";
+import type { RenderableObjectData, CellStyle, PanelStyle } from "./grid";
 import type { ClassDoc } from "../../api/visualBuilder";
 import { registerVisualElement } from "./elementRegistry";
 import { getArrayOffset } from "./grid";
+
+export const PANEL_STYLE_1D: PanelStyle = {
+  borderClass: 'border-2 border-amber-400 dark:border-amber-600',
+  backgroundClass: 'bg-amber-50/50 dark:bg-amber-900/30',
+  titleBgClass: 'bg-amber-50 dark:bg-amber-900',
+  titleTextClass: 'text-amber-700 dark:text-amber-300',
+};
+
+export const PANEL_STYLE_2D: PanelStyle = {
+  borderClass: 'border-2 border-violet-400 dark:border-violet-600',
+  backgroundClass: 'bg-violet-50/50 dark:bg-violet-900/30',
+  titleBgClass: 'bg-violet-50 dark:bg-violet-900',
+  titleTextClass: 'text-violet-700 dark:text-violet-300',
+};
 
 // ========================= Array Panel Info =========================
 
@@ -25,7 +38,7 @@ export interface ArrayDrawResult {
 
 // ========================= Array1DCell =========================
 
-export class Array1DCell implements ResolvableElement {
+export class Array1DCell {
   type = 'array1dcell' as const;
   arrayId: string;
   index: number;
@@ -59,45 +72,11 @@ export class Array1DCell implements ResolvableElement {
       style: this.style,
     };
   }
-
-  resolveForDisplay(
-    variables: VariableDictionary,
-    _expressionEvaluator: (expression: string, vars: VariableDictionary) => number
-  ): { element: ResolvableElement; width: number; height: number; invalidReason?: string } {
-    let resolvedValue = this.value;
-    let invalidReason: string | undefined;
-
-    if (this.varName) {
-      const arrVar = variables[this.varName];
-      if (arrVar && (arrVar.type === 'arr[int]' || arrVar.type === 'arr[str]')) {
-        const newValue = arrVar.value[this.index];
-        if (newValue !== undefined) {
-          resolvedValue = newValue;
-        } else {
-          invalidReason = `Index ${this.index} out of bounds`;
-        }
-      } else {
-        invalidReason = `Array "${this.varName}" not available`;
-      }
-    }
-
-    const updatedCell = new Array1DCell({
-      arrayId: this.arrayId,
-      index: this.index,
-      direction: this.direction,
-      showIndex: this.showIndex,
-      varName: this.varName,
-      value: resolvedValue,
-      style: this.style,
-    });
-
-    return { element: updatedCell, width: 1, height: 1, invalidReason };
-  }
 }
 
 // ========================= Array2DCell =========================
 
-export class Array2DCell implements ResolvableElement {
+export class Array2DCell {
   type = 'array2dcell' as const;
   arrayId: string;
   row: number;
@@ -136,42 +115,6 @@ export class Array2DCell implements ResolvableElement {
       elementInfo: this as any,
       style: this.style,
     };
-  }
-
-  resolveForDisplay(
-    variables: VariableDictionary,
-    _expressionEvaluator: (expression: string, vars: VariableDictionary) => number
-  ): { element: ResolvableElement; width: number; height: number; invalidReason?: string } {
-    let resolvedValue = this.value;
-    let invalidReason: string | undefined;
-
-    if (this.varName) {
-      const arrVar = variables[this.varName];
-      if (arrVar && (arrVar.type === 'arr2d[int]' || arrVar.type === 'arr2d[str]')) {
-        const newValue = (arrVar.value as (number | string)[][])[this.row]?.[this.col];
-        if (newValue !== undefined) {
-          resolvedValue = newValue;
-        } else {
-          invalidReason = `Index [${this.row}][${this.col}] out of bounds`;
-        }
-      } else {
-        invalidReason = `Array "${this.varName}" not available`;
-      }
-    }
-
-    const updatedCell = new Array2DCell({
-      arrayId: this.arrayId,
-      row: this.row,
-      col: this.col,
-      numRows: this.numRows,
-      numCols: this.numCols,
-      varName: this.varName,
-      showIndices: this.showIndices,
-      value: resolvedValue,
-      style: this.style,
-    });
-
-    return { element: updatedCell, width: 1, height: 1, invalidReason };
   }
 }
 

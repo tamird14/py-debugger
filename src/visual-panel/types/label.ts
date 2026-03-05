@@ -1,8 +1,6 @@
 import { registerVisualElement } from "./elementRegistry";
 import type { ClassDoc, VisualBuilderElementBase } from "../../api/visualBuilder";
 import { rgbToHex } from "../../api/visualBuilder";
-import type { VariableDictionary, ResolvableElement } from "./grid";
-import { resolveSizeValue } from "./grid";
 
 interface CellStyle {
   color?: string;
@@ -10,18 +8,7 @@ interface CellStyle {
   fontSize?: number;
 }
 
-function renderLabelText(template: string, variables: VariableDictionary): string {
-  return template.replace(/\{(\w+)\}/g, (_, varName) => {
-    const v = variables[varName];
-    if (!v) return `{${varName}}`;
-    if (v.type === 'int' || v.type === 'float' || v.type === 'str') return String(v.value);
-    if (v.type === 'arr[int]' || v.type === 'arr[str]') return `[${v.value.join(', ')}]`;
-    if (v.type === 'arr2d[int]' || v.type === 'arr2d[str]') return `[${v.value.map((row) => `[${row.join(', ')}]`).join(', ')}]`;
-    return `{${varName}}`;
-  });
-}
-
-export class Label implements VisualBuilderElementBase, ResolvableElement {
+export class Label implements VisualBuilderElementBase {
   type: 'label' = 'label';
   position: [number, number];
   visible: boolean = true;
@@ -57,37 +44,14 @@ export class Label implements VisualBuilderElementBase, ResolvableElement {
       ...(Object.keys(style).length > 0 && { style }),
     };
   }
-
-  resolveForDisplay(
-    variables: VariableDictionary,
-    expressionEvaluator: (expression: string, vars: VariableDictionary) => number
-  ): { element: ResolvableElement; width: number; height: number; invalidReason?: string } {
-    const renderedText = renderLabelText(this.label ?? '', variables);
-    const labelW = resolveSizeValue(this.width, variables, expressionEvaluator) || 1;
-    const labelH = resolveSizeValue(this.height, variables, expressionEvaluator) || 1;
-
-    const updatedLabel = new Label({
-      position: this.position,
-      visible: this.visible,
-      label: renderedText,
-      width: labelW,
-      height: labelH,
-      color: this.color,
-      fontSize: this.fontSize,
-      alpha: this.alpha,
-      panelId: this.panelId,
-    });
-
-    return { element: updatedLabel, width: labelW, height: labelH };
-  }
 }
 
 export const LABEL_SCHEMA: ClassDoc = {
   className: 'Label',
   constructorParams: 'label: str = ""',
-  docstring: 'Text label. Use {var_name} in the text to interpolate variable values.',
+  docstring: 'Text label.',
   properties: [
-    { name: 'label', type: 'str', description: 'Display text. Use {var} for variable interpolation.' },
+    { name: 'label', type: 'str', description: 'Display text.' },
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).' },
     { name: 'width', type: 'int', description: 'Width in grid cells.' },
     { name: 'height', type: 'int', description: 'Height in grid cells.' },

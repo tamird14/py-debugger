@@ -5,23 +5,6 @@ export interface CellPosition {
   col: number;
 }
 
-/**
- * Interface for visual elements that can resolve their display state based on variables.
- * This enables polymorphic rendering without type-checking in the grid state logic.
- */
-export interface ResolvableElement {
-  type: string;
-  resolveForDisplay(
-    variables: VariableDictionary,
-    expressionEvaluator: (expression: string, vars: VariableDictionary) => number
-  ): {
-    element: ResolvableElement;
-    width: number;
-    height: number;
-    invalidReason?: string;
-  };
-}
-
 // Variable dictionary types
 export type VariableType = 'int' | 'float' | 'str' | 'arr[int]' | 'arr[str]' | 'arr2d[int]' | 'arr2d[str]';
 
@@ -88,64 +71,28 @@ export interface NumericExpr {
 
 export type NumericExpression = NumericFixed | NumericExpr;
 
-/**
- * Position binding types for dynamic grid positioning.
- * 
- * The system supports multiple ways to specify a position component (row or column):
- * - NumericFixed: A fixed numeric value { type: 'fixed', value: number }
- * - NumericExpr: An expression string { type: 'expression', expression: string }
- * 
- * Legacy types (kept for backward compatibility when reading older data):
- * - PositionValue: Hardcoded position { type: 'hardcoded', value: number }
- * - PositionVarBinding: Variable reference { type: 'variable', varName: string }
- * - PositionExpression: Expression (duplicate of NumericExpr) { type: 'expression', expression: string }
- * 
- * Position resolution is handled by resolvePositionWithErrors() in useGridState.ts,
- * which evaluates these types and returns both the resolved position and any errors.
- */
-
-/**
- * Legacy position type: hardcoded numeric value.
- * Prefer using NumericFixed { type: 'fixed', value } for new code.
- */
+// Legacy position types (kept for backward compatibility with saved JSON files)
 export interface PositionValue {
   type: 'hardcoded';
   value: number;
 }
 
-/**
- * Legacy position type: reference to a variable by name.
- * The variable's value is used as the position component.
- * For new code, use NumericExpr with expression: "varName" instead.
- */
 export interface PositionVarBinding {
   type: 'variable';
   varName: string;
 }
 
-/**
- * Legacy position type: expression string.
- * This is functionally equivalent to NumericExpr but kept for backward compatibility.
- */
 export interface PositionExpression {
   type: 'expression';
   expression: string;
 }
 
-/**
- * Union type representing all valid ways to specify a position component.
- * Used in PositionBinding for row and col fields.
- */
 export type PositionComponent =
   | NumericExpression
   | PositionValue
   | PositionVarBinding
   | PositionExpression;
 
-/**
- * Binding that specifies how to compute the position of a grid object.
- * Each component (row, col) can be a fixed value, expression, or variable reference.
- */
 export interface PositionBinding {
   row: PositionComponent;
   col: PositionComponent;
@@ -184,20 +131,6 @@ export interface PanelStyle {
   titleBgClass: string;
   titleTextClass: string;
 }
-
-export const PANEL_STYLE_1D: PanelStyle = {
-  borderClass: 'border-2 border-amber-400 dark:border-amber-600',
-  backgroundClass: 'bg-amber-50/50 dark:bg-amber-900/30',
-  titleBgClass: 'bg-amber-50 dark:bg-amber-900',
-  titleTextClass: 'text-amber-700 dark:text-amber-300',
-};
-
-export const PANEL_STYLE_2D: PanelStyle = {
-  borderClass: 'border-2 border-violet-400 dark:border-violet-600',
-  backgroundClass: 'bg-violet-50/50 dark:bg-violet-900/30',
-  titleBgClass: 'bg-violet-50 dark:bg-violet-900',
-  titleTextClass: 'text-violet-700 dark:text-violet-300',
-};
 
 export const PANEL_STYLE_DEFAULT: PanelStyle = {
   borderClass: 'border-2 border-dashed',

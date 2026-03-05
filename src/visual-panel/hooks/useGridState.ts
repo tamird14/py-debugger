@@ -7,7 +7,6 @@ import type {
   SizeValue,
   OccupantInfo,
   PanelStyle,
-  ResolvableElement,
 } from '../types/grid';
 import type { VisualBuilderElementBase } from '../../api/visualBuilder';
 import { cellKey, createHardcodedBinding, resolveSizeValue } from '../types/grid';
@@ -86,7 +85,6 @@ export function useGridState() {
         if (child.data.panelId !== panelId) continue;
         const childPos = resolvePositionWithErrors(child.positionBinding, currentVariables).position;
 
-        const childElemInfo = child.data.elementInfo as ResolvableElement | undefined;
         let w = 1;
         let h = 1;
 
@@ -94,10 +92,6 @@ export function useGridState() {
           const nestedSize = sizes.get(child.data.panel.id);
           w = nestedSize?.width ?? (typeof child.data.panel.width === 'number' ? child.data.panel.width : 1);
           h = nestedSize?.height ?? (typeof child.data.panel.height === 'number' ? child.data.panel.height : 1);
-        } else if (childElemInfo && typeof childElemInfo.resolveForDisplay === 'function') {
-          const resolved = childElemInfo.resolveForDisplay(currentVariables, evaluateExpression);
-          w = resolved.width;
-          h = resolved.height;
         } else {
           w = resolveSizeValue(child.data.shapeProps?.width, currentVariables, evaluateExpression) ?? 1;
           h = resolveSizeValue(child.data.shapeProps?.height, currentVariables, evaluateExpression) ?? 1;
@@ -200,40 +194,20 @@ export function useGridState() {
         col: Math.max(0, Math.min(49, position.col)),
       };
 
-      let resolvedRenderableObjectData: RenderableObjectData;
-      let objW = 1;
-      let objH = 1;
-
-      const elemInfo = obj.data.elementInfo as ResolvableElement | undefined;
-
-      if (elemInfo && typeof elemInfo.resolveForDisplay === 'function') {
-        const resolved = elemInfo.resolveForDisplay(currentVariables, evaluateExpression);
-        objW = resolved.width;
-        objH = resolved.height;
-        resolvedRenderableObjectData = {
-          ...obj.data,
-          elementInfo: resolved.element as any,
-          shapeProps: { ...obj.data.shapeProps, width: resolved.width, height: resolved.height },
-          positionBinding: obj.positionBinding,
-          invalidReason: resolved.invalidReason || invalidReason,
-        };
-        setOrOverlay(cellKey(position.row, position.col), resolvedRenderableObjectData);
-      } else {
-        const shapeW = resolveSizeValue(obj.data.shapeProps?.width, currentVariables, evaluateExpression) ?? 1;
-        const shapeH = resolveSizeValue(obj.data.shapeProps?.height, currentVariables, evaluateExpression) ?? 1;
-        objW = shapeW;
-        objH = shapeH;
-        const rawW: SizeValue = obj.data.shapeProps?.width ?? 1;
-        const rawH: SizeValue = obj.data.shapeProps?.height ?? 1;
-        resolvedRenderableObjectData = {
-          ...obj.data,
-          shapeProps: { ...obj.data.shapeProps, width: shapeW, height: shapeH },
-          shapeSizeBinding: { width: rawW, height: rawH },
-          invalidReason,
-          positionBinding: obj.positionBinding,
-        };
-        setOrOverlay(cellKey(position.row, position.col), resolvedRenderableObjectData);
-      }
+      const shapeW = resolveSizeValue(obj.data.shapeProps?.width, currentVariables, evaluateExpression) ?? 1;
+      const shapeH = resolveSizeValue(obj.data.shapeProps?.height, currentVariables, evaluateExpression) ?? 1;
+      const objW = shapeW;
+      const objH = shapeH;
+      const rawW: SizeValue = obj.data.shapeProps?.width ?? 1;
+      const rawH: SizeValue = obj.data.shapeProps?.height ?? 1;
+      const resolvedRenderableObjectData: RenderableObjectData = {
+        ...obj.data,
+        shapeProps: { ...obj.data.shapeProps, width: shapeW, height: shapeH },
+        shapeSizeBinding: { width: rawW, height: rawH },
+        invalidReason,
+        positionBinding: obj.positionBinding,
+      };
+      setOrOverlay(cellKey(position.row, position.col), resolvedRenderableObjectData);
 
       for (let r = 0; r < objH; r++) {
         for (let c = 0; c < objW; c++) {
