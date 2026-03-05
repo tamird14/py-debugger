@@ -152,12 +152,24 @@ Here too, the json save file should contain the code, the mode, the max time and
 
 The following assignments should not change the code from the visual-panel and builder-panel (mostly). If they need to interact, it should be through
 the registeries, and if needed we will construct new ones. Try to keep the changes into a new folder called timeline.
-- Start a new branch main2, and from it start a new branch discrete-animation
-- Add a choice of mode for the user between discrete and simple. Everything we do from now on will be inside discrete mode. This mode choice should be saved in the json file, and when loaded, it will use the mode in the file to set the mode in the application.
-- Create a python file registry in the code-editor library. You cen register there python files, and the visualBuilderExecutor will take the files from there and run them. Make sure that the visualBuilder.py always runs first. The visualBuilder should have a new Exception type called PopupException(msg). If such an exception is raised when trying to run (analyze) the code, the webapp should show the msg in a popup window.
-- in the timeline folder create a timelime.py file which only checks if the function `jump_to(t: int)` exists, and if not raises a popup exception telling the user to implement it. Afterwards create a function `_create_typescript_timeline(T: int)` that runs `jump_to(t)` with t going from 0 to T (including both), and after each time saves a serialization of all of the visual objects into a timeline list, and returns it.
-- Create a timeline state file. When analyzing the code in the discrete-animation mode, run the `_create_typescript_timeline` function with default T=100, and save its output to the timeline file. Keep it OOP: the `executeVisualBuilderCode` should also get the function name to run. In the simple mode it just runs `_serialize_visual_builder`, and now it will run `_create_typescript_timeline`. Also, what to do with the results should be separated to the files in the respective folder.
-- Create a schema for `jump_to(t: int)` and register it to the API.
+- Done: Start a new branch main2, and from it start a new branch discrete-animation
+- Done: Add a choice of mode for the user between discrete and simple. Everything we do from now on will be inside discrete mode. This mode choice should be saved in the json file, and when loaded, it will use the mode in the file to set the mode in the application.
+- Done: Create a python file registry in the code-editor library. You cen register there python files, and the visualBuilderExecutor will take the files from there and run them. Make sure that the visualBuilder.py always runs first. The visualBuilder should have a new Exception type called PopupException(msg). If such an exception is raised when trying to run (analyze) the code, the webapp should show the msg in a popup window.
+- Done: in the timeline folder create a timelime.py file which only checks if the function `jump_to(t: int)` exists, and if not raises a popup exception telling the user to implement it. Afterwards create a function `_create_typescript_timeline(T: int)` that runs `jump_to(t)` with t going from 0 to T (including both), and after each time saves a serialization of all of the visual objects into a timeline list, and returns it.
+- Done: Create a timeline state file. When analyzing the code in the discrete-animation mode, run the `_create_typescript_timeline` function with default T=100, and save its output to the timeline file. Keep it OOP: the `executeVisualBuilderCode` should also get the function name to run. In the simple mode it just runs `_serialize_visual_builder`, and now it will run `_create_typescript_timeline`. Also, what to do with the results should be separated to the files in the respective folder.
+- Done: Create a schema for `jump_to(t: int)` and register it to the API.
+
+- separate the CodeEditor file to the parts which belong to the code builder and parts which belong to the general app, and moves those (the app parts) outside of the builder folder:
+    - The builder should only be in charge of (1) the python editor itself, (2) the python file registration, (3) calling the function from python and return their values
+    - the mode, save, load, analyze buttons belong to the app
+    - when saving the code builder needs to provide the app with the code it wants to save, and the app will combine it with other information from other places to create the json file. Similarly with loading, but on the other direction.
+    - when the mode changes, the app should update the register (clean it and then add the right file according to the mode)
+    - when "analyze" is called, the app should ask the builder to run the python with some function, get its return value, and then use it.
+    - in particular, all the save, load, analyze and mode buttons are part of the full app and not of the builder.
+
+
+- All the registers (python files, renderers and schema) should be cleared when changing modes, and then repopulate according to the mode. in particular the visualBuilderExecutor should not have a reference to the python timeline. In general the mode names (simple and discrete) should not appear in that file. Instead, when calling the executor, the app should provide what it want to do with the program (e.g. call the function _create_typescript_timeline or the function _serialize_visual_builder), and these should be defined in the folder of that specific mode.
+
 - Add the control area with a backward\forward\and the time in the middle.
 - When the user changes the time, either by using the buttons, or the middle number, use the corresponding state from the timeline to update the visual panel. Make sure that the user always enters a number between 0 and 100, and when the time is 0 or 100 disable the backward \ forward button respectively.
 - Add a way to change the max time T. It must always be a nonnegative integer. If it changes to comething smaller than the current time, automatically jump to this new max time.
