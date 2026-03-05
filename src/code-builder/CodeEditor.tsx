@@ -18,8 +18,9 @@ interface CodeEditorProps {
   onLoad: (data: SaveData) => void;
   isAnalyzing: boolean;
   error?: string;
-  mode: 'simple' | 'discrete';
-  onModeChange: (mode: 'simple' | 'discrete') => void;
+  mode?: string;
+  modeOptions?: { value: string; label: string }[];
+  onModeChange?: (mode: string) => void;
 }
 
 export const SAMPLE_VISUAL_BUILDER = `# Visual Builder - create elements to show on the grid
@@ -282,17 +283,22 @@ export function CodeEditor({
             onChange={handleFileChange}
             className="hidden"
           />
-          <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-            <span>Mode</span>
-            <select
-              value={mode}
-              onChange={(e) => onModeChange(e.target.value === 'discrete' ? 'discrete' : 'simple')}
-              className="px-2 py-1 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded"
-            >
-              <option value="simple">Simple</option>
-              <option value="discrete">Discrete</option>
-            </select>
-          </label>
+          {modeOptions && modeOptions.length > 0 && onModeChange && (
+            <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+              <span>Mode</span>
+              <select
+                value={mode}
+                onChange={(e) => onModeChange(e.target.value)}
+                className="px-2 py-1 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded"
+              >
+                {modeOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             onClick={onAnalyze}

@@ -64,7 +64,7 @@ function App() {
     setVisualBuilderError(undefined);
 
     try {
-      const result = await executeVisualBuilderCode(codeToAnalyze);
+      const result = await executeVisualBuilderCode(codeToAnalyze, mode);
 
       if (result.success) {
         loadVisualBuilderObjects(result.elements);
@@ -77,7 +77,7 @@ function App() {
     } finally {
       setIsAnalyzingVisualBuilder(false);
     }
-  }, [visualBuilderCode, loadVisualBuilderObjects]);
+  }, [visualBuilderCode, loadVisualBuilderObjects, mode]);
 
   const handleSave = useCallback(() => {
     const data = {
@@ -282,7 +282,11 @@ function App() {
                 isAnalyzing={isAnalyzingVisualBuilder}
                 error={visualBuilderError}
                 mode={mode}
-                onModeChange={setMode}
+                modeOptions={[
+                  { value: 'simple', label: 'Simple' },
+                  { value: 'discrete', label: 'Discrete' },
+                ]}
+                onModeChange={(value) => setMode(value === 'discrete' ? 'discrete' : 'simple')}
               />
             </div>
           </Panel>
