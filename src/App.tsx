@@ -29,6 +29,7 @@ function App() {
   const [visualBuilderCode, setVisualBuilderCode] = useState(SAMPLE_VISUAL_BUILDER);
   const [isAnalyzingVisualBuilder, setIsAnalyzingVisualBuilder] = useState(false);
   const [visualBuilderError, setVisualBuilderError] = useState<string | undefined>();
+  const [mode, setMode] = useState<'simple' | 'discrete'>('simple');
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
@@ -80,7 +81,7 @@ function App() {
 
   const handleSave = useCallback(() => {
     const data = {
-      mode: 'simple',
+      mode,
       code: visualBuilderCode,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -92,13 +93,15 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [visualBuilderCode]);
+  }, [visualBuilderCode, mode]);
 
   const handleLoad = useCallback((data: { mode?: string; code?: string }) => {
     if (!data.mode || !data.code) {
       setVisualBuilderError('Invalid file: missing mode or code field');
       return;
     }
+    const normalizedMode: 'simple' | 'discrete' = data.mode === 'discrete' ? 'discrete' : 'simple';
+    setMode(normalizedMode);
     setVisualBuilderCode(data.code);
     handleAnalyzeVisualBuilder(data.code);
   }, [handleAnalyzeVisualBuilder]);
@@ -278,6 +281,8 @@ function App() {
                 onLoad={handleLoad}
                 isAnalyzing={isAnalyzingVisualBuilder}
                 error={visualBuilderError}
+                mode={mode}
+                onModeChange={setMode}
               />
             </div>
           </Panel>

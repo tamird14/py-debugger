@@ -18,6 +18,8 @@ interface CodeEditorProps {
   onLoad: (data: SaveData) => void;
   isAnalyzing: boolean;
   error?: string;
+  mode: 'simple' | 'discrete';
+  onModeChange: (mode: 'simple' | 'discrete') => void;
 }
 
 export const SAMPLE_VISUAL_BUILDER = `# Visual Builder - create elements to show on the grid
@@ -76,7 +78,17 @@ mat.set_dims(3, 4)
 panel.add(mat)
 `;
 
-export function CodeEditor({ code, onChange, onAnalyze, onSave, onLoad, isAnalyzing, error }: CodeEditorProps) {
+export function CodeEditor({
+  code,
+  onChange,
+  onAnalyze,
+  onSave,
+  onLoad,
+  isAnalyzing,
+  error,
+  mode,
+  onModeChange,
+}: CodeEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -270,6 +282,17 @@ export function CodeEditor({ code, onChange, onAnalyze, onSave, onLoad, isAnalyz
             onChange={handleFileChange}
             className="hidden"
           />
+          <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+            <span>Mode</span>
+            <select
+              value={mode}
+              onChange={(e) => onModeChange(e.target.value === 'discrete' ? 'discrete' : 'simple')}
+              className="px-2 py-1 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded"
+            >
+              <option value="simple">Simple</option>
+              <option value="discrete">Discrete</option>
+            </select>
+          </label>
           <button
             type="button"
             onClick={onAnalyze}
