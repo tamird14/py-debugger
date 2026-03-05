@@ -211,48 +211,6 @@ export function parseKey(key: string): CellPosition {
   return { row, col };
 }
 
-// Resolve a position component to a number (handles fixed, expression, and legacy hardcoded/variable)
-export function resolvePositionComponent(
-  component: PositionComponent,
-  variables: VariableDictionary,
-  expressionEvaluator?: (expression: string, vars: VariableDictionary) => number
-): number {
-  const fixedValue = (v: number) => Math.max(0, Math.min(49, Math.floor(v)));
-  if (component.type === 'fixed' || component.type === 'hardcoded') {
-    return fixedValue(component.value);
-  }
-  if (component.type === 'expression') {
-    if (expressionEvaluator) {
-      try {
-        return fixedValue(expressionEvaluator(component.expression, variables));
-      } catch {
-        return 0;
-      }
-    }
-    return 0;
-  }
-  if (component.type === 'variable') {
-    const variable = variables[component.varName];
-    if (variable && (variable.type === 'int' || variable.type === 'float')) {
-      return fixedValue(variable.value);
-    }
-    return 0;
-  }
-  return 0;
-}
-
-// Resolve full position binding to CellPosition
-export function resolvePosition(
-  binding: PositionBinding,
-  variables: VariableDictionary,
-  expressionEvaluator?: (expression: string, vars: VariableDictionary) => number
-): CellPosition {
-  return {
-    row: resolvePositionComponent(binding.row, variables, expressionEvaluator),
-    col: resolvePositionComponent(binding.col, variables, expressionEvaluator),
-  };
-}
-
 // Create a hardcoded position binding from a CellPosition
 export function createHardcodedBinding(position: CellPosition): PositionBinding {
   return {
