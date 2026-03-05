@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { Grid, type GridHandle } from './visual-panel/components/Grid';
 import { CodeEditor, SAMPLE_VISUAL_BUILDER } from './code-builder/CodeEditor';
 import { useGridState } from './visual-panel/hooks/useGridState';
@@ -116,24 +116,18 @@ function App() {
     if (!element) return;
 
     try {
-      const canvas = await html2canvas(element, {
-        backgroundColor: null,
-        scale: 2,
-        logging: false,
+      const dataUrl = await toPng(element, {
+        pixelRatio: 2,
+        backgroundColor: '#f3f4f6',
       });
       
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        link.download = `visual-panel-${timestamp}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 'image/png');
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      link.download = `visual-panel-${timestamp}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (err) {
       console.error('Screenshot failed:', err);
     }
