@@ -1,6 +1,6 @@
-import type { Label } from '../types/label';
-import { rgbToHex } from '../../api/visualBuilder';
-import { registerRenderer } from './rendererRegistry';
+import type { Label } from './Label';
+import { rgbToHex } from '../../../api/visualBuilder';
+import { registerRenderer } from '../../views/rendererRegistry';
 
 interface LabelViewProps {
   label: Label;

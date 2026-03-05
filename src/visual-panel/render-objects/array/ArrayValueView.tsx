@@ -1,7 +1,7 @@
-import { Square } from '../shapes';
-import type { Array1DCell } from '../types/arrayShapes';
-import { registerRenderer } from './rendererRegistry';
-import { useTheme } from '../../contexts/ThemeContext';
+import { Square } from '../../shapes';
+import type { Array1DCell } from './arrayShapes';
+import { registerRenderer } from '../../views/rendererRegistry';
+import { useTheme } from '../../../contexts/ThemeContext';
 
 interface Array1DCellViewProps {
   cell: Array1DCell;
@@ -21,14 +21,6 @@ export function Array1DCellView({ cell }: Array1DCellViewProps) {
         strokeWidth={1}
       />
       <div className="absolute inset-0 flex flex-col items-center justify-between py-1">
-        {cell.varName && cell.index === 0 && (
-          <span
-            className="text-[8px] font-mono leading-none absolute -top-3 left-0"
-            style={{ color }}
-          >
-            {cell.varName}
-          </span>
-        )}
         <div className="flex-1 flex items-center justify-center">
           <span
             className="font-mono font-bold"

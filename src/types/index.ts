@@ -1,1 +1,1 @@
-export * from '../visual-panel/types/shapes'
+export * from '../visual-panel/render-objects'

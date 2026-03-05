@@ -1,9 +1,9 @@
-import type { VisualBuilderElementBase } from "../../api/visualBuilder";
-import { rgbToHex } from "../../api/visualBuilder";
-import type { RenderableObjectData, CellStyle, PanelStyle } from "./grid";
-import type { ClassDoc } from "../../api/visualBuilder";
-import { registerVisualElement } from "./elementRegistry";
-import { getArrayOffset } from "./grid";
+import type { VisualBuilderElementBase } from "../../../api/visualBuilder";
+import { rgbToHex } from "../../../api/visualBuilder";
+import type { RenderableObjectData, CellStyle, PanelStyle } from "../../types/grid";
+import type { ClassDoc } from "../../../api/visualBuilder";
+import { registerVisualElement } from "../../types/elementRegistry";
+import { getArrayOffset } from "../../types/grid";
 
 export const PANEL_STYLE_1D: PanelStyle = {
   borderClass: 'border-2 border-amber-400 dark:border-amber-600',
@@ -18,8 +18,6 @@ export const PANEL_STYLE_2D: PanelStyle = {
   titleBgClass: 'bg-violet-50 dark:bg-violet-900',
   titleTextClass: 'text-violet-700 dark:text-violet-300',
 };
-
-// ========================= Array Panel Info =========================
 
 export interface ArrayPanelInfo {
   id: string;
@@ -36,32 +34,24 @@ export interface ArrayDrawResult {
   nextIdx: number;
 }
 
-// ========================= Array1DCell =========================
-
 export class Array1DCell {
   type = 'array1dcell' as const;
   arrayId: string;
   index: number;
-  direction: 'right' | 'left' | 'down' | 'up';
   showIndex: boolean;
-  varName?: string;
   value?: string | number;
   style?: CellStyle;
 
   constructor(opts: {
     arrayId: string;
     index: number;
-    direction: 'right' | 'left' | 'down' | 'up';
     showIndex: boolean;
-    varName?: string;
     value?: string | number;
     style?: CellStyle;
   }) {
     this.arrayId = opts.arrayId;
     this.index = opts.index;
-    this.direction = opts.direction;
     this.showIndex = opts.showIndex;
-    this.varName = opts.varName;
     this.value = opts.value;
     this.style = opts.style;
   }
@@ -74,8 +64,6 @@ export class Array1DCell {
   }
 }
 
-// ========================= Array2DCell =========================
-
 export class Array2DCell {
   type = 'array2dcell' as const;
   arrayId: string;
@@ -83,7 +71,6 @@ export class Array2DCell {
   col: number;
   numRows: number;
   numCols: number;
-  varName?: string;
   showIndices: boolean;
   value?: string | number;
   style?: CellStyle;
@@ -94,7 +81,6 @@ export class Array2DCell {
     col: number;
     numRows: number;
     numCols: number;
-    varName?: string;
     showIndices: boolean;
     value?: string | number;
     style?: CellStyle;
@@ -104,7 +90,6 @@ export class Array2DCell {
     this.col = opts.col;
     this.numRows = opts.numRows;
     this.numCols = opts.numCols;
-    this.varName = opts.varName;
     this.showIndices = opts.showIndices;
     this.value = opts.value;
     this.style = opts.style;
@@ -117,8 +102,6 @@ export class Array2DCell {
     };
   }
 }
-
-// ========================= Array1D (Panel) =========================
 
 export class Array1D implements VisualBuilderElementBase {
   type = 'array' as const;
@@ -174,9 +157,7 @@ export class Array1D implements VisualBuilderElementBase {
       const cell = new Array1DCell({
         arrayId: panelId,
         index: i,
-        direction: this.direction,
         showIndex: this.showIndex,
-        varName: this.varName,
         value: this.values[i],
         style: this.style,
       });
@@ -218,8 +199,6 @@ export const ARRAY_SCHEMA: ClassDoc = {
 };
 
 registerVisualElement('array', Array1D, ARRAY_SCHEMA);
-
-// ========================= Array2D (Panel) =========================
 
 export class Array2D implements VisualBuilderElementBase {
   type = 'array2d' as const;
@@ -264,7 +243,6 @@ export class Array2D implements VisualBuilderElementBase {
           col: c,
           numRows,
           numCols,
-          varName: varName ?? '',
           showIndices,
           style: this.style,
         });

@@ -1,7 +1,6 @@
-export { RectView } from './RectView';
-export { CircleView } from './CircleView';
-export { ArrowView } from './ArrowView';
-export { Array1DCellView } from './ArrayValueView';
-export { Array2DCellView } from './Array2DView';
-export { LabelView } from './LabelView';
-export { PanelCell, PanelCellView, PANEL_SCHEMA } from './PanelView';
+export { RectView } from '../render-objects/rect';
+export { CircleView } from '../render-objects/circle';
+export { ArrowView } from '../render-objects/arrow';
+export { Array1DCellView, Array2DCellView } from '../render-objects/array';
+export { LabelView } from '../render-objects/label';
+export { PanelCell, PanelCellView, PANEL_SCHEMA } from '../render-objects/panel';

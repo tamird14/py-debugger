@@ -7,8 +7,7 @@ import type {
 } from '../types/grid';
 import type { VisualBuilderElementBase } from '../../api/visualBuilder';
 import { cellKey } from '../types/grid';
-import { type ArrayDrawResult } from '../types/arrayShapes';
-import { PanelCell } from '../views/PanelView';
+import { type ArrayDrawResult, PanelCell } from '../render-objects';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.0;

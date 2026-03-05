@@ -1,6 +1,6 @@
-import { registerVisualElement } from "./elementRegistry";
-import type { ClassDoc, VisualBuilderElementBase } from "../../api/visualBuilder";
-import { rgbToHex } from "../../api/visualBuilder";
+import { registerVisualElement } from "../../types/elementRegistry";
+import type { ClassDoc, VisualBuilderElementBase } from "../../../api/visualBuilder";
+import { rgbToHex } from "../../../api/visualBuilder";
 
 interface CellStyle {
   color?: string;

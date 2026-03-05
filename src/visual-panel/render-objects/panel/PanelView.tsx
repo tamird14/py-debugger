@@ -1,7 +1,7 @@
-import type { ClassDoc } from '../../api/visualBuilder';
-import { registerRenderer } from './rendererRegistry';
-import { useTheme } from '../../contexts/ThemeContext';
-import type { CellStyle } from '../types/grid';
+import type { ClassDoc } from '../../../api/visualBuilder';
+import { registerRenderer } from '../../views/rendererRegistry';
+import { useTheme } from '../../../contexts/ThemeContext';
+import type { CellStyle } from '../../types/grid';
 
 export class PanelCell {
   type = 'panel' as const;

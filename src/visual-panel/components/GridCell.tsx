@@ -2,13 +2,13 @@ import { memo } from 'react';
 import type { RenderableObjectData } from '../types/grid';
 import { renderElement } from '../views/rendererRegistry';
 
-import '../views/RectView';
-import '../views/CircleView';
-import '../views/ArrowView';
-import '../views/LabelView';
-import '../views/ArrayValueView';
-import '../views/Array2DView';
-import '../views/PanelView';
+import '../render-objects/rect/RectView';
+import '../render-objects/circle/CircleView';
+import '../render-objects/arrow/ArrowView';
+import '../render-objects/label/LabelView';
+import '../render-objects/array/ArrayValueView';
+import '../render-objects/array/Array2DView';
+import '../render-objects/panel/PanelView';
 
 interface GridCellProps {
   row: number;
