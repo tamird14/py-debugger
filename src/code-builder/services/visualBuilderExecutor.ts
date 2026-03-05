@@ -2,8 +2,10 @@ import { loadPyodide } from './pythonExecutor';
 import { type VisualBuilderElementBase } from '../../api/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
 import VISUAL_BUILDER_SHAPES_PYTHON from './visualBuilderShapes.py?raw';
+import TIMELINE_PYTHON from '../../timeline/timeline.py?raw';
 import { getConstructor } from '../../visual-panel/types/elementRegistry';
 import { getPythonFilesInOrder, registerPythonFile } from './pythonFileRegistry';
+import { clearTimeline, hydrateTimelineFromJson } from '../../timeline/timelineState';
 
 registerPythonFile({
   id: 'visualBuilder',
@@ -17,6 +19,14 @@ registerPythonFile({
   source: VISUAL_BUILDER_SHAPES_PYTHON,
 });
 
+registerPythonFile({
+  id: 'timeline',
+  order: 20,
+  source: TIMELINE_PYTHON,
+});
+
+export type VisualBuilderExecutionMode = 'simple' | 'discrete';
+
 export interface ExecuteVisualBuilderResult {
   success: boolean;
   elements: VisualBuilderElementBase[];
@@ -25,8 +35,15 @@ export interface ExecuteVisualBuilderResult {
 
 /**
  * Execute visual builder Python code in Pyodide and return serialized visual elements.
+ *
+ * In 'simple' mode, this runs _serialize_visual_builder() once.
+ * In 'discrete' mode, this runs _create_typescript_timeline(T) with default T=100
+ * and hydrates the timeline, returning the elements for t=0.
  */
-export async function executeVisualBuilderCode(code: string): Promise<ExecuteVisualBuilderResult> {
+export async function executeVisualBuilderCode(
+  code: string,
+  mode: VisualBuilderExecutionMode = 'simple',
+): Promise<ExecuteVisualBuilderResult> {
   try {
     const py = await loadPyodide();
 
@@ -51,11 +68,19 @@ export async function executeVisualBuilderCode(code: string): Promise<ExecuteVis
 exec('''${escapedCode.replace(/'''/g, "\\'\\'\\'")}''')
 `);
 
-    // Serialize and return
+    if (mode === 'discrete') {
+      const timelineJson = await py.runPythonAsync('_create_typescript_timeline(100)');
+      const initialElements = hydrateTimelineFromJson(timelineJson);
+      return { success: true, elements: initialElements };
+    }
+
+    clearTimeline();
+
+    // Serialize and return for simple mode
     const resultJson = await py.runPythonAsync('_serialize_visual_builder()');
     const elementsRaw: VisualBuilderElementBase[] = JSON.parse(resultJson);
-    
-    const wrappedElements = elementsRaw.map(el => {
+
+    const wrappedElements = elementsRaw.map((el) => {
       const entry = getConstructor(el.type);
       if (entry) {
         return new entry(el);
