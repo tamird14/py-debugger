@@ -4,9 +4,11 @@ import type { editor } from 'monaco-editor';
 import type * as MonacoTypes from 'monaco-editor';
 import { VISUAL_ELEM_SCHEMA } from '../api/visualBuilder';
 import { useTheme } from '../contexts/ThemeContext';
+import SAMPLE_VISUAL_BUILDER from './sample.py?raw';
+
+export { SAMPLE_VISUAL_BUILDER };
 
 interface SaveData {
-  mode?: string;
   code?: string;
 }
 
@@ -18,66 +20,7 @@ interface CodeEditorProps {
   onLoad: (data: SaveData) => void;
   isAnalyzing: boolean;
   error?: string;
-  mode?: string;
-  modeOptions?: { value: string; label: string }[];
-  onModeChange?: (mode: string) => void;
 }
-
-export const SAMPLE_VISUAL_BUILDER = `# Visual Builder - create elements to show on the grid
-# Click "Analyze" to add them to the visual panel.
-
-panel = Panel("Main")
-panel.position = (2, 2)
-panel.width = 18
-panel.height = 10
-
-# Shapes
-r = Rect((1, 1))
-r.width = 6
-r.height = 2
-r.color = (34, 197, 94)
-panel.add(r)
-
-c = Circle((1, 8))
-c.width = 2
-c.height = 2
-c.color = (59, 130, 246)
-panel.add(c)
-
-a = Arrow((1, 12))
-a.orientation = "right"
-a.color = (239, 68, 68)
-panel.add(a)
-
-# Labels
-title = Label("Hello Visual Panel")
-title.position = (0, 1)
-title.width = 16
-title.height = 1
-title.font_size = 14
-panel.add(title)
-
-# Value arrays (static)
-nums = Array()
-nums.position = (4, 1)
-nums.direction = "right"
-nums.length = 7
-nums.show_index = True
-nums[0] = 3
-nums[1] = 1
-nums[2] = 4
-nums[3] = 1
-nums[4] = 5
-nums[5] = 9
-nums[6] = 2
-panel.add(nums)
-
-# 2D array (static)
-mat = Array2D()
-mat.position = (6, 1)
-mat.set_dims(3, 4)
-panel.add(mat)
-`;
 
 export function CodeEditor({
   code,
@@ -87,8 +30,6 @@ export function CodeEditor({
   onLoad,
   isAnalyzing,
   error,
-  mode,
-  onModeChange,
 }: CodeEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -283,22 +224,6 @@ export function CodeEditor({
             onChange={handleFileChange}
             className="hidden"
           />
-          {modeOptions && modeOptions.length > 0 && onModeChange && (
-            <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
-              <span>Mode</span>
-              <select
-                value={mode}
-                onChange={(e) => onModeChange(e.target.value)}
-                className="px-2 py-1 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded"
-              >
-                {modeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <button
             type="button"
             onClick={onAnalyze}

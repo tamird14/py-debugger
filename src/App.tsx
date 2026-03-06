@@ -29,7 +29,6 @@ function App() {
   const [visualBuilderCode, setVisualBuilderCode] = useState(SAMPLE_VISUAL_BUILDER);
   const [isAnalyzingVisualBuilder, setIsAnalyzingVisualBuilder] = useState(false);
   const [visualBuilderError, setVisualBuilderError] = useState<string | undefined>();
-  const [mode, setMode] = useState<'simple' | 'discrete'>('simple');
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
@@ -64,7 +63,7 @@ function App() {
     setVisualBuilderError(undefined);
 
     try {
-      const result = await executeVisualBuilderCode(codeToAnalyze, mode);
+      const result = await executeVisualBuilderCode(codeToAnalyze);
 
       if (result.success) {
         loadVisualBuilderObjects(result.elements);
@@ -77,11 +76,10 @@ function App() {
     } finally {
       setIsAnalyzingVisualBuilder(false);
     }
-  }, [visualBuilderCode, loadVisualBuilderObjects, mode]);
+  }, [visualBuilderCode, loadVisualBuilderObjects]);
 
   const handleSave = useCallback(() => {
     const data = {
-      mode,
       code: visualBuilderCode,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -93,15 +91,13 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [visualBuilderCode, mode]);
+  }, [visualBuilderCode]);
 
-  const handleLoad = useCallback((data: { mode?: string; code?: string }) => {
-    if (!data.mode || !data.code) {
-      setVisualBuilderError('Invalid file: missing mode or code field');
+  const handleLoad = useCallback((data: {code?: string }) => {
+    if (!data.code) {
+      setVisualBuilderError('Invalid file: missing code field');
       return;
     }
-    const normalizedMode: 'simple' | 'discrete' = data.mode === 'discrete' ? 'discrete' : 'simple';
-    setMode(normalizedMode);
     setVisualBuilderCode(data.code);
     handleAnalyzeVisualBuilder(data.code);
   }, [handleAnalyzeVisualBuilder]);
@@ -281,12 +277,6 @@ function App() {
                 onLoad={handleLoad}
                 isAnalyzing={isAnalyzingVisualBuilder}
                 error={visualBuilderError}
-                mode={mode}
-                modeOptions={[
-                  { value: 'simple', label: 'Simple' },
-                  { value: 'discrete', label: 'Discrete' },
-                ]}
-                onModeChange={(value) => setMode(value === 'discrete' ? 'discrete' : 'simple')}
               />
             </div>
           </Panel>
