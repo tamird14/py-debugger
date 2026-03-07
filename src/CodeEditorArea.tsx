@@ -1,15 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { CodeEditor } from './code-builder/CodeEditor';
 import SAMPLE_VISUAL_BUILDER from './code-builder/sample.py?raw';
-
-export { SAMPLE_VISUAL_BUILDER };
 
 interface CodeEditorAreaProps {
   code: string;
   onChange: (code: string) => void;
   onAnalyze: () => void;
   onSave: () => void;
-  onLoad: (data: string) => void;
+  onLoad: (data: { code?: string }) => void;
   isAnalyzing: boolean;
   error?: string;
 }
@@ -25,14 +23,9 @@ export function CodeEditorArea({
 }: CodeEditorAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLoadClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -46,20 +39,12 @@ export function CodeEditorArea({
     e.target.value = '';
   };
 
-  const disposablesRef = useRef<{ dispose(): void }[]>([]);
-
-
-  useEffect(() => {
-    return () => {
-      disposablesRef.current.forEach((d) => d.dispose());
-      disposablesRef.current = [];
-    };
-  }, []);
-
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900">
       <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 px-4 py-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Visual Builder (Python)</span>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Visual Builder (Python)
+        </span>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -77,7 +62,7 @@ export function CodeEditorArea({
           </button>
           <button
             type="button"
-            onClick={handleLoadClick}
+            onClick={() => fileInputRef.current?.click()}
             className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
             Load
@@ -104,12 +89,7 @@ export function CodeEditorArea({
         </div>
       </div>
 
-      <CodeEditor
-        code={code}
-        onChange={onChange}
-        error={error}
-      />
+      <CodeEditor code={code} onChange={onChange} error={error} />
     </div>
   );
 }
-

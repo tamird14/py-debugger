@@ -1,18 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { CodeEditorArea, SAMPLE_VISUAL_BUILDER } from './CodeEditorArea';
+import { CodeEditorArea } from './CodeEditorArea';
 import { useTheme } from './contexts/ThemeContext';
 import { loadPyodide, isPyodideLoaded } from './code-builder/services/pythonExecutor';
 import { executeVisualBuilderCode } from './code-builder/services/visualBuilderExecutor';
-import { ApiReferencePanel } from "./ApiReferencePanel";
+import { ApiReferencePanel } from './ApiReferencePanel';
 import { TimelineControls } from './timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
+import SAMPLE_VISUAL_BUILDER from './code-builder/sample.py?raw';
 
 /* ---------- Shared Tailwind class groups ---------- */
 
 const buttonBase =
-  "px-3 py-1 rounded text-sm font-medium transition-colors";
+  'px-3 py-1 rounded text-sm font-medium transition-colors';
 
 const buttonNeutral =
   `${buttonBase} bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600`;
@@ -87,7 +88,8 @@ function App() {
     URL.revokeObjectURL(url);
   }, [visualBuilderCode]);
 
-  const handleLoad = useCallback((code?: string) => {
+  const handleLoad = useCallback((data: { code?: string }) => {
+    const { code } = data;
     if (!code) {
       setVisualBuilderError('Invalid file: missing code field');
       return;
@@ -131,10 +133,10 @@ function App() {
           {/* Timeline controls */}
           <TimelineControls
             currentStep={0}
-            stepCount={100}
+            stepCount={0}
             onPrevStep={() => {}}
             onNextStep={() => {}}
-            onGoToStep={(_t: number) => {}}
+            onGoToStep={() => {}}
           />
 
           {/* Dark mode toggle */}
