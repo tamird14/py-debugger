@@ -8,6 +8,7 @@ import { executeVisualBuilderCode } from './code-builder/services/visualBuilderE
 import { ApiReferencePanel } from './ApiReferencePanel';
 import { TimelineControls } from './timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
+import { getStateAt, getMaxTime } from './timeline/timelineState';
 import SAMPLE_VISUAL_BUILDER from './code-builder/sample.py?raw';
 
 /* ---------- Shared Tailwind class groups ---------- */
@@ -32,6 +33,10 @@ function App() {
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
 
+  // Timeline state
+  const [currentStep, setCurrentStep] = useState(0);
+  const [stepCount, setStepCount] = useState(0);
+
   // Preload Pyodide on mount
   useEffect(() => {
     if (!isPyodideLoaded()) {
@@ -50,6 +55,13 @@ function App() {
     }
   }, []);
 
+  const goToStep = useCallback((step: number) => {
+    const clamped = Math.max(0, Math.min(getMaxTime(), step));
+    const state = getStateAt(clamped);
+    if (state) gridAreaRef.current?.loadVisualBuilderObjects(state);
+    setCurrentStep(clamped);
+  }, []);
+
   const handleAnalyzeVisualBuilder = useCallback(async (codeOverride?: string) => {
     const codeToAnalyze = typeof codeOverride === 'string' ? codeOverride : visualBuilderCode;
     if (!codeToAnalyze.trim()) return;
@@ -61,6 +73,9 @@ function App() {
       const result = await executeVisualBuilderCode(codeToAnalyze);
 
       if (result.success) {
+        const total = getMaxTime() + 1;
+        setStepCount(total);
+        setCurrentStep(0);
         gridAreaRef.current?.loadVisualBuilderObjects(result.elements);
         setVisualBuilderError(undefined);
       } else {
@@ -132,11 +147,11 @@ function App() {
 
           {/* Timeline controls */}
           <TimelineControls
-            currentStep={0}
-            stepCount={0}
-            onPrevStep={() => {}}
-            onNextStep={() => {}}
-            onGoToStep={() => {}}
+            currentStep={currentStep}
+            stepCount={stepCount}
+            onPrevStep={() => goToStep(currentStep - 1)}
+            onNextStep={() => goToStep(currentStep + 1)}
+            onGoToStep={goToStep}
           />
 
           {/* Dark mode toggle */}
