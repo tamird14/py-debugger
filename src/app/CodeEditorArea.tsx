@@ -1,6 +1,6 @@
 import { useRef } from 'react';
-import { CodeEditor } from './code-builder/CodeEditor';
-import SAMPLE_VISUAL_BUILDER from './code-builder/sample.py?raw';
+import { CodeEditor } from '../code-builder/CodeEditor';
+import SAMPLE_VISUAL_BUILDER from '../code-builder/sample.py?raw';
 
 interface CodeEditorAreaProps {
   code: string;

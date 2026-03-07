@@ -4,10 +4,6 @@ import type { editor } from 'monaco-editor';
 import type * as MonacoTypes from 'monaco-editor';
 import { VISUAL_ELEM_SCHEMA } from '../api/visualBuilder';
 import { useTheme } from '../contexts/ThemeContext';
-import SAMPLE_VISUAL_BUILDER from './sample.py?raw';
-
-export { SAMPLE_VISUAL_BUILDER };
-
 
 interface CodeEditorProps {
   code: string;

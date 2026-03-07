@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from "react";
-import { VISUAL_ELEM_SCHEMA } from "./api/visualBuilder";
+import { VISUAL_ELEM_SCHEMA } from "../api/visualBuilder";
 
 interface ApiReferencePanelProps {
   onClose: () => void;

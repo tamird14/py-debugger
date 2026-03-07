@@ -2,14 +2,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { CodeEditorArea } from './CodeEditorArea';
-import { useTheme } from './contexts/ThemeContext';
-import { loadPyodide, isPyodideLoaded } from './code-builder/services/pythonExecutor';
-import { executeVisualBuilderCode } from './code-builder/services/visualBuilderExecutor';
-import { ApiReferencePanel } from './ApiReferencePanel';
-import { TimelineControls } from './timeline/TimelineControls';
+import { useTheme } from '../contexts/ThemeContext';
+import { loadPyodide, isPyodideLoaded } from '../code-builder/services/pythonExecutor';
+import { executeVisualBuilderCode } from '../code-builder/services/visualBuilderExecutor';
+import { ApiReferencePanel } from '../api/ApiReferencePanel';
+import { TimelineControls } from '../timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
-import { getStateAt, getMaxTime } from './timeline/timelineState';
-import SAMPLE_VISUAL_BUILDER from './code-builder/sample.py?raw';
+import { getStateAt, getMaxTime } from '../timeline/timelineState';
+import SAMPLE_VISUAL_BUILDER from '../code-builder/sample.py?raw';
 
 /* ---------- Shared Tailwind class groups ---------- */
 

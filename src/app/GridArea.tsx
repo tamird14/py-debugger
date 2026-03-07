@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { toPng } from 'html-to-image';
-import { Grid, type GridHandle } from './visual-panel/components/Grid';
-import { useGridState } from './visual-panel/hooks/useGridState';
-import type { VisualBuilderElementBase } from './api/visualBuilder';
+import { Grid, type GridHandle } from '../visual-panel/components/Grid';
+import { useGridState } from '../visual-panel/hooks/useGridState';
+import type { VisualBuilderElementBase } from '../api/visualBuilder';
 
 /* ---------- Shared Tailwind class groups ---------- */
 
