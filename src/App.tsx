@@ -1,16 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { toPng } from 'html-to-image';
-import { Grid, type GridHandle } from './visual-panel/components/Grid';
 import { CodeEditorArea, SAMPLE_VISUAL_BUILDER } from './CodeEditorArea';
-import { useGridState } from './visual-panel/hooks/useGridState';
 import { useTheme } from './contexts/ThemeContext';
 import { loadPyodide, isPyodideLoaded } from './code-builder/services/pythonExecutor';
 import { executeVisualBuilderCode } from './code-builder/services/visualBuilderExecutor';
 import { ApiReferencePanel } from "./ApiReferencePanel";
 import { TimelineControls } from './timeline/TimelineControls';
-
+import { GridArea, type GridAreaHandle } from './GridArea';
 
 /* ---------- Shared Tailwind class groups ---------- */
 
@@ -20,27 +17,11 @@ const buttonBase =
 const buttonNeutral =
   `${buttonBase} bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600`;
 
-const buttonDisabled =
-  `${buttonNeutral} disabled:opacity-50`;
-
-const panelHeader =
-  "flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between";
-
 
 function App() {
   const { darkMode, toggleDarkMode } = useTheme();
 
-  const {
-    cells,
-    overlayCells,
-    zoom,
-    zoomIn,
-    zoomOut,
-    setZoom,
-    panels,
-    loadVisualBuilderObjects,
-    occupancyMap,
-  } = useGridState();
+  const gridAreaRef = useRef<GridAreaHandle>(null);
 
   // Visual builder state
   const [visualBuilderCode, setVisualBuilderCode] = useState(SAMPLE_VISUAL_BUILDER);
@@ -51,7 +32,6 @@ function App() {
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
   const [apiPanelWidth, setApiPanelWidth] = useState(288);
   const isResizingRef = useRef(false);
-  const gridRef = useRef<GridHandle>(null);
 
   // Preload Pyodide on mount
   useEffect(() => {
@@ -82,7 +62,7 @@ function App() {
       const result = await executeVisualBuilderCode(codeToAnalyze);
 
       if (result.success) {
-        loadVisualBuilderObjects(result.elements);
+        gridAreaRef.current?.loadVisualBuilderObjects(result.elements);
         setVisualBuilderError(undefined);
       } else {
         setVisualBuilderError(result.error);
@@ -92,7 +72,7 @@ function App() {
     } finally {
       setIsAnalyzingVisualBuilder(false);
     }
-  }, [visualBuilderCode, loadVisualBuilderObjects]);
+  }, [visualBuilderCode]);
 
   const handleSave = useCallback(() => {
     const data = {
@@ -109,7 +89,7 @@ function App() {
     URL.revokeObjectURL(url);
   }, [visualBuilderCode]);
 
-  const handleLoad = useCallback((code?: string ) => {
+  const handleLoad = useCallback((code?: string) => {
     if (!code) {
       setVisualBuilderError('Invalid file: missing code field');
       return;
@@ -117,13 +97,6 @@ function App() {
     setVisualBuilderCode(code);
     handleAnalyzeVisualBuilder(code);
   }, [handleAnalyzeVisualBuilder]);
-
-  const handleZoom = useCallback(
-    (delta: number) => {
-    setZoom(zoom + delta);
-    },
-    [zoom, setZoom]
-  );
 
   const handleApiPanelResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -147,62 +120,6 @@ function App() {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   }, [apiPanelWidth]);
-
-  const handleAlignGrid = useCallback(() => {
-    gridRef.current?.alignGrid();
-  }, []);
-
-  const [isCapturing, setIsCapturing] = useState(false);
-
-  const handleScreenshot = useCallback(async () => {
-    const element = gridRef.current?.captureElement();
-    if (!element || isCapturing) return;
-
-    setIsCapturing(true);
-    try {
-      const viewportWidth = element.clientWidth;
-      const viewportHeight = element.clientHeight;
-      const scrollLeft = element.scrollLeft;
-      const scrollTop = element.scrollTop;
-
-      const fullDataUrl = await toPng(element, {
-        pixelRatio: 1,
-        backgroundColor: darkMode ? '#111827' : '#f3f4f6',
-        skipFonts: true,
-        cacheBust: false,
-      });
-
-      const img = new Image();
-      img.src = fullDataUrl;
-      await new Promise((resolve) => { img.onload = resolve; });
-
-      const canvas = document.createElement('canvas');
-      canvas.width = viewportWidth;
-      canvas.height = viewportHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Could not get canvas context');
-
-      ctx.drawImage(
-        img,
-        scrollLeft, scrollTop, viewportWidth, viewportHeight,
-        0, 0, viewportWidth, viewportHeight
-      );
-
-      const croppedDataUrl = canvas.toDataURL('image/png');
-
-      const link = document.createElement('a');
-      link.href = croppedDataUrl;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      link.download = `visual-panel-${timestamp}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error('Screenshot failed:', err);
-    } finally {
-      setIsCapturing(false);
-    }
-  }, [darkMode, isCapturing]);
 
   return (
     <div className="w-screen h-screen overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-100">
@@ -254,7 +171,6 @@ function App() {
             {darkMode ? 'Light' : 'Dark'}
           </button>
 
-
           <button
             type="button"
             onClick={() => setApiReferenceOpen((o) => !o)}
@@ -285,62 +201,18 @@ function App() {
 
           <Separator className="w-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 cursor-col-resize" />
 
-          {/* Right panel - Visual Grid */}
+          {/* Right panel - Grid Area */}
           <Panel defaultSize={50} minSize={20}>
-            <div className="h-full flex flex-col">
+            <div className="h-full relative">
+              <GridArea ref={gridAreaRef} darkMode={darkMode} />
 
-              <div className={panelHeader}>
-
-                {/* Visual controls */}
-                <div className="flex items-center gap-2">
-
-                  <button onClick={zoomOut} className={buttonNeutral}>
-                    -
-                  </button>
-                  <span className="text-sm text-gray-600 dark:text-gray-300 min-w-[60px] text-center">
-                    {Math.round(zoom * 100)}%
-                  </span>
-
-                  <button onClick={zoomIn} className={buttonNeutral}>
-                    +
-                  </button>
-                  <button
-                    onClick={handleAlignGrid}
-                    className={buttonNeutral}
-                    title="Align grid to viewport"
-                  >
-                    ⊞
-                  </button>
-                  <button
-                    onClick={handleScreenshot}
-                    disabled={isCapturing}
-                    className={buttonDisabled}
-                    title="Download screenshot"
-                  >
-                    {isCapturing ? '⏳' : '📷'}
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-hidden relative">
-                <Grid
-                  ref={gridRef}
-                  cells={cells}
-                  overlayCells={overlayCells}
-                  occupancyMap={occupancyMap}
-                  panels={panels}
-                  zoom={zoom}
-                  onZoom={handleZoom}
-                  darkMode={darkMode}
+              {apiReferenceOpen && (
+                <ApiReferencePanel
+                  width={apiPanelWidth}
+                  onResizeStart={handleApiPanelResizeStart}
+                  onClose={() => setApiReferenceOpen(false)}
                 />
-
-                {apiReferenceOpen && (
-                  <ApiReferencePanel
-                    width={apiPanelWidth}
-                    onResizeStart={handleApiPanelResizeStart}
-                    onClose={() => setApiReferenceOpen(false)}
-                  />
-                )}
-              </div>
+              )}
             </div>
           </Panel>
         </Group>
