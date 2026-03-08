@@ -134,15 +134,22 @@ def _visual_code_trace(code: str) -> str:
 
     _run_with_trace(code)
 
+    code_trace: List[TraceStep] = list(_trace_steps)
     timeline = []
 
-    for step in _trace_steps:
+    for step in code_trace:
         update(step['variables'], step['scope'])
         snapshot_json = _serialize_visual_builder()
         snapshot = json.loads(snapshot_json)
         timeline.append(snapshot)
 
+    # When code is empty (or has no traceable lines) still return the
+    # current visual-builder state as a single step so the panel renders.
+    if not timeline:
+        code_trace = [{'variables': {}, 'scope': []}]
+        timeline = [json.loads(_serialize_visual_builder())]
+
     return json.dumps({
-        'code_timeline': _trace_steps,
+        'code_timeline': code_trace,
         'visual_timeline': timeline
     })

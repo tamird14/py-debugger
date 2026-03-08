@@ -1,15 +1,15 @@
 import { loadPyodide } from '../code-builder/services/pythonExecutor';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
 import PYTHON_TRACER from './pythonTracer.py?raw';
+import VISUAL_BUILDER_PYTHON from '../code-builder/services/visualBuilder.py?raw';
+import VISUAL_BUILDER_SHAPES_PYTHON from '../code-builder/services/visualBuilderShapes.py?raw';
 import { registerPythonFile, getPythonFilesInOrder } from '../code-builder/services/pythonFileRegistry';
 import { hydrateTimelineFromArray } from '../timeline/timelineState';
 import { setCodeTimeline, type TraceStep } from './codeTimelineState';
 
-registerPythonFile({
-  id: 'pythonTracer',
-  order: 30,
-  source: PYTHON_TRACER,
-});
+registerPythonFile({ id: 'visualBuilder',       order: 0,  source: VISUAL_BUILDER_PYTHON });
+registerPythonFile({ id: 'visualBuilderShapes', order: 10, source: VISUAL_BUILDER_SHAPES_PYTHON });
+registerPythonFile({ id: 'pythonTracer',        order: 30, source: PYTHON_TRACER });
 
 export interface DebuggerExecuteResult {
   success: boolean;

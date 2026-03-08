@@ -81,8 +81,6 @@ function App() {
   }, [currentStep, stepCount]);
 
   const handleAnalyze = useCallback(async () => {
-    if (!debuggerCode.trim()) return;
-
     setIsAnalyzing(true);
     setAnalyzeError(undefined);
 
