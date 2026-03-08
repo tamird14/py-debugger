@@ -26,6 +26,19 @@ export function hydrateTimelineFromJson(timelineJson: string): VisualBuilderElem
   return timeline[0] ?? [];
 }
 
+export function hydrateTimelineFromArray(
+  rawTimeline: VisualBuilderElementBase[][],
+): VisualBuilderElementBase[] {
+  timeline = rawTimeline.map((snapshot) =>
+    snapshot.map((el) => {
+      const entry = getConstructor(el.type);
+      return entry ? new entry(el) : el;
+    }),
+  );
+  maxTime = timeline.length > 0 ? timeline.length - 1 : 0;
+  return timeline[0] ?? [];
+}
+
 export function getTimeline(): VisualBuilderElementBase[][] {
   return timeline;
 }

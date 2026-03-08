@@ -132,7 +132,7 @@ def update(params: Dict[str, VariableValue], scope: List[Tuple[str, int]]):
 
 def _visual_code_trace(code: str) -> str:
 
-    _run_with_trace
+    _run_with_trace(code)
 
     timeline = []
 

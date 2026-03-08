@@ -4,7 +4,7 @@ import { Group, Panel, Separator } from 'react-resizable-panels';
 import { CodeEditorArea } from './CodeEditorArea';
 import { useTheme } from '../contexts/ThemeContext';
 import { loadPyodide, isPyodideLoaded } from '../code-builder/services/pythonExecutor';
-import { executeVisualBuilderCode } from '../code-builder/services/visualBuilderExecutor';
+import { executeDebuggerCode } from '../debugger-panel/debuggerExecutor';
 import { ApiReferencePanel } from '../api/ApiReferencePanel';
 import { TimelineControls } from '../timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
@@ -28,8 +28,8 @@ function App() {
   // Visual builder state
   const [visualBuilderCode, setVisualBuilderCode] = useState(SAMPLE_VISUAL_BUILDER);
   const [debuggerCode, setDebuggerCode] = useState('');
-  const [isAnalyzingVisualBuilder, setIsAnalyzingVisualBuilder] = useState(false);
-  const [visualBuilderError, setVisualBuilderError] = useState<string | undefined>();
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | undefined>();
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
@@ -37,8 +37,6 @@ function App() {
   // Timeline state
   const [currentStep, setCurrentStep] = useState(0);
   const [stepCount, setStepCount] = useState(0);
-  const [maxT, setMaxT] = useState(100);
-  const [tInput, setTInput] = useState('100');
 
   // Preload Pyodide on mount
   useEffect(() => {
@@ -65,71 +63,57 @@ function App() {
     setCurrentStep(clamped);
   }, []);
 
-  const handleAnalyzeVisualBuilder = useCallback(async (codeOverride?: string, maxTOverride?: number) => {
-    const codeToAnalyze = typeof codeOverride === 'string' ? codeOverride : visualBuilderCode;
-    const effectiveMaxT = maxTOverride ?? maxT;
-    if (!codeToAnalyze.trim()) return;
+  const handleAnalyze = useCallback(async () => {
+    if (!debuggerCode.trim()) return;
 
-    setIsAnalyzingVisualBuilder(true);
-    setVisualBuilderError(undefined);
+    setIsAnalyzing(true);
+    setAnalyzeError(undefined);
 
     try {
-      const result = await executeVisualBuilderCode(codeToAnalyze, effectiveMaxT);
+      const result = await executeDebuggerCode(visualBuilderCode, debuggerCode);
 
       if (result.success) {
-        const total = getMaxTime() + 1;
-        setStepCount(total);
+        setStepCount(getMaxTime() + 1);
         setCurrentStep(0);
         gridAreaRef.current?.loadVisualBuilderObjects(result.elements);
-        setVisualBuilderError(undefined);
       } else {
-        setVisualBuilderError(result.error);
+        setAnalyzeError(result.error);
       }
     } catch (err) {
-      setVisualBuilderError(err instanceof Error ? err.message : 'Unknown error');
+      setAnalyzeError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
-      setIsAnalyzingVisualBuilder(false);
+      setIsAnalyzing(false);
     }
-  }, [visualBuilderCode, maxT]);
-
-  const handleMaxTChange = useCallback((newT: number) => {
-    const clamped = Math.max(0, Math.min(1000, Math.floor(newT)));
-    setMaxT(clamped);
-    setTInput(String(clamped));
-    if (currentStep > clamped) setCurrentStep(clamped);
-    if (visualBuilderCode.trim()) handleAnalyzeVisualBuilder(undefined, clamped);
-  }, [currentStep, visualBuilderCode, handleAnalyzeVisualBuilder]);
+  }, [visualBuilderCode, debuggerCode]);
 
   const handleSave = useCallback(() => {
     const data = {
       code: visualBuilderCode,
+      debuggerCode,
       currentTime: currentStep,
-      maxTime: maxT,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'visual-builder.json';
+    link.download = 'visual-debugger.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [visualBuilderCode, currentStep, maxT]);
+  }, [visualBuilderCode, debuggerCode, currentStep]);
 
-  const handleLoad = useCallback((data: { code?: string; currentTime?: number; maxTime?: number }) => {
-    const { code, currentTime = 0, maxTime: savedMaxT = maxT } = data;
+  const handleLoad = useCallback((data: { code?: string; debuggerCode?: string; currentTime?: number }) => {
+    const { code, debuggerCode: savedDebugger, currentTime = 0 } = data;
     if (!code) {
-      setVisualBuilderError('Invalid file: missing code field');
+      setAnalyzeError('Invalid file: missing code field');
       return;
     }
-    const clampedT = Math.max(0, Math.min(1000, Math.floor(savedMaxT)));
-    setMaxT(clampedT);
     setVisualBuilderCode(code);
-    handleAnalyzeVisualBuilder(code, clampedT).then(() => {
-      goToStep(Math.max(0, Math.min(currentTime, getMaxTime())));
-    });
-  }, [handleAnalyzeVisualBuilder, goToStep, maxT]);
+    if (savedDebugger) setDebuggerCode(savedDebugger);
+    // Jump to saved time after re-analyze happens externally
+    void currentTime;
+  }, []);
 
   return (
     <div className="w-screen h-screen overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-100">
@@ -137,8 +121,7 @@ function App() {
       <header className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between shadow-sm">
         {/* Header left */}
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Visual Panel</h1>
-          <span className="text-sm text-gray-400 dark:text-gray-500">Builder + API</span>
+          <h1 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">Visual Debugger</h1>
           <Link
             to="/plan"
             className="text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
@@ -171,29 +154,6 @@ function App() {
             onNextStep={() => goToStep(currentStep + 1)}
             onGoToStep={goToStep}
           />
-          {/* Max time T input */}
-          <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-            T:
-            <input
-              type="number"
-              min={0}
-              max={1000}
-              value={tInput}
-              onChange={(e) => setTInput(e.target.value)}
-              onBlur={() => {
-                const v = parseInt(tInput, 10);
-                if (!isNaN(v)) handleMaxTChange(v); else setTInput(String(maxT));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const v = parseInt(tInput, 10);
-                  if (!isNaN(v)) handleMaxTChange(v); else setTInput(String(maxT));
-                }
-              }}
-              className="w-16 text-center text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              title="Max animation steps (0 – 1000)"
-            />
-          </label>
 
           {/* Dark mode toggle */}
           <button
@@ -217,7 +177,7 @@ function App() {
       {/* Main content */}
       <main className="flex-1 overflow-hidden">
         <Group orientation="horizontal" className="h-full">
-          {/* Left panel - Visual Builder */}
+          {/* Left panel - Code Editor */}
           <Panel defaultSize={50} minSize={20}>
             <div className="h-full border-r border-gray-300 dark:border-gray-600">
               <CodeEditorArea
@@ -225,11 +185,11 @@ function App() {
                 onChange={setVisualBuilderCode}
                 debuggerCode={debuggerCode}
                 onDebuggerCodeChange={setDebuggerCode}
-                onAnalyze={handleAnalyzeVisualBuilder}
+                onAnalyze={handleAnalyze}
                 onSave={handleSave}
                 onLoad={handleLoad}
-                isAnalyzing={isAnalyzingVisualBuilder}
-                error={visualBuilderError}
+                isAnalyzing={isAnalyzing}
+                error={analyzeError}
               />
             </div>
           </Panel>
@@ -253,9 +213,9 @@ function App() {
 
       {/* Footer */}
       <footer className="flex-shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-        <span className="mr-4">1. Write Visual Builder Python code</span>
-        <span className="mr-4">2. Click "Analyze" to render elements</span>
-        <span>3. Click "Show API" on the visual panel to see object docs</span>
+        <span className="mr-4">1. Write code to debug in the Code tab</span>
+        <span className="mr-4">2. Set up visuals in the Visual Builder tab</span>
+        <span>3. Click "Analyze" to trace and step through execution</span>
       </footer>
     </div>
   );
