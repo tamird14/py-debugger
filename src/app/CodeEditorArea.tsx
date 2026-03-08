@@ -1,27 +1,43 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { CodeEditor } from '../code-builder/CodeEditor';
+import { DebuggerCodeEditor } from '../debugger-panel/DebuggerCodeEditor';
+import type { HighlightedLines } from '../debugger-panel/DebuggerCodeEditor';
 import SAMPLE_VISUAL_BUILDER from '../code-builder/sample.py?raw';
+import SAMPLE_DEBUGGER from '../debugger-panel/debuggerSample.py?raw';
+
+type ActiveTab = 'code' | 'visual-builder';
 
 interface CodeEditorAreaProps {
   code: string;
   onChange: (code: string) => void;
+  debuggerCode: string;
+  onDebuggerCodeChange: (code: string) => void;
   onAnalyze: () => void;
   onSave: () => void;
   onLoad: (data: { code?: string; currentTime?: number; maxTime?: number }) => void;
   isAnalyzing: boolean;
   error?: string;
+  highlightedLines?: HighlightedLines;
 }
+
+const tabBtnBase = 'px-4 py-2 text-sm font-medium border-b-2 transition-colors';
+const tabActive = `${tabBtnBase} border-indigo-500 text-indigo-600 dark:text-indigo-400`;
+const tabInactive = `${tabBtnBase} border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300`;
 
 export function CodeEditorArea({
   code,
   onChange,
+  debuggerCode,
+  onDebuggerCodeChange,
   onAnalyze,
   onSave,
   onLoad,
   isAnalyzing,
   error,
+  highlightedLines,
 }: CodeEditorAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('code');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,16 +55,41 @@ export function CodeEditorArea({
     e.target.value = '';
   };
 
+  const handleSample = () => {
+    if (activeTab === 'code') {
+      onDebuggerCodeChange(SAMPLE_DEBUGGER);
+    } else {
+      onChange(SAMPLE_VISUAL_BUILDER);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900">
-      <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 px-4 py-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Visual Builder (Python)
-        </span>
-        <div className="flex items-center gap-2">
+      {/* Header */}
+      <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 flex items-center justify-between">
+        {/* Tabs */}
+        <div className="flex items-center">
           <button
             type="button"
-            onClick={() => onChange(SAMPLE_VISUAL_BUILDER)}
+            className={activeTab === 'code' ? tabActive : tabInactive}
+            onClick={() => setActiveTab('code')}
+          >
+            Code
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'visual-builder' ? tabActive : tabInactive}
+            onClick={() => setActiveTab('visual-builder')}
+          >
+            Visual Builder
+          </button>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 px-4">
+          <button
+            type="button"
+            onClick={handleSample}
             className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
             Sample
@@ -77,9 +118,9 @@ export function CodeEditorArea({
           <button
             type="button"
             onClick={onAnalyze}
-            disabled={isAnalyzing || !code.trim()}
+            disabled={isAnalyzing}
             className={`px-4 py-1 text-sm font-medium rounded transition-colors ${
-              isAnalyzing || !code.trim()
+              isAnalyzing
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : 'bg-emerald-600 text-white hover:bg-emerald-500'
             }`}
@@ -89,7 +130,18 @@ export function CodeEditorArea({
         </div>
       </div>
 
-      <CodeEditor code={code} onChange={onChange} error={error} />
+      {/* Editor */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'code' ? (
+          <DebuggerCodeEditor
+            code={debuggerCode}
+            onChange={onDebuggerCodeChange}
+            highlightedLines={highlightedLines}
+          />
+        ) : (
+          <CodeEditor code={code} onChange={onChange} error={error} />
+        )}
+      </div>
     </div>
   );
 }

@@ -27,6 +27,7 @@ function App() {
 
   // Visual builder state
   const [visualBuilderCode, setVisualBuilderCode] = useState(SAMPLE_VISUAL_BUILDER);
+  const [debuggerCode, setDebuggerCode] = useState('');
   const [isAnalyzingVisualBuilder, setIsAnalyzingVisualBuilder] = useState(false);
   const [visualBuilderError, setVisualBuilderError] = useState<string | undefined>();
   const [pyodideLoading, setPyodideLoading] = useState(false);
@@ -222,6 +223,8 @@ function App() {
               <CodeEditorArea
                 code={visualBuilderCode}
                 onChange={setVisualBuilderCode}
+                debuggerCode={debuggerCode}
+                onDebuggerCodeChange={setDebuggerCode}
                 onAnalyze={handleAnalyzeVisualBuilder}
                 onSave={handleSave}
                 onLoad={handleLoad}
