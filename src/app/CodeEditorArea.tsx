@@ -19,6 +19,7 @@ interface CodeEditorAreaProps {
   onSave: () => void;
   onLoad: (data: { code?: string; debuggerCode?: string; currentTime?: number }) => void;
   isAnalyzing: boolean;
+  analyzeStatus?: 'idle' | 'success' | 'error' | 'dirty';
   error?: string;
   highlightedLines?: HighlightedLines;
   currentVariables?: Record<string, VariableValue>;
@@ -39,6 +40,7 @@ export function CodeEditorArea({
   onSave,
   onLoad,
   isAnalyzing,
+  analyzeStatus = 'idle',
   error,
   highlightedLines,
   currentVariables = {},
@@ -130,11 +132,17 @@ export function CodeEditorArea({
             disabled={isAnalyzing}
             className={`px-4 py-1 text-sm font-medium rounded transition-colors ${
               isAnalyzing
-                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : 'bg-emerald-600 text-white hover:bg-emerald-500'
+                ? 'bg-gray-500 text-gray-200 cursor-not-allowed'
+                : analyzeStatus === 'success'
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : analyzeStatus === 'error'
+                    ? 'bg-red-600 text-white hover:bg-red-500'
+                    : analyzeStatus === 'dirty'
+                      ? 'bg-amber-500 text-white hover:bg-amber-400'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-500'
             }`}
           >
-            {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+            {isAnalyzing ? 'Analyzing…' : analyzeStatus === 'success' ? '✓ Analyze' : analyzeStatus === 'error' ? '✗ Analyze' : 'Analyze'}
           </button>
         </div>
       </div>

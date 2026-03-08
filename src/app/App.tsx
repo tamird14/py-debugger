@@ -31,6 +31,8 @@ function App() {
   const [debuggerCode, setDebuggerCode] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | undefined>();
+  const [analyzeStatus, setAnalyzeStatus] = useState<'idle' | 'success' | 'error' | 'dirty'>('idle');
+  const everAnalyzedRef = useRef(false);
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
@@ -39,6 +41,11 @@ function App() {
   const [currentStep, setCurrentStep] = useState(0);
   const [stepCount, setStepCount] = useState(0);
   const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
+
+  // Mark dirty whenever code changes after a completed analysis
+  useEffect(() => {
+    if (everAnalyzedRef.current) setAnalyzeStatus('dirty');
+  }, [visualBuilderCode, debuggerCode]);
 
   // Preload Pyodide on mount
   useEffect(() => {
@@ -131,12 +138,16 @@ function App() {
         setStepCount(getMaxTime() + 1);
         setCurrentStep(0);
         gridAreaRef.current?.loadVisualBuilderObjects(getTimeline()[0]);
+        setAnalyzeStatus('success');
       } else {
         setAnalyzeError(result.error);
+        setAnalyzeStatus('error');
       }
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : 'Unknown error');
+      setAnalyzeStatus('error');
     } finally {
+      everAnalyzedRef.current = true;
       setIsAnalyzing(false);
     }
   }, [visualBuilderCode, debuggerCode]);
@@ -248,6 +259,7 @@ function App() {
                 onSave={handleSave}
                 onLoad={handleLoad}
                 isAnalyzing={isAnalyzing}
+                analyzeStatus={analyzeStatus}
                 error={analyzeError}
                 currentVariables={currentVariables}
                 highlightedLines={highlightedLines}
