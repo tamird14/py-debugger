@@ -37,6 +37,7 @@ function App() {
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
+  const [mouseEnabled, setMouseEnabled] = useState(false);
 
   // Timeline state
   const [currentStep, setCurrentStep] = useState(0);
@@ -266,6 +267,8 @@ function App() {
                 highlightedLines={highlightedLines}
                 breakpoints={breakpoints}
                 onBreakpointsChange={setBreakpoints}
+                mouseEnabled={mouseEnabled}
+                onMouseEnabledChange={setMouseEnabled}
               />
             </div>
           </Panel>
@@ -275,7 +278,7 @@ function App() {
           {/* Right panel - Grid Area */}
           <Panel defaultSize={50} minSize={20}>
             <div className="h-full relative">
-              <GridArea ref={gridAreaRef} darkMode={darkMode} />
+              <GridArea ref={gridAreaRef} darkMode={darkMode} mouseEnabled={mouseEnabled} />
 
               {apiReferenceOpen && (
                 <ApiReferencePanel

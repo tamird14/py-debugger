@@ -24,10 +24,11 @@ export interface GridAreaHandle {
 
 interface GridAreaProps {
   darkMode: boolean;
+  mouseEnabled: boolean;
 }
 
 export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
-  function GridArea({ darkMode }, ref) {
+  function GridArea({ darkMode, mouseEnabled }, ref) {
     const {
       cells,
       overlayCells,
@@ -148,6 +149,7 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
             zoom={zoom}
             onZoom={handleZoom}
             darkMode={darkMode}
+            mouseEnabled={mouseEnabled}
           />
         </div>
       </div>

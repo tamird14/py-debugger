@@ -19,6 +19,7 @@ interface GridProps {
   zoom: number;
   onZoom: (delta: number) => void;
   darkMode?: boolean;
+  mouseEnabled?: boolean;
 }
 
 export interface GridHandle {
@@ -50,15 +51,17 @@ interface RenderableObject {
 
 const GridSingleObject = memo(function GridSingleObject({
   obj,
+  mouseEnabled,
 }: {
   obj: RenderableObject;
+  mouseEnabled: boolean;
 }) {
   const { widthCells, heightCells } = obj;
   const [flashing, setFlashing] = useState(false);
 
   if (widthCells <= 0 || heightCells <= 0) return null;
 
-  const isClickable = !!obj.cellData.onClick;
+  const isClickable = mouseEnabled && !!obj.cellData.onClick;
 
   const handleClick = isClickable
     ? () => {
@@ -105,6 +108,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   zoom,
   onZoom,
   darkMode = false,
+  mouseEnabled = false,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridContentRef = useRef<HTMLDivElement>(null);
@@ -172,9 +176,9 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
 
   const renderedObjects = useMemo(() => {
     return objectsToRender.map((obj) => (
-      <GridSingleObject key={obj.key} obj={obj} />
+      <GridSingleObject key={obj.key} obj={obj} mouseEnabled={mouseEnabled} />
     ));
-  }, [objectsToRender]);
+  }, [objectsToRender, mouseEnabled]);
 
   const getPanelClasses = (panel: PanelInfo): string => {
     const base = 'absolute transition-all duration-300 ease-out';
