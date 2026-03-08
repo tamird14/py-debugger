@@ -41,7 +41,8 @@ export function DebuggerCodeEditor({
     monacoRef.current = monaco;
 
     ed.onMouseDown((e) => {
-      if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
+      const { GUTTER_GLYPH_MARGIN, GUTTER_LINE_NUMBERS } = monaco.editor.MouseTargetType;
+      if (e.target.type === GUTTER_GLYPH_MARGIN || e.target.type === GUTTER_LINE_NUMBERS) {
         const line = e.target.position?.lineNumber;
         if (line == null) return;
         const next = new Set(breakpointsRef.current);
