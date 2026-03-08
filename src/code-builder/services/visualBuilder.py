@@ -67,7 +67,7 @@ class VisualElem:
 
     def _get_event_handlers(self):
         handlers = []
-        if has_same_signature(self, on_click):
+        if has_same_signature(type(self), on_click):
             handlers.append("on_click")
         return handlers
 
@@ -250,6 +250,16 @@ def _serialize_elem(elem, vb_id):
     if getattr(elem, '_parent', None) is not None and hasattr(elem._parent, '_vb_id'):
         out["panelId"] = elem._parent._vb_id
     return out
+
+def _handle_click(elem_id, row, col):
+    """Call on_click on the element with the given id and return the updated snapshot."""    
+    for elem in VisualElem._registry:        
+        if elem._elem_id == elem_id:   
+            #raise Exception(inspect.signature(elem.on_click))         
+            elem.on_click((row, col))
+            break
+    return _serialize_visual_builder()
+
 
 def _serialize_handlers():
     """Serialize event handlers for all elements."""

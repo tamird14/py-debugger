@@ -3,6 +3,8 @@ import { toPng } from 'html-to-image';
 import { Grid, type GridHandle } from '../visual-panel/components/Grid';
 import { useGridState } from '../visual-panel/hooks/useGridState';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
+import { executeClickHandler } from '../code-builder/services/pythonExecutor';
+import { getConstructor } from '../visual-panel/types/elementRegistry';
 
 /* ---------- Shared Tailwind class groups ---------- */
 
@@ -56,6 +58,16 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
     const handleAlignGrid = useCallback(() => {
       gridRef.current?.alignGrid();
     }, []);
+
+    const handleElementClick = useCallback(async (elemId: number, position: [number, number]) => {
+      const rawElements = await executeClickHandler(elemId, position[0], position[1]);
+      if (!rawElements) return;
+      const hydrated = rawElements.map((el) => {
+        const ctor = getConstructor(el.type);
+        return ctor ? new ctor(el) : el;
+      });
+      loadVisualBuilderObjects(hydrated);
+    }, [loadVisualBuilderObjects]);
 
     const handleScreenshot = useCallback(async () => {
       const element = gridRef.current?.captureElement();
@@ -150,6 +162,7 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
             onZoom={handleZoom}
             darkMode={darkMode}
             mouseEnabled={mouseEnabled}
+            onElementClick={handleElementClick}
           />
         </div>
       </div>

@@ -5,11 +5,13 @@ arr = Array(arr=V('arr'))
 panel.add(arr)
 arr.position=(1,0)
 
-def on_click(self, position: tuple[int, int]):
-    pass
 
-rect = Rect()
-rect.on_click = on_click
+class CRect(Rect):
+
+    def on_click(self, position: tuple[int, int]):
+        self.height = 5
+
+rect = CRect()
 rect.position = V('(0,n-i)')
 rect.color = (255,100,100)
 rect.alpha = 0.8

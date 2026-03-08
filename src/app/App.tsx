@@ -37,7 +37,7 @@ function App() {
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
-  const [mouseEnabled, setMouseEnabled] = useState(false);
+  const [mouseEnabled, setMouseEnabled] = useState(true);
 
   // Timeline state
   const [currentStep, setCurrentStep] = useState(0);

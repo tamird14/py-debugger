@@ -354,12 +354,12 @@ export function useGridState() {
             idx = nextIdx;
           } else {
             const elemId = (el as any)._elemId as number | undefined;
-            const onClick = elemId != null && hasHandler(elemId, 'on_click')
-              ? () => {}
+            const clickData = elemId != null && hasHandler(elemId, 'on_click')
+              ? { elemId, position: el.position as [number, number] }
               : undefined;
             next.set(gridId, {
               id: gridId,
-              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z, onClick },
+              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z, clickData },
               position: targetPosition,
               zOrder: z++,
             });

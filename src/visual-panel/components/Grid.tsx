@@ -20,6 +20,7 @@ interface GridProps {
   onZoom: (delta: number) => void;
   darkMode?: boolean;
   mouseEnabled?: boolean;
+  onElementClick?: (elemId: number, position: [number, number]) => void;
 }
 
 export interface GridHandle {
@@ -52,20 +53,30 @@ interface RenderableObject {
 const GridSingleObject = memo(function GridSingleObject({
   obj,
   mouseEnabled,
+  onElementClick,
 }: {
   obj: RenderableObject;
   mouseEnabled: boolean;
+  onElementClick?: (elemId: number, position: [number, number]) => void;
 }) {
   const { widthCells, heightCells } = obj;
   const [flashing, setFlashing] = useState(false);
 
   if (widthCells <= 0 || heightCells <= 0) return null;
 
-  const isClickable = mouseEnabled && !!obj.cellData.onClick;
+  const { clickData } = obj.cellData;
+  const isClickable = mouseEnabled && !!clickData && !!onElementClick;
 
   const handleClick = isClickable
-    ? () => {
-        obj.cellData.onClick!();
+    ? (e: React.MouseEvent<HTMLDivElement>) => {
+        // Compute which cell within the element was clicked (zoom-independent via offsetX/Y)
+        const colOffset = Math.floor(e.nativeEvent.offsetX / CELL_SIZE);
+        const rowOffset = Math.floor(e.nativeEvent.offsetY / CELL_SIZE);
+        const pos: [number, number] = [
+          clickData!.position[0] + rowOffset,
+          clickData!.position[1] + colOffset,
+        ];
+        onElementClick!(clickData!.elemId, pos);
         setFlashing(true);
         setTimeout(() => setFlashing(false), 300);
       }
@@ -109,6 +120,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   onZoom,
   darkMode = false,
   mouseEnabled = false,
+  onElementClick,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridContentRef = useRef<HTMLDivElement>(null);
@@ -176,9 +188,9 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
 
   const renderedObjects = useMemo(() => {
     return objectsToRender.map((obj) => (
-      <GridSingleObject key={obj.key} obj={obj} mouseEnabled={mouseEnabled} />
+      <GridSingleObject key={obj.key} obj={obj} mouseEnabled={mouseEnabled} onElementClick={onElementClick} />
     ));
-  }, [objectsToRender, mouseEnabled]);
+  }, [objectsToRender, mouseEnabled, onElementClick]);
 
   const getPanelClasses = (panel: PanelInfo): string => {
     const base = 'absolute transition-all duration-300 ease-out';

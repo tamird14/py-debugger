@@ -122,3 +122,21 @@ export async function executePythonCode(
     return { success: false, error: clean };
   }
 }
+
+export async function executeClickHandler(
+  elemId: number,
+  row: number,
+  col: number,
+): Promise<VisualBuilderElementBase[] | null> {
+  console.log('HHHHHHHHHHHHHH')
+  if (!pyodide) return null;
+  try {
+    const resultJson: string = await pyodide.runPythonAsync(
+      `_handle_click(${elemId}, ${row}, ${col})`,
+    );
+    return JSON.parse(resultJson) as VisualBuilderElementBase[];
+  } catch (error) {
+    console.error('Click handler error:', error);
+    return null;
+  }
+}
