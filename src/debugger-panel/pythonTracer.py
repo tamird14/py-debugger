@@ -190,5 +190,6 @@ def _visual_code_trace(code: str) -> str:
 
     return json.dumps({
         'code_timeline': code_trace,
-        'visual_timeline': timeline
+        'visual_timeline': timeline,
+        'handlers': _serialize_handlers(),
     })

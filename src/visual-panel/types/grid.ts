@@ -67,6 +67,8 @@ export interface RenderableObjectData {
   invalidReason?: string;
   // Render/drag order (higher = on top)
   zOrder?: number;
+  // Set when the Python element has an on_click handler
+  onClick?: () => void;
 }
 
 export interface OccupantInfo {

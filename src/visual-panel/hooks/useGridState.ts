@@ -8,6 +8,7 @@ import type {
 import type { VisualBuilderElementBase } from '../../api/visualBuilder';
 import { cellKey } from '../types/grid';
 import { type ArrayDrawResult, PanelCell } from '../render-objects';
+import { hasHandler } from '../handlersState';
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.0;
@@ -352,9 +353,13 @@ export function useGridState() {
             }
             idx = nextIdx;
           } else {
+            const elemId = (el as any)._elemId as number | undefined;
+            const onClick = elemId != null && hasHandler(elemId, 'on_click')
+              ? () => {}
+              : undefined;
             next.set(gridId, {
               id: gridId,
-              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z },
+              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z, onClick },
               position: targetPosition,
               zOrder: z++,
             });

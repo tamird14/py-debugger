@@ -1,3 +1,42 @@
+import inspect
+from typing import get_type_hints
+
+def on_click(self, position: tuple[int, int]):
+    pass
+
+def has_same_signature(obj, func):
+    """
+    Check if obj has a callable attribute with the same name
+    and same signature (number, names, and annotated types) as func.
+    """
+    name = func.__name__
+
+    # 1. Check the attribute exists
+    if not hasattr(obj, name):
+        return False
+
+    attr = getattr(obj, name)
+    if not callable(attr):
+        return False
+
+    # 2. Compare signatures
+    sig1 = inspect.signature(func)
+    sig2 = inspect.signature(attr)
+
+    # Quick check: same number of parameters
+    if len(sig1.parameters) != len(sig2.parameters):
+        return False
+
+    # Compare  annotations
+    for ((_, p1), (_, p2)) in zip(sig1.parameters.items(), sig2.parameters.items()):
+
+        # Check annotation if both are annotated
+        if p1.annotation != inspect.Parameter.empty and p2.annotation != inspect.Parameter.empty:
+            if p1.annotation != p2.annotation:
+                return False
+
+    return True
+
 class PopupException(Exception):
     """Exception type used to signal user-facing popup messages."""
     pass
@@ -5,13 +44,32 @@ class PopupException(Exception):
 
 class VisualElem:
     _registry = []
+    _vis_elem_id = 0
+
+    @staticmethod
+    def _clear_registry():
+        VisualElem._registry.clear()
+        VisualElem._vis_elem_id = 0
+
+    @staticmethod
+    def _stop_registry():
+        VisualElem._vis_elem_id = -1
 
     def __init__(self):
         self.position = (0, 0)
         self.visible = True
         self.alpha = 1.0
         self._parent = None
-        VisualElem._registry.append(self)
+        self._elem_id = VisualElem._vis_elem_id
+        if VisualElem._vis_elem_id >= 0:
+            VisualElem._vis_elem_id += 1
+            VisualElem._registry.append(self)
+
+    def _get_event_handlers(self):
+        handlers = []
+        if has_same_signature(self, on_click):
+            handlers.append("on_click")
+        return handlers
 
     def _serialize_base(self):
         """Return base serialization dict with common properties."""
@@ -29,10 +87,12 @@ class VisualElem:
         except (ValueError, TypeError):
             alpha = 1.0
 
+
         return {
             "position": [row, col],
             "visible": getattr(self, 'visible', True),
             "alpha": alpha,
+            "_elem_id": self._elem_id,
         }
 
     def _serialize(self):
@@ -190,6 +250,15 @@ def _serialize_elem(elem, vb_id):
     if getattr(elem, '_parent', None) is not None and hasattr(elem._parent, '_vb_id'):
         out["panelId"] = elem._parent._vb_id
     return out
+
+def _serialize_handlers():
+    """Serialize event handlers for all elements."""
+    handlers = {}
+    for elem in VisualElem._registry:
+        elem_handlers = elem._get_event_handlers()
+        if elem_handlers:
+            handlers[elem._elem_id] = elem_handlers
+    return handlers
 
 
 def _serialize_visual_builder():

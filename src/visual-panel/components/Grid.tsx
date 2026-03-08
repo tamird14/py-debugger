@@ -1,4 +1,4 @@
-import { useRef, useCallback, useMemo, memo, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useCallback, useMemo, memo, forwardRef, useImperativeHandle, useState } from 'react';
 import { GridCell } from './GridCell';
 import type { RenderableObjectData, PanelStyle } from '../types/grid';
 import { PANEL_STYLE_DEFAULT } from '../types/grid';
@@ -54,11 +54,23 @@ const GridSingleObject = memo(function GridSingleObject({
   obj: RenderableObject;
 }) {
   const { widthCells, heightCells } = obj;
+  const [flashing, setFlashing] = useState(false);
+
   if (widthCells <= 0 || heightCells <= 0) return null;
+
+  const isClickable = !!obj.cellData.onClick;
+
+  const handleClick = isClickable
+    ? () => {
+        obj.cellData.onClick!();
+        setFlashing(true);
+        setTimeout(() => setFlashing(false), 300);
+      }
+    : undefined;
 
   return (
     <div
-      className="absolute transition-all duration-300 ease-out"
+      className={`absolute transition-all duration-300 ease-out${isClickable ? ' cursor-pointer pointer-events-auto' : ''}`}
       style={{
         left: obj.col * CELL_SIZE,
         top: obj.row * CELL_SIZE,
@@ -66,6 +78,7 @@ const GridSingleObject = memo(function GridSingleObject({
         height: CELL_SIZE * heightCells,
         zIndex: 10,
       }}
+      onClick={handleClick}
     >
       <GridCell
         row={obj.row}
@@ -75,6 +88,9 @@ const GridSingleObject = memo(function GridSingleObject({
         width={CELL_SIZE * widthCells}
         height={CELL_SIZE * heightCells}
       />
+      {flashing && (
+        <div className="absolute inset-0 bg-white/60 rounded pointer-events-none" />
+      )}
     </div>
   );
 });

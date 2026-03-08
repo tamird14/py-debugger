@@ -4,6 +4,7 @@ import VISUAL_BUILDER_SHAPES_PYTHON from './visualBuilderShapes.py?raw';
 import PYTHON_TRACER from '../../debugger-panel/pythonTracer.py?raw';
 import { hydrateTimelineFromArray } from '../../timeline/timelineState';
 import { setCodeTimeline, type TraceStep } from '../../debugger-panel/codeTimelineState';
+import { setHandlers } from '../../visual-panel/handlersState';
 
 // ---------------------------------------------------------------------------
 // Pyodide runtime
@@ -85,7 +86,7 @@ export async function executePythonCode(
   try {
     const py = await loadPythonRuntime();
 
-    await py.runPythonAsync('VisualElem._registry = []');
+    await py.runPythonAsync('VisualElem._clear_registry()');
 
     const escapedVB = escapeForExec(visualBuilderCode);
     await py.runPythonAsync(`exec('''${escapedVB.replace(/'''/g, "\\'\\'\\'")}''')`);
@@ -98,6 +99,7 @@ export async function executePythonCode(
     const parsed = JSON.parse(resultJson) as {
       code_timeline: TraceStep[];
       visual_timeline: VisualBuilderElementBase[][];
+      handlers: Record<string, string[]>;
     };
 
     if (parsed.code_timeline.length !== parsed.visual_timeline.length) {
@@ -107,6 +109,7 @@ export async function executePythonCode(
       };
     }
 
+    setHandlers(parsed.handlers ?? {});
     setCodeTimeline(parsed.code_timeline);
     hydrateTimelineFromArray(parsed.visual_timeline);
 
