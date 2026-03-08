@@ -170,11 +170,11 @@ the registeries, and if needed we will construct new ones. Try to keep the chang
 
 ## 6. The debugger mode
 
-Here we add another python text area for the code that we want to debug. When calling analyze for this code, it run it all and saves a trace for the state for each execution line (similar to the animation mode). If there is an error, it should be displayed relatively to the user's code, and not the whole program.
-In addition, we should be able to set breakpoints for the code. The control area should have a forward, backward, first, last buttons, and a scrollbar to run over all of them. Also buttons for next, previous break point. At each such execution line, the area code should emphasis the next line to execute and the previous line that was executed. Each time that we move an execution line, it should trigger an `update(scope, params)` event (and after which, update the visual panel).
+We add another python text area for the code that we want to debug. When calling analyze, it runs the code and saves a trace for the state for each execution line (similar to the animation mode). If there is an error, it should be displayed relatively to the user's code, and not the whole program.
+In addition, we should be able to set breakpoints for the code. The control area should have a forward, backward, first, last buttons, and a scrollbar to run over all of them. Also buttons for next, previous break point. At each such execution line, the code area should emphasis the next line to execute and the previous line that was executed. Each time that we move an execution line, it should trigger an `update(params, scope)` event (and after which, update the visual panel).
 The scope will hold the current scope stack of the execution line, and params will hold all the available parameter at that line.
 
-In addition, in this mode we should be able to set the properties of visual objects as expressions of parameters. This is done via `V(..)` objects. For example, setting
+In addition, we should be able to set the properties of visual objects as expressions of parameters. This is done via `V(..)` objects. For example, setting
 `rect.width = V("i")`
 means that when calling update, we also set `rect.width = params['i']`.  As a default value, for before the element is defined in the code, use it first value in the trace. For example the first time that `i` is assigned a value.
 
@@ -182,7 +182,20 @@ Here in the API both explain what is the `V(...)` notation and that the user can
 
 Here the save file should also save the code, the breakpoints position, and the current executed line, and use it when loading (in particular, analyze both the code and visual builder, and jump to the right execution line).
 
-Note that the `V` notation should only work on this mode, and not on others.
+
+
+### Steps
+
+This is a debugger component, and most of the files should be a new debugger-panel folder. some of the features here were in the original main branch.
+
+1. Create a second python area tabbed with the current one. They should be named "Code" and "Visual Builder" respectively. 
+2. register the pythonTracer.py file in pythonFileRegistry. When Analyzed is called run instead the python function _visual_code_trace(code) where code is the text from the new python text area. It returns a standard timeline and a code trace timeline - Validate that they have the same length and set the Max time to be this length-1 (also disable the option to change it manually). Create a similar code timeline state and update it, and the visual objects timeline.
+3. Add a variable value panel which shows for each variable its value, and can be viewed at the bottom of the code area (only the code debugger, not the visual builder). This should be adjustable. When changing the current time, update the values of the variables.
+4. At each point in time, when the debugger is shown, it should emphasis the last line that was executed and the next to be executed.
+
+5. Add ability to add breakpoints on the debugger like with standard IDEs.
+6. Add to the timeline buttons also two button to run up to the next \ previous break point.
+
 
 ## 7. The mouse mode
 
