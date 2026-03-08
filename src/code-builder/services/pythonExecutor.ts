@@ -75,11 +75,10 @@ async function loadPythonRuntime(): Promise<any> {
 
 export interface DebuggerExecuteResult {
   success: boolean;
-  elements: VisualBuilderElementBase[];
   error?: string;
 }
 
-export async function executeDebuggerCode(
+export async function executePythonCode(
   visualBuilderCode: string,
   debuggerCode: string,
 ): Promise<DebuggerExecuteResult> {
@@ -104,20 +103,19 @@ export async function executeDebuggerCode(
     if (parsed.code_timeline.length !== parsed.visual_timeline.length) {
       return {
         success: false,
-        elements: [],
         error: `Timeline length mismatch: code=${parsed.code_timeline.length} visual=${parsed.visual_timeline.length}`,
       };
     }
 
     setCodeTimeline(parsed.code_timeline);
-    const initialElements = hydrateTimelineFromArray(parsed.visual_timeline);
+    hydrateTimelineFromArray(parsed.visual_timeline);
 
-    return { success: true, elements: initialElements };
+    return { success: true };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     const clean = msg.includes('PythonError:')
       ? msg.split('PythonError:')[1]?.trim() ?? msg
       : msg;
-    return { success: false, elements: [], error: clean };
+    return { success: false, error: clean };
   }
 }

@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { CodeEditorArea } from './CodeEditorArea';
 import { useTheme } from '../contexts/ThemeContext';
-import { loadPyodide, isPyodideLoaded, executeDebuggerCode } from '../code-builder/services/pythonExecutor';
+import { loadPyodide, isPyodideLoaded, executePythonCode } from '../code-builder/services/pythonExecutor';
 import { ApiReferencePanel } from '../api/ApiReferencePanel';
 import { TimelineControls } from '../timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
 import { getStateAt, getMaxTime } from '../timeline/timelineState';
 import { getCodeStepAt } from '../debugger-panel/codeTimelineState';
+import { getTimeline } from '../timeline/timelineState';
 import SAMPLE_VISUAL_BUILDER from '../code-builder/sample.py?raw';
 
 /* ---------- Shared Tailwind class groups ---------- */
@@ -84,12 +85,12 @@ function App() {
     setAnalyzeError(undefined);
 
     try {
-      const result = await executeDebuggerCode(visualBuilderCode, debuggerCode);
+      const result = await executePythonCode(visualBuilderCode, debuggerCode);
 
       if (result.success) {
         setStepCount(getMaxTime() + 1);
         setCurrentStep(0);
-        gridAreaRef.current?.loadVisualBuilderObjects(result.elements);
+        gridAreaRef.current?.loadVisualBuilderObjects(getTimeline()[0]);
       } else {
         setAnalyzeError(result.error);
       }
