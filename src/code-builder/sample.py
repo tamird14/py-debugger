@@ -1,21 +1,26 @@
-# Discrete animation sample — array growing then shrinking.
-# Steps 0-5: add one element per step (value = step * 2).
-# Steps 6-9: pop the first element once per step.
-# Press Analyze to build the timeline, then step through it.
+panel = Panel('main')
+panel.position = (1,1)
 
-label = Label(V('j'))
+arr = Array(arr=V('arr'))
+panel.add(arr)
+arr.position=(1,0)
 
-arr = Array()
-arr.position = (2, 2)
-arr.direction = "right"
-arr.show_index = True
+rect = Rect()
+rect.position = V('(0,n-i)')
+rect.color = (255,100,100)
+rect.alpha = 0.8
+rect.height = 2
+rect.width = V('i')
+panel.add(rect)
 
-def jump_to(t: int):
-    n_added  = min(t + 1, 6)          # how many elements have been added
-    n_popped = max(0, t - 5)          # how many have been popped from the front
+ar1 = Arrow()
+ar1.orientation = 'down'
+ar1.position = V('(0, j)')
+ar1.color = (0,0,255)
+panel.add(ar1)
 
-    elements = [i * 2 for i in range(n_added)][n_popped:]
-
-    arr.length = len(elements)
-    for i, val in enumerate(elements):
-        arr[i] = val
+ar2 = Arrow()
+ar2.orientation = 'down'
+ar2.position = V('(0, j+1)')
+ar2.color = (0,150,255)
+panel.add(ar2)
