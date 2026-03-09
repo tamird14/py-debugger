@@ -123,17 +123,24 @@ export async function executePythonCode(
   }
 }
 
+export type ClickHandlerResult = {
+  snapshot: VisualBuilderElementBase[];
+  debugCall?: string;
+} | null;
+
 export async function executeClickHandler(
   elemId: number,
   row: number,
   col: number,
-): Promise<VisualBuilderElementBase[] | null> {
+): Promise<ClickHandlerResult> {
   if (!pyodide) return null;
   try {
-    const resultJson: string = await pyodide.runPythonAsync(
+    const debugCall: string | null = await pyodide.runPythonAsync(
       `_handle_click(${elemId}, ${row}, ${col})`,
     );
-    return JSON.parse(resultJson) as VisualBuilderElementBase[];
+    const snapshotJson: string = await pyodide.runPythonAsync(`_serialize_visual_builder()`);
+    const snapshot = JSON.parse(snapshotJson) as VisualBuilderElementBase[];
+    return debugCall ? { snapshot, debugCall } : { snapshot };
   } catch (error) {
     console.error('Click handler error:', error);
     return null;

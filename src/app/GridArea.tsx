@@ -3,7 +3,7 @@ import { toPng } from 'html-to-image';
 import { Grid, type GridHandle } from '../visual-panel/components/Grid';
 import { useGridState } from '../visual-panel/hooks/useGridState';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
-import { executeClickHandler } from '../code-builder/services/pythonExecutor';
+import { executeClickHandler, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
 import { getConstructor } from '../visual-panel/types/elementRegistry';
 
 /* ---------- Shared Tailwind class groups ---------- */
@@ -60,13 +60,14 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
     }, []);
 
     const handleElementClick = useCallback(async (elemId: number, position: [number, number]) => {
-      const rawElements = await executeClickHandler(elemId, position[0], position[1]);
-      if (!rawElements) return;
-      const hydrated = rawElements.map((el) => {
+      const result: ClickHandlerResult = await executeClickHandler(elemId, position[0], position[1]);
+      if (!result) return;
+      const hydrated = result.snapshot.map((el) => {
         const ctor = getConstructor(el.type);
         return ctor ? new ctor(el) : el;
       });
       loadVisualBuilderObjects(hydrated);
+      // result.debugCall handling wired in a later commit
     }, [loadVisualBuilderObjects]);
 
     const handleScreenshot = useCallback(async () => {

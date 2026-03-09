@@ -338,7 +338,7 @@ Additionally, `handleEnterInteractive` in `App.tsx` calls `goToStep(getMaxTime()
 
 ---
 
-### Commit 4 — Add `DebugCall` return sentinel to `visualBuilder.py`
+### ~~Commit 4 — Add `DebugCall` return sentinel to `visualBuilder.py`~~ ✓ Done
 
 **Files:** `src/code-builder/services/visualBuilder.py`
 
@@ -368,20 +368,21 @@ This is purely a Python change and has no effect until the TypeScript side is up
 
 ---
 
-### Commit 5 — Update `executeClickHandler` to always fetch snapshot separately (`pythonExecutor.ts`)
+### ~~Commit 5 — Update `executeClickHandler` to always fetch snapshot separately (`pythonExecutor.ts`)~~ ✓ Done
 
 **Files:** `src/code-builder/services/pythonExecutor.ts`
 
 `executeClickHandler` now makes two sequential Pyodide calls: first `_handle_click` (returns `null` or an expression string), then always `_serialize_visual_builder()` to get the current visual state. This guarantees the snapshot reflects any mutations made by `on_click` regardless of whether a debug call was also requested.
 
-Define and export:
+The result is a flat object — there is always a snapshot, and optionally a `debugCall` expression. No discriminator field needed:
+
 ```typescript
-export type ClickHandlerResult =
-  | { mode: 'visual_update'; snapshot: VisualBuilderElementBase[] }
-  | { mode: 'debug_call'; expression: string; snapshot: VisualBuilderElementBase[] }
-  | null;
+export type ClickHandlerResult = {
+  snapshot: VisualBuilderElementBase[];
+  debugCall?: string;
+} | null;
 ```
-`GridArea.handleElementClick` always applies the snapshot first, then — if mode is `debug_call` — calls `onDebugCall?.(result.expression)` (wired in Commit 8).
+`GridArea.handleElementClick` always applies the snapshot, then checks for `result.debugCall` to call `onDebugCall?.(result.debugCall)` (wired in Commit 8).
 
 ---
 
