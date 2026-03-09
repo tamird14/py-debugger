@@ -16,7 +16,7 @@ interface CodeEditorAreaProps {
   onAnalyze: () => void;
   onEdit: () => void;
   onSave: () => void;
-  onLoad: (data: { code?: string; debuggerCode?: string; currentTime?: number }) => void;
+  onLoad: (data: { code?: string; debuggerCode?: string }) => void;
   isAnalyzing: boolean;
   analyzeStatus?: 'idle' | 'success' | 'error' | 'dirty';
   error?: string;
