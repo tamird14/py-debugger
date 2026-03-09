@@ -150,6 +150,7 @@ export async function executeClickHandler(
 export type DebugCallResult = {
   codeTimeline: TraceStep[];
   visualTimeline: VisualBuilderElementBase[][];
+  error?: string;
 } | null;
 
 export async function executeDebugCall(expression: string): Promise<DebugCallResult> {
@@ -175,7 +176,10 @@ export async function executeDebugCall(expression: string): Promise<DebugCallRes
       visualTimeline: parsed.visual_timeline,
     };
   } catch (error) {
-    console.error('Debug call error:', error);
-    return null;
+    const msg = error instanceof Error ? error.message : String(error);
+    const clean = msg.includes('PythonError:')
+      ? msg.split('PythonError:')[1]?.trim() ?? msg
+      : msg;
+    return { codeTimeline: [], visualTimeline: [], error: clean };
   }
 }

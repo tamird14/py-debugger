@@ -194,9 +194,14 @@ function App() {
   const handleDebugCall = useCallback(async (expression: string) => {
     setAppMode('debug_in_event');
     const result = await executeDebugCall(expression);
-    if (result) {
-      const count = result.codeTimeline.length;
-      setStepCount(count);
+    if (result?.error) {
+      setAnalyzeError(result.error);
+      setAnalyzeStatus('error');
+      setAppMode('interactive');
+      return;
+    }
+    if (result && result.codeTimeline.length > 0) {
+      setStepCount(result.codeTimeline.length);
       setCurrentStep(0);
       const state = getStateAt(0);
       if (state) gridAreaRef.current?.loadVisualBuilderObjects(state);

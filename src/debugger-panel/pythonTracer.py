@@ -31,6 +31,20 @@ def _capture_variables(
 
     result: Dict[str, VariableValue] = {}
     local_vars = frame.f_locals.copy()
+    # When inside a function, also expose enclosing scopes (closures + globals)
+    # so V-expressions referencing outer variables still evaluate correctly.
+    if frame.f_locals is not frame.f_globals:
+        # Walk enclosing function frames (closure scopes), innermost first
+        f = frame.f_back
+        while f is not None and f.f_code.co_filename in ('<exec>', '<string>') and f.f_locals is not f.f_globals:
+            for k, v in f.f_locals.items():
+                if k not in local_vars:
+                    local_vars[k] = v
+            f = f.f_back
+        # Module-level globals
+        for k, v in frame.f_globals.items():
+            if k not in local_vars:
+                local_vars[k] = v
 
     for name, value in local_vars.items():
         if name.startswith('_'):
