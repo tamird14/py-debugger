@@ -275,13 +275,14 @@ def _handle_click(elem_id, row, col):
 
 
 def _serialize_handlers():
-    """Serialize event handlers for all elements."""
+    """Serialize event handlers for all elements as a JSON string."""
+    import json
     handlers = {}
     for elem in VisualElem._registry:
         elem_handlers = elem._get_event_handlers()
         if elem_handlers:
             handlers[elem._elem_id] = elem_handlers
-    return handlers
+    return json.dumps(handlers)
 
 
 def _serialize_visual_builder():

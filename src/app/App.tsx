@@ -209,8 +209,8 @@ function App() {
       setAppMode('interactive');
       return;
     }
-    if (result && result.codeTimeline.length > 0) {
-      setStepCount(result.codeTimeline.length);
+    if (result && result.stepCount > 0) {
+      setStepCount(result.stepCount);
       setCurrentStep(0);
       const state = getStateAt(0);
       if (state) gridAreaRef.current?.loadVisualBuilderObjects(state);

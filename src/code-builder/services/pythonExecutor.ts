@@ -143,6 +143,8 @@ export async function executeClickHandler(
     );
     const snapshotJson: string = await pyodide.runPythonAsync(`_serialize_visual_builder()`);
     const snapshot = JSON.parse(snapshotJson) as VisualBuilderElementBase[];
+    const handlersJson: string = await pyodide.runPythonAsync(`_serialize_handlers()`);
+    setHandlers(JSON.parse(handlersJson));
     return debugCall ? { snapshot, debugCall } : { snapshot };
   } catch (error) {
     console.error('Click handler error:', error);
@@ -151,8 +153,7 @@ export async function executeClickHandler(
 }
 
 export type DebugCallResult = {
-  codeTimeline: TraceStep[];
-  visualTimeline: VisualBuilderElementBase[][];
+  stepCount: number;
   error?: string;
 } | null;
 
@@ -173,15 +174,12 @@ export async function executeDebugCall(expression: string, lineOffset: number): 
     setCodeTimeline(parsed.code_timeline);
     hydrateTimelineFromArray(parsed.visual_timeline);
 
-    return {
-      codeTimeline: parsed.code_timeline,
-      visualTimeline: parsed.visual_timeline,
-    };
+    return { stepCount: parsed.code_timeline.length };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     const clean = msg.includes('PythonError:')
       ? msg.split('PythonError:')[1]?.trim() ?? msg
       : msg;
-    return { codeTimeline: [], visualTimeline: [], error: clean };
+    return { stepCount: 0, error: clean };
   }
 }
