@@ -17,6 +17,8 @@ class TraceResult(TypedDict):
     steps: List[TraceStep]
     output: str
 
+MAX_TRACE_STEPS = 1000  # TODO: make this user-configurable
+
 _trace_steps: List[TraceStep] = []
 _output_capture = StringIO()
 _original_stdout = sys.stdout
@@ -112,6 +114,12 @@ def _trace_function(
         'variables': variables,
         'scope': scope
     })
+
+    if len(_trace_steps) >= MAX_TRACE_STEPS:
+        raise PopupException(
+            f"Trace exceeded {MAX_TRACE_STEPS} steps — possible infinite loop. "
+            "(This limit will be user-configurable in a future update.)"
+        )
 
     return _trace_function
 
