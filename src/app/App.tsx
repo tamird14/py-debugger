@@ -187,6 +187,11 @@ function App() {
     void currentTime;
   }, []);
 
+  const handleEnterInteractive = useCallback(() => {
+    goToStep(getMaxTime());
+    setAppMode('interactive');
+  }, [goToStep]);
+
   return (
     <div className="w-screen h-screen overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
@@ -218,18 +223,20 @@ function App() {
             </span>
           )}
 
-          {/* Timeline controls */}
-          <TimelineControls
-            currentStep={currentStep}
-            stepCount={stepCount}
-            onPrevStep={() => goToStep(currentStep - 1)}
-            onNextStep={() => goToStep(currentStep + 1)}
-            onGoToStep={goToStep}
-            onPrevBreakpoint={goToPrevBreakpoint}
-            onNextBreakpoint={goToNextBreakpoint}
-            hasPrevBreakpoint={hasPrevBreakpoint}
-            hasNextBreakpoint={hasNextBreakpoint}
-          />
+          {/* Timeline controls — hidden in interactive mode */}
+          {appMode !== 'interactive' && (
+            <TimelineControls
+              currentStep={currentStep}
+              stepCount={stepCount}
+              onPrevStep={() => goToStep(currentStep - 1)}
+              onNextStep={() => goToStep(currentStep + 1)}
+              onGoToStep={goToStep}
+              onPrevBreakpoint={goToPrevBreakpoint}
+              onNextBreakpoint={goToNextBreakpoint}
+              hasPrevBreakpoint={hasPrevBreakpoint}
+              hasNextBreakpoint={hasNextBreakpoint}
+            />
+          )}
 
           {/* Dark mode toggle */}
           <button
@@ -272,7 +279,7 @@ function App() {
                 breakpoints={breakpoints}
                 onBreakpointsChange={setBreakpoints}
                 appMode={appMode}
-                onEnterInteractive={() => setAppMode('interactive')}
+                onEnterInteractive={handleEnterInteractive}
               />
             </div>
           </Panel>

@@ -148,8 +148,8 @@ export function CodeEditorArea({
       {/* Editor */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'code' ? (
-          <Group orientation="vertical" className="h-full">
-            <Panel defaultSize={70} minSize={30}>
+          (() => {
+            const editor = (
               <DebuggerCodeEditor
                 code={debuggerCode}
                 onChange={onDebuggerCodeChange}
@@ -157,12 +157,18 @@ export function CodeEditorArea({
                 breakpoints={breakpoints}
                 onBreakpointsChange={onBreakpointsChange}
               />
-            </Panel>
-            <Separator className="h-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 cursor-row-resize" />
-            <Panel defaultSize={30} minSize={10}>
-              <VariablePanel variables={currentVariables} />
-            </Panel>
-          </Group>
+            );
+            if (appMode === 'interactive') return editor;
+            return (
+              <Group orientation="vertical" className="h-full">
+                <Panel defaultSize={70} minSize={30}>{editor}</Panel>
+                <Separator className="h-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 cursor-row-resize" />
+                <Panel defaultSize={30} minSize={10}>
+                  <VariablePanel variables={currentVariables} />
+                </Panel>
+              </Group>
+            );
+          })()
         ) : (
           <CodeEditor code={code} onChange={onChange} error={error} />
         )}

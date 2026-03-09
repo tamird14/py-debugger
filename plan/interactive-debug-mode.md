@@ -312,7 +312,7 @@ Each commit is scoped to one concern and touches as few files as possible. They 
 
 ---
 
-### Commit 1 — Introduce `AppMode` type and derive `mouseEnabled` from it (`App.tsx`)
+### ~~Commit 1 — Introduce `AppMode` type and derive `mouseEnabled` from it (`App.tsx`)~~ ✓ Done
 
 **Files:** `src/app/App.tsx`
 
@@ -320,7 +320,7 @@ Replace the free-standing `mouseEnabled: boolean` state with an `appMode: AppMod
 
 ---
 
-### Commit 2 — Replace manual mouse toggle with "Finish & Interact" button (`CodeEditorArea.tsx`, `App.tsx`)
+### ~~Commit 2 — Replace manual mouse toggle with "Finish & Interact" button (`CodeEditorArea.tsx`, `App.tsx`)~~ ✓ Done
 
 **Files:** `src/app/CodeEditorArea.tsx`, `src/app/App.tsx`
 
@@ -328,19 +328,37 @@ Remove the `mouseEnabled` / `onMouseEnabledChange` props from `CodeEditorArea`. 
 
 ---
 
-### Commit 3 — Add `DebugCallException` and `debug_call()` sentinel to `visualBuilder.py`
+### ~~Commit 3 — Hide timeline controls and variable panel on entering Interactive mode (`App.tsx`, `CodeEditorArea.tsx`)~~ ✓ Done
 
-**Files:** `src/code-builder/services/visualBuilder.py`
+**Files:** `src/app/App.tsx`, `src/app/CodeEditorArea.tsx`
 
-Add a `DebugCallException(expression: str)` class. Add a top-level `debug_call(expression: str)` function that raises it. Wrap the body of `_handle_click` in a `try/except DebugCallException` block:
-- On a normal return, wrap the existing snapshot in `{ "mode": "visual_update", "snapshot": [...] }`.
-- On `DebugCallException`, return `{ "mode": "debug_call", "expression": exc.expression }`.
+In `App.tsx`, wrap `<TimelineControls>` in `{appMode !== 'interactive' && ...}` so it disappears in Interactive mode. In `CodeEditorArea.tsx`, hide the `<VariablePanel>` when `appMode === 'interactive'` (the variables shown belong to the trace that has finished, which is misleading). The debugger code editor itself remains visible so the user can see the code that ran.
 
-This is purely a Python change and has no effect until the TypeScript side is updated in Commit 4.
+Additionally, `handleEnterInteractive` in `App.tsx` calls `goToStep(getMaxTime())` before setting `appMode = 'interactive'`, so both timelines jump to the final trace step before mouse mode begins.
 
 ---
 
-### Commit 4 — Update `executeClickHandler` return type to `ClickHandlerResult` (`pythonExecutor.ts`)
+### Commit 4 — Add `DebugCall` return sentinel to `visualBuilder.py`
+
+**Files:** `src/code-builder/services/visualBuilder.py`
+
+Add a `DebugCall` class with a single `expression: str` field. Event handlers return it instead of raising an exception — this reads naturally and avoids using exceptions for control flow:
+
+```python
+def on_click(self, position):
+    self.color = (100, 200, 100)
+    return DebugCall("run_step()")
+```
+
+Update `_handle_click` to capture the return value of `on_click` and check `isinstance(result, DebugCall)`:
+- Normal return (`None`): wrap snapshot in `{ "mode": "visual_update", "snapshot": [...] }`.
+- `DebugCall` return: return `{ "mode": "debug_call", "expression": result.expression }`.
+
+This is purely a Python change and has no effect until the TypeScript side is updated in Commit 5.
+
+---
+
+### Commit 5 — Update `executeClickHandler` return type to `ClickHandlerResult` (`pythonExecutor.ts`)
 
 **Files:** `src/code-builder/services/pythonExecutor.ts`
 
@@ -351,11 +369,11 @@ type ClickHandlerResult =
   | { mode: 'debug_call'; expression: string }
   | null;
 ```
-Change `executeClickHandler` to return `Promise<ClickHandlerResult>` and parse the new JSON envelope from Python. `GridArea.handleElementClick` currently calls this and always treats the result as a snapshot array — update it to only process `visual_update` results and silently ignore `debug_call` for now (that path is wired in Commit 7).
+Change `executeClickHandler` to return `Promise<ClickHandlerResult>` and parse the new JSON envelope from Python. `GridArea.handleElementClick` currently calls this and always treats the result as a snapshot array — update it to only process `visual_update` results and silently ignore `debug_call` for now (that path is wired in Commit 8).
 
 ---
 
-### Commit 5 — Add `_visual_code_trace_expr` to `pythonTracer.py`
+### Commit 6 — Add `_visual_code_trace_expr` to `pythonTracer.py`
 
 **Files:** `src/debugger-panel/pythonTracer.py`
 
@@ -367,7 +385,7 @@ Add a new function `_visual_code_trace_expr(expression: str) -> str` that:
 
 ---
 
-### Commit 6 — Add `executeDebugCall` and save persistent Pyodide globals (`pythonExecutor.ts`)
+### Commit 7 — Add `executeDebugCall` and save persistent Pyodide globals (`pythonExecutor.ts`)
 
 **Files:** `src/code-builder/services/pythonExecutor.ts`
 
@@ -381,7 +399,7 @@ This function calls `_visual_code_trace_expr(expression)` in Pyodide, parses the
 
 ---
 
-### Commit 7 — Propagate `debug_call` result upward from `GridArea.tsx`
+### Commit 8 — Propagate `debug_call` result upward from `GridArea.tsx`
 
 **Files:** `src/app/GridArea.tsx`
 
@@ -389,11 +407,11 @@ Add an optional `onDebugCall?: (expression: string) => void` prop to `GridAreaPr
 - `visual_update` → existing hydration + `loadVisualBuilderObjects` path (unchanged).
 - `debug_call` → call `onDebugCall?.(result.expression)` and return early.
 
-Pass `onDebugCall` through from `App.tsx` (stub for now — wired in Commit 8).
+Pass `onDebugCall` through from `App.tsx` (stub for now — wired in Commit 9).
 
 ---
 
-### Commit 8 — Wire `handleDebugCall` and `handleBackToInteractive` in `App.tsx`
+### Commit 9 — Wire `handleDebugCall` and `handleBackToInteractive` in `App.tsx`
 
 **Files:** `src/app/App.tsx`
 
@@ -411,7 +429,7 @@ Pass `handleDebugCall` as `onDebugCall` to `GridArea` and `handleBackToInteracti
 
 ---
 
-### Commit 9 — Add mode status badge and "Back to Interactive" button (`CodeEditorArea.tsx`, `App.tsx`)
+### Commit 10 — Add mode status badge and "Back to Interactive" button (`CodeEditorArea.tsx`, `App.tsx`)
 
 **Files:** `src/app/CodeEditorArea.tsx`, `src/app/App.tsx`
 
@@ -420,11 +438,3 @@ Add an `onBackToInteractive` prop to `CodeEditorArea`. In the header action bar,
 - A `"Back to Interactive"` button, visible only when `appMode === 'debug_in_event'`, that calls `onBackToInteractive`.
 
 Pass `handleBackToInteractive` and `appMode` from `App.tsx`.
-
----
-
-### Commit 10 — Hide timeline controls and variable panel when in Interactive mode (`App.tsx`, `CodeEditorArea.tsx`)
-
-**Files:** `src/app/App.tsx`, `src/app/CodeEditorArea.tsx`
-
-In `App.tsx`, wrap `<TimelineControls>` in `{appMode !== 'interactive' && ...}` so it disappears in Interactive mode. In `CodeEditorArea.tsx`, hide the `<VariablePanel>` when `appMode === 'interactive'` (the variables shown belong to the trace that has finished, which is misleading). The debugger code editor itself remains visible so the user can see the code that ran.
