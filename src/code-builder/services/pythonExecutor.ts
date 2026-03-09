@@ -153,13 +153,12 @@ export type DebugCallResult = {
   error?: string;
 } | null;
 
-export async function executeDebugCall(expression: string): Promise<DebugCallResult> {
+export async function executeDebugCall(expression: string, lineOffset: number): Promise<DebugCallResult> {
   if (!pyodide) return null;
   try {
     const escapedExpr = escapeForExec(expression);
-    console.log('Executing debug call:', expression);
     const resultJson: string = await pyodide.runPythonAsync(
-      `_visual_code_trace('''${escapedExpr.replace(/'''/g, "\\'\\'\\'")}''', True)`,
+      `_prepare_and_trace_debug_call('${escapedExpr}', ${lineOffset})`,
     );
     const parsed = JSON.parse(resultJson) as {
       code_timeline: TraceStep[];

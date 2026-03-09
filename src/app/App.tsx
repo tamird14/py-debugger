@@ -37,6 +37,8 @@ function App() {
   const [pyodideReady, setPyodideReady] = useState(false);
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
 
+  const [debugCallSuffix, setDebugCallSuffix] = useState<string | null>(null);
+
   type AppMode = 'idle' | 'trace' | 'interactive' | 'debug_in_event';
   const [appMode, setAppMode] = useState<AppMode>('idle');
   const mouseEnabled = appMode === 'interactive';
@@ -198,10 +200,15 @@ function App() {
 
   const handleDebugCall = useCallback(async (expression: string) => {
     setAppMode('debug_in_event');
-    const result = await executeDebugCall(expression);
+    const indented = expression.split('\n').map(l => '    ' + l).join('\n');
+    const suffix = `\n\ndef debug_call():\n${indented}`;
+    setDebugCallSuffix(suffix);
+    const lineOffset = debuggerCode.split('\n').length + 2;
+    const result = await executeDebugCall(expression, lineOffset);
     if (result?.error) {
       setAnalyzeError(result.error);
       setAnalyzeStatus('error');
+      setDebugCallSuffix(null);
       setAppMode('interactive');
       return;
     }
@@ -211,11 +218,13 @@ function App() {
       const state = getStateAt(0);
       if (state) gridAreaRef.current?.loadVisualBuilderObjects(state);
     } else {
+      setDebugCallSuffix(null);
       setAppMode('interactive');
     }
-  }, []);
+  }, [debuggerCode]);
 
   const handleBackToInteractive = useCallback(() => {
+    setDebugCallSuffix(null);
     goToStep(getMaxTime());
     setAppMode('interactive');
   }, [goToStep]);
@@ -294,8 +303,8 @@ function App() {
               <CodeEditorArea
                 code={visualBuilderCode}
                 onChange={setVisualBuilderCode}
-                debuggerCode={debuggerCode}
-                onDebuggerCodeChange={setDebuggerCode}
+                debuggerCode={debuggerCode + (debugCallSuffix ?? '')}
+                onDebuggerCodeChange={appMode === 'debug_in_event' ? () => {} : setDebuggerCode}
                 onAnalyze={handleAnalyze}
                 onEdit={handleEdit}
                 onSave={handleSave}

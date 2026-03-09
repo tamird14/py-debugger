@@ -223,3 +223,16 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
         'visual_timeline': timeline,
         'handlers': _serialize_handlers(),
     })
+
+def _prepare_and_trace_debug_call(expression: str, line_offset: int) -> str:
+    """
+    Define `debug_call()` in _exec_context with line numbers shifted to match
+    the position of the injected function in the displayed combined code, then
+    trace it persistently.
+    """
+    import ast as _ast
+    func_source = f"def debug_call():\n    {expression}"
+    tree = _ast.parse(func_source)
+    _ast.increment_lineno(tree, line_offset)
+    exec(compile(tree, '<exec>', 'exec'), _exec_context)
+    return _visual_code_trace('debug_call()', True)
