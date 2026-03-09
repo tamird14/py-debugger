@@ -3,13 +3,12 @@ import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { CodeEditorArea } from './CodeEditorArea';
 import { useTheme } from '../contexts/ThemeContext';
-import { loadPyodide, isPyodideLoaded, executePythonCode } from '../code-builder/services/pythonExecutor';
+import { loadPyodide, isPyodideLoaded, executePythonCode, executeDebugCall } from '../code-builder/services/pythonExecutor';
 import { ApiReferencePanel } from '../api/ApiReferencePanel';
 import { TimelineControls } from '../timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
-import { getStateAt, getMaxTime } from '../timeline/timelineState';
+import { getStateAt, getMaxTime, getTimeline } from '../timeline/timelineState';
 import { getCodeStepAt } from '../debugger-panel/codeTimelineState';
-import { getTimeline } from '../timeline/timelineState';
 import SAMPLE_VISUAL_BUILDER from '../code-builder/sample.py?raw';
 import SAMPLE_DEBUGGER from '../debugger-panel/debuggerSample.py?raw';
 
@@ -192,6 +191,25 @@ function App() {
     setAppMode('interactive');
   }, [goToStep]);
 
+  const handleDebugCall = useCallback(async (expression: string) => {
+    setAppMode('debug_in_event');
+    const result = await executeDebugCall(expression);
+    if (result) {
+      const count = result.codeTimeline.length;
+      setStepCount(count);
+      setCurrentStep(0);
+      const state = getStateAt(0);
+      if (state) gridAreaRef.current?.loadVisualBuilderObjects(state);
+    } else {
+      setAppMode('interactive');
+    }
+  }, []);
+
+  const handleBackToInteractive = useCallback(() => {
+    goToStep(getMaxTime());
+    setAppMode('interactive');
+  }, [goToStep]);
+
   return (
     <div className="w-screen h-screen overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
@@ -280,6 +298,7 @@ function App() {
                 onBreakpointsChange={setBreakpoints}
                 appMode={appMode}
                 onEnterInteractive={handleEnterInteractive}
+                onBackToInteractive={handleBackToInteractive}
               />
             </div>
           </Panel>
@@ -289,7 +308,7 @@ function App() {
           {/* Right panel - Grid Area */}
           <Panel defaultSize={50} minSize={20}>
             <div className="h-full relative">
-              <GridArea ref={gridAreaRef} darkMode={darkMode} mouseEnabled={mouseEnabled} />
+              <GridArea ref={gridAreaRef} darkMode={darkMode} mouseEnabled={mouseEnabled} onDebugCall={handleDebugCall} />
 
               {apiReferenceOpen && (
                 <ApiReferencePanel

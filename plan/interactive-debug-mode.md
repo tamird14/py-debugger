@@ -418,7 +418,7 @@ TypeScript calls the initial trace as before (`_visual_code_trace(code)`) and su
 
 ---
 
-### Commit 7 — Add `executeDebugCall` to `pythonExecutor.ts`
+### ~~Commit 7 — Add `executeDebugCall` to `pythonExecutor.ts`~~ ✓ Done
 
 **Files:** `src/code-builder/services/pythonExecutor.ts`
 
@@ -432,7 +432,7 @@ This calls `_visual_code_trace(expression, True)` in Pyodide, parses the result,
 
 ---
 
-### Commit 8 — Propagate `debug_call` result upward from `GridArea.tsx`
+### ~~Commit 8 — Propagate `debug_call` result upward from `GridArea.tsx`~~ ✓ Done
 
 **Files:** `src/app/GridArea.tsx`
 
@@ -444,7 +444,7 @@ Pass `onDebugCall` through from `App.tsx` (stub for now — wired in Commit 9).
 
 ---
 
-### Commit 9 — Wire `handleDebugCall` and `handleBackToInteractive` in `App.tsx`
+### ~~Commit 9 — Wire `handleDebugCall` and `handleBackToInteractive` in `App.tsx`~~ ✓ Done
 
 **Files:** `src/app/App.tsx`
 
@@ -462,7 +462,7 @@ Pass `handleDebugCall` as `onDebugCall` to `GridArea` and `handleBackToInteracti
 
 ---
 
-### Commit 10 — Add mode status badge and "Back to Interactive" button (`CodeEditorArea.tsx`, `App.tsx`)
+### ~~Commit 10 — Add mode status badge and "Back to Interactive" button (`CodeEditorArea.tsx`, `App.tsx`)~~ ✓ Done
 
 **Files:** `src/app/CodeEditorArea.tsx`, `src/app/App.tsx`
 

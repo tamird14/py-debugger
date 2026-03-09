@@ -3,7 +3,7 @@ import { toPng } from 'html-to-image';
 import { Grid, type GridHandle } from '../visual-panel/components/Grid';
 import { useGridState } from '../visual-panel/hooks/useGridState';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
-import { executeClickHandler, executeDebugCall, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
+import { executeClickHandler, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
 import { getConstructor } from '../visual-panel/types/elementRegistry';
 
 /* ---------- Shared Tailwind class groups ---------- */

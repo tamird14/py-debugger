@@ -156,6 +156,7 @@ export async function executeDebugCall(expression: string): Promise<DebugCallRes
   if (!pyodide) return null;
   try {
     const escapedExpr = escapeForExec(expression);
+    console.log('Executing debug call:', expression);
     const resultJson: string = await pyodide.runPythonAsync(
       `_visual_code_trace('''${escapedExpr.replace(/'''/g, "\\'\\'\\'")}''', True)`,
     );

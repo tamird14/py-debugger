@@ -6,3 +6,8 @@ for i in range(n):
     for j in range(n - i - 1):
         if arr[j] > arr[j + 1]:
             arr[j], arr[j + 1] = arr[j + 1], arr[j]
+
+def temp():    
+    for k in range(10):
+        print(k)
+        arr[0] = k

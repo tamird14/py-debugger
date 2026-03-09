@@ -10,6 +10,7 @@ class CRect(Rect):
 
     def on_click(self, position: tuple[int, int]):
         self.height = 5
+        return DebugCall('temp()')
 
 rect = CRect()
 rect.position = V('(0,n-i)')

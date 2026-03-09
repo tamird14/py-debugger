@@ -25,6 +25,7 @@ interface CodeEditorAreaProps {
   onBreakpointsChange?: (next: Set<number>) => void;
   appMode: 'idle' | 'trace' | 'interactive' | 'debug_in_event';
   onEnterInteractive: () => void;
+  onBackToInteractive?: () => void;
 }
 
 const tabBtnBase = 'px-4 py-2 text-sm font-medium border-b-2 transition-colors';
@@ -48,6 +49,7 @@ export function CodeEditorArea({
   onBreakpointsChange,
   appMode,
   onEnterInteractive,
+  onBackToInteractive,
 }: CodeEditorAreaProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('code');
@@ -92,7 +94,24 @@ export function CodeEditorArea({
 
         {/* Actions */}
         <div className="flex items-center gap-2 px-4">
-          {/* Finish & Interact button — only in trace mode after a successful analyze */}
+          {/* Mode badge */}
+          {appMode === 'trace' && (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 font-medium">
+              Tracing
+            </span>
+          )}
+          {appMode === 'interactive' && (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 font-medium">
+              Interactive
+            </span>
+          )}
+          {appMode === 'debug_in_event' && (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 font-medium">
+              Debugging event
+            </span>
+          )}
+
+          {/* Finish & Interact button — only in trace mode */}
           {appMode === 'trace' && (
             <button
               type="button"
@@ -101,6 +120,18 @@ export function CodeEditorArea({
               title="Finish trace and enter mouse interaction mode"
             >
               Finish &amp; Interact
+            </button>
+          )}
+
+          {/* Back to Interactive button — only in debug_in_event mode */}
+          {appMode === 'debug_in_event' && (
+            <button
+              type="button"
+              onClick={onBackToInteractive}
+              className="px-3 py-1 text-sm rounded transition-colors bg-amber-500 text-white hover:bg-amber-600"
+              title="Return to interactive mode"
+            >
+              Back to Interactive
             </button>
           )}
           <button
