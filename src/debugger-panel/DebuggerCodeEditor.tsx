@@ -15,6 +15,7 @@ interface DebuggerCodeEditorProps {
   highlightedLines?: HighlightedLines;
   breakpoints?: Set<number>;
   onBreakpointsChange?: (next: Set<number>) => void;
+  readOnly?: boolean;
 }
 
 export function DebuggerCodeEditor({
@@ -23,6 +24,7 @@ export function DebuggerCodeEditor({
   highlightedLines,
   breakpoints,
   onBreakpointsChange,
+  readOnly = false,
 }: DebuggerCodeEditorProps) {
   const { darkMode } = useTheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -63,6 +65,10 @@ export function DebuggerCodeEditor({
     decorationsRef.current = ed.createDecorationsCollection([]);
     setEditorReady(true);
   };
+
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly });
+  }, [readOnly]);
 
   // Re-apply all decorations whenever highlights, breakpoints, or the editor change
   useEffect(() => {

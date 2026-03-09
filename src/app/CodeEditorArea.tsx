@@ -14,6 +14,7 @@ interface CodeEditorAreaProps {
   debuggerCode: string;
   onDebuggerCodeChange: (code: string) => void;
   onAnalyze: () => void;
+  onEdit: () => void;
   onSave: () => void;
   onLoad: (data: { code?: string; debuggerCode?: string; currentTime?: number }) => void;
   isAnalyzing: boolean;
@@ -24,6 +25,7 @@ interface CodeEditorAreaProps {
   breakpoints?: Set<number>;
   onBreakpointsChange?: (next: Set<number>) => void;
   appMode: 'idle' | 'trace' | 'interactive' | 'debug_in_event';
+  readOnly?: boolean;
   onEnterInteractive: () => void;
   onBackToInteractive?: () => void;
 }
@@ -38,6 +40,7 @@ export function CodeEditorArea({
   debuggerCode,
   onDebuggerCodeChange,
   onAnalyze,
+  onEdit,
   onSave,
   onLoad,
   isAnalyzing,
@@ -48,6 +51,7 @@ export function CodeEditorArea({
   breakpoints,
   onBreakpointsChange,
   appMode,
+  readOnly = false,
   onEnterInteractive,
   onBackToInteractive,
 }: CodeEditorAreaProps) {
@@ -155,24 +159,32 @@ export function CodeEditorArea({
             onChange={handleFileChange}
             className="hidden"
           />
-          <button
-            type="button"
-            onClick={onAnalyze}
-            disabled={isAnalyzing}
-            className={`px-4 py-1 text-sm font-medium rounded transition-colors ${
-              isAnalyzing
-                ? 'bg-gray-500 text-gray-200 cursor-not-allowed'
-                : analyzeStatus === 'success'
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+          {analyzeStatus === 'success' ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="min-w-[90px] px-4 py-1 text-sm font-medium rounded transition-colors bg-emerald-600 text-white hover:bg-emerald-500"
+            >
+              Edit
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onAnalyze}
+              disabled={isAnalyzing}
+              className={`min-w-[90px] px-4 py-1 text-sm font-medium rounded transition-colors ${
+                isAnalyzing
+                  ? 'bg-gray-500 text-gray-200 cursor-not-allowed'
                   : analyzeStatus === 'error'
                     ? 'bg-red-600 text-white hover:bg-red-500'
                     : analyzeStatus === 'dirty'
                       ? 'bg-amber-500 text-white hover:bg-amber-400'
                       : 'bg-emerald-600 text-white hover:bg-emerald-500'
-            }`}
-          >
-            {isAnalyzing ? 'Analyzing…' : analyzeStatus === 'success' ? '✓ Analyze' : analyzeStatus === 'error' ? '✗ Analyze' : 'Analyze'}
-          </button>
+              }`}
+            >
+              {isAnalyzing ? 'Analyzing…' : analyzeStatus === 'error' ? '✗ Analyze' : 'Analyze'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -187,6 +199,7 @@ export function CodeEditorArea({
                 highlightedLines={highlightedLines}
                 breakpoints={breakpoints}
                 onBreakpointsChange={onBreakpointsChange}
+                readOnly={readOnly}
               />
             );
             if (appMode === 'interactive') return editor;
@@ -201,7 +214,7 @@ export function CodeEditorArea({
             );
           })()
         ) : (
-          <CodeEditor code={code} onChange={onChange} error={error} />
+          <CodeEditor code={code} onChange={onChange} error={error} readOnly={readOnly} />
         )}
       </div>
     </div>

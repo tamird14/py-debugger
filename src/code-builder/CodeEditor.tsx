@@ -9,12 +9,14 @@ interface CodeEditorProps {
   code: string;
   onChange: (code: string) => void;
   error?: string;
+  readOnly?: boolean;
 }
 
 export function CodeEditor({
   code,
   onChange,
   error,
+  readOnly = false,
 }: CodeEditorProps) {
 
 
@@ -33,6 +35,10 @@ export function CodeEditor({
       ed.setValue(code);
     }
   }, [code]);
+
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly });
+  }, [readOnly]);
 
   const handleEditorDidMount = (ed: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = ed;

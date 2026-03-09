@@ -131,6 +131,11 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, stepCount, breakpoints]);
 
+  const handleEdit = useCallback(() => {
+    setAnalyzeStatus('dirty');
+    setAppMode('idle');
+  }, []);
+
   const handleAnalyze = useCallback(async () => {
     setIsAnalyzing(true);
     setAnalyzeError(undefined);
@@ -292,6 +297,7 @@ function App() {
                 debuggerCode={debuggerCode}
                 onDebuggerCodeChange={setDebuggerCode}
                 onAnalyze={handleAnalyze}
+                onEdit={handleEdit}
                 onSave={handleSave}
                 onLoad={handleLoad}
                 isAnalyzing={isAnalyzing}
@@ -302,6 +308,7 @@ function App() {
                 breakpoints={breakpoints}
                 onBreakpointsChange={setBreakpoints}
                 appMode={appMode}
+                readOnly={analyzeStatus === 'success' || appMode !== 'idle'}
                 onEnterInteractive={handleEnterInteractive}
                 onBackToInteractive={handleBackToInteractive}
               />
