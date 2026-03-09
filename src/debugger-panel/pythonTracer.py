@@ -101,28 +101,36 @@ def _trace_function(
 
     return _trace_function
 
-def _run_with_trace(code_str: str) -> TraceResult:
-    """Run code with tracing enabled."""
-    global _trace_steps, _output_capture
+_exec_context: dict = {}
+
+def _run_with_trace(code_str: str, persistent: bool = False) -> TraceResult:
+    """Run code with tracing enabled.
+
+    When persistent=False (initial trace) a fresh exec_globals dict is created
+    and saved into _exec_context so variables accumulate in-place.
+    When persistent=True the saved dict is reused, giving the sub-run access to
+    all variables and functions defined during the initial trace.
+    """
+    global _trace_steps, _output_capture, _exec_context
     _trace_steps = []
     _output_capture = StringIO()
+
+    if not persistent:
+        _exec_context = {'__builtins__': __builtins__}
 
     sys.stdout = _output_capture
 
     try:
         compiled = compile(code_str, '<exec>', 'exec')
         sys.settrace(_trace_function)
-        exec_globals = {'__builtins__': __builtins__}
-        exec(compiled, exec_globals)
+        exec(compiled, _exec_context)
     finally:
         sys.settrace(None)
         sys.stdout = _original_stdout
 
-    output = _output_capture.getvalue()
-
     return {
         'steps': _trace_steps,
-        'output': output
+        'output': _output_capture.getvalue()
     }
 
 class V:
@@ -162,9 +170,9 @@ VisualElem.__getattribute__ = get_v_attr
 def update(params: Dict[str, VariableValue], scope: List[Tuple[str, int]]):
     pass
 
-def _visual_code_trace(code: str) -> str:
+def _visual_code_trace(code: str, persistent: bool = False) -> str:
 
-    _run_with_trace(code)
+    _run_with_trace(code, persistent)
 
     code_trace: List[TraceStep] = list(_trace_steps)
     timeline = []

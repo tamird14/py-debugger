@@ -3,7 +3,7 @@ import { toPng } from 'html-to-image';
 import { Grid, type GridHandle } from '../visual-panel/components/Grid';
 import { useGridState } from '../visual-panel/hooks/useGridState';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
-import { executeClickHandler, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
+import { executeClickHandler, executeDebugCall, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
 import { getConstructor } from '../visual-panel/types/elementRegistry';
 
 /* ---------- Shared Tailwind class groups ---------- */
@@ -27,10 +27,11 @@ export interface GridAreaHandle {
 interface GridAreaProps {
   darkMode: boolean;
   mouseEnabled: boolean;
+  onDebugCall?: (expression: string) => void;
 }
 
 export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
-  function GridArea({ darkMode, mouseEnabled }, ref) {
+  function GridArea({ darkMode, mouseEnabled, onDebugCall }, ref) {
     const {
       cells,
       overlayCells,
@@ -67,8 +68,10 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
         return ctor ? new ctor(el) : el;
       });
       loadVisualBuilderObjects(hydrated);
-      // result.debugCall handling wired in a later commit
-    }, [loadVisualBuilderObjects]);
+      if (result.debugCall) {
+        onDebugCall?.(result.debugCall);
+      }
+    }, [loadVisualBuilderObjects, onDebugCall]);
 
     const handleScreenshot = useCallback(async () => {
       const element = gridRef.current?.captureElement();

@@ -386,29 +386,49 @@ export type ClickHandlerResult = {
 
 ---
 
-### Commit 6 — Add `_visual_code_trace_expr` to `pythonTracer.py`
+### ~~Commit 6 — Extend `_visual_code_trace` with a `persistent` flag (`pythonTracer.py`)~~ ✓ Done
 
 **Files:** `src/debugger-panel/pythonTracer.py`
 
-Add a new function `_visual_code_trace_expr(expression: str) -> str` that:
-- Does **not** call `VisualElem._clear_registry()`.
-- Compiles and runs `expression` with `exec()` inside `exec_globals` extended from the **current Pyodide globals** (so all variables and objects from the initial trace are in scope).
-- Runs the same `sys.settrace` tracing loop as `_visual_code_trace`.
-- Returns `json.dumps({ 'code_timeline': ..., 'visual_timeline': ... })` — no `handlers` key, since the registry is unchanged.
+Rather than a separate function, add a `persistent: bool = False` parameter to `_visual_code_trace` (and to `_run_with_trace`).
+
+Add a module-level `_exec_context: dict = {}`. On the initial (non-persistent) call, a fresh `exec_globals` dict is created and saved into `_exec_context` — because `exec()` mutates the dict in-place, it accumulates all variables defined by the trace code and any functions it defines. On a persistent call, that same dict is reused, so variables from the initial trace are still in scope.
+
+```python
+_exec_context: dict = {}
+
+def _run_with_trace(code_str: str, persistent: bool = False) -> TraceResult:
+    global _exec_context
+    if not persistent:
+        _exec_context = {'__builtins__': __builtins__}
+    exec(compiled, _exec_context)   # always use _exec_context
+    ...
+
+def _visual_code_trace(code: str, persistent: bool = False) -> str:
+    _run_with_trace(code, persistent)
+    ...
+    return json.dumps({
+        'code_timeline': code_trace,
+        'visual_timeline': timeline,
+        'handlers': _serialize_handlers(),   # always include
+    })
+```
+
+TypeScript calls the initial trace as before (`_visual_code_trace(code)`) and sub-runs as `_visual_code_trace(expression, True)`. No `persistentGlobals` needed on the TypeScript side.
 
 ---
 
-### Commit 7 — Add `executeDebugCall` and save persistent Pyodide globals (`pythonExecutor.ts`)
+### Commit 7 — Add `executeDebugCall` to `pythonExecutor.ts`
 
 **Files:** `src/code-builder/services/pythonExecutor.ts`
 
-Add a module-level `let persistentGlobals: any = null`. At the end of a successful `executePythonCode`, assign `persistentGlobals = py.globals`. Clear it when a new analyze starts. Add:
+No persistent-context bookkeeping needed on the TypeScript side — the Python layer handles it via `_exec_context`. Add:
 ```typescript
-async function executeDebugCall(
+export async function executeDebugCall(
   expression: string
 ): Promise<{ codeTimeline: TraceStep[]; visualTimeline: VisualBuilderElementBase[][] } | null>
 ```
-This function calls `_visual_code_trace_expr(expression)` in Pyodide, parses the result, updates `setCodeTimeline` and `hydrateTimelineFromArray`, and returns the parsed timelines so the caller can know the new `stepCount`.
+This calls `_visual_code_trace(expression, True)` in Pyodide, parses the result, updates `setCodeTimeline`, `hydrateTimelineFromArray`, and `setHandlers`, and returns the parsed timelines so the caller can know the new `stepCount`.
 
 ---
 

@@ -146,3 +146,35 @@ export async function executeClickHandler(
     return null;
   }
 }
+
+export type DebugCallResult = {
+  codeTimeline: TraceStep[];
+  visualTimeline: VisualBuilderElementBase[][];
+} | null;
+
+export async function executeDebugCall(expression: string): Promise<DebugCallResult> {
+  if (!pyodide) return null;
+  try {
+    const escapedExpr = escapeForExec(expression);
+    const resultJson: string = await pyodide.runPythonAsync(
+      `_visual_code_trace('''${escapedExpr.replace(/'''/g, "\\'\\'\\'")}''', True)`,
+    );
+    const parsed = JSON.parse(resultJson) as {
+      code_timeline: TraceStep[];
+      visual_timeline: VisualBuilderElementBase[][];
+      handlers: Record<string, string[]>;
+    };
+
+    setHandlers(parsed.handlers ?? {});
+    setCodeTimeline(parsed.code_timeline);
+    hydrateTimelineFromArray(parsed.visual_timeline);
+
+    return {
+      codeTimeline: parsed.code_timeline,
+      visualTimeline: parsed.visual_timeline,
+    };
+  } catch (error) {
+    console.error('Debug call error:', error);
+    return null;
+  }
+}
