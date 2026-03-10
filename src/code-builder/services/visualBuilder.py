@@ -290,6 +290,31 @@ def _serialize_handlers_json():
     return json.dumps(_serialize_handlers())
 
 
+def _exec_builder_code(code):
+    """Execute visual builder code with stdout capture. Returns captured output string."""
+    import io as _io, sys as _sys
+    _old_stdout = _sys.stdout
+    _sys.stdout = _io.StringIO()
+    try:
+        exec(code, globals())
+        return _sys.stdout.getvalue()
+    finally:
+        _sys.stdout = _old_stdout
+
+
+def _handle_click_with_output(elem_id, row, col):
+    """Like _handle_click but captures stdout. Returns JSON {debugCall, output}."""
+    import io as _io, sys as _sys, json as _json
+    _old_stdout = _sys.stdout
+    _capture = _io.StringIO()
+    _sys.stdout = _capture
+    try:
+        _result = _handle_click(elem_id, row, col)
+    finally:
+        _sys.stdout = _old_stdout
+    return _json.dumps({'debugCall': _result, 'output': _capture.getvalue()})
+
+
 def _serialize_visual_builder():
     """Walk VisualElem._registry and return list of serialized elements."""
     import json
