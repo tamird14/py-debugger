@@ -275,14 +275,19 @@ def _handle_click(elem_id, row, col):
 
 
 def _serialize_handlers():
-    """Serialize event handlers for all elements as a JSON string."""
-    import json
+    """Return event handlers for all elements as a dict (for embedding in larger JSON)."""
     handlers = {}
     for elem in VisualElem._registry:
         elem_handlers = elem._get_event_handlers()
         if elem_handlers:
             handlers[elem._elem_id] = elem_handlers
-    return json.dumps(handlers)
+    return handlers
+
+
+def _serialize_handlers_json():
+    """Return event handlers as a JSON string (for direct TypeScript calls)."""
+    import json
+    return json.dumps(_serialize_handlers())
 
 
 def _serialize_visual_builder():

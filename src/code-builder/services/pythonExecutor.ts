@@ -144,7 +144,7 @@ export async function executeClickHandler(
     );
     const snapshotJson: string = await pyodide.runPythonAsync(`_serialize_visual_builder()`);
     const snapshot = JSON.parse(snapshotJson) as VisualBuilderElementBase[];
-    const handlersJson: string = await pyodide.runPythonAsync(`_serialize_handlers()`);
+    const handlersJson: string = await pyodide.runPythonAsync(`_serialize_handlers_json()`);
     setHandlers(JSON.parse(handlersJson));
     return debugCall ? { snapshot, debugCall } : { snapshot };
   } catch (error) {
