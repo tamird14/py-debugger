@@ -5,6 +5,7 @@ import PYTHON_TRACER from '../../debugger-panel/pythonTracer.py?raw';
 import { hydrateTimelineFromArray } from '../../timeline/timelineState';
 import { setCodeTimeline, type TraceStep } from '../../debugger-panel/codeTimelineState';
 import { setHandlers } from '../../visual-panel/handlersState';
+import { setDebuggerStepOutputs } from '../../output-terminal/terminalState';
 
 // ---------------------------------------------------------------------------
 // Pyodide runtime
@@ -115,6 +116,7 @@ export async function executePythonCode(
     setHandlers(parsed.handlers ?? {});
     setCodeTimeline(parsed.code_timeline);
     hydrateTimelineFromArray(parsed.visual_timeline);
+    setDebuggerStepOutputs(parsed.code_timeline.map((s) => (s as any).output ?? ''));
 
     return { success: true };
   } catch (error) {
@@ -174,6 +176,7 @@ export async function executeDebugCall(expression: string, lineOffset: number): 
     setHandlers(parsed.handlers ?? {});
     setCodeTimeline(parsed.code_timeline);
     hydrateTimelineFromArray(parsed.visual_timeline);
+    setDebuggerStepOutputs(parsed.code_timeline.map((s) => (s as any).output ?? ''));
 
     return { stepCount: parsed.code_timeline.length };
   } catch (error) {
