@@ -25,7 +25,7 @@ function splitLines(text: string): string[] {
   return parts;
 }
 
-export function OutputTerminal({ currentStep, appMode }: OutputTerminalProps) {
+export function OutputTerminal({ currentStep }: OutputTerminalProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TerminalTab>('combined');
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
