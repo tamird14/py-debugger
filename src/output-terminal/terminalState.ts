@@ -1,4 +1,17 @@
-// Output from all finished segments (trace run + previous debug calls), including their end markers.
+// ── Builder output ───────────────────────────────────────────────────────────
+// Static output captured once when exec(visualBuilderCode) runs.
+let _builderOutput = '';
+
+export function setBuilderOutput(text: string): void {
+  _builderOutput = text;
+}
+
+export function getBuilderOutput(): string {
+  return _builderOutput;
+}
+
+// ── Debugger output stream ────────────────────────────────────────────────────
+// Output from all finished trace/debug-call segments, including their markers.
 let _committedOutput = '';
 // Per-step output deltas for the currently active trace or debug call.
 let _currentStepOutputs: string[] = [];
@@ -42,14 +55,29 @@ export function commitCurrentSegment(endMarker?: string): void {
 }
 
 /**
- * Returns the full terminal text: everything committed so far plus the
+ * Returns the debugger stream text: everything committed so far plus the
  * current segment's output up to (and including) the given step index.
  */
 export function getTerminalOutput(currentStep: number): string {
   return _committedOutput + _currentStepOutputs.slice(0, currentStep + 1).join('');
 }
 
+// ── Click / event output ──────────────────────────────────────────────────────
+// Output captured from visual-builder click handlers, accumulated across events.
+let _clickOutputs: string[] = [];
+
+export function appendClickOutput(text: string): void {
+  if (text) _clickOutputs.push(text);
+}
+
+export function getClickOutput(): string {
+  return _clickOutputs.join('');
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
 export function clearAll(): void {
+  _builderOutput = '';
   _committedOutput = '';
   _currentStepOutputs = [];
+  _clickOutputs = [];
 }

@@ -5,7 +5,7 @@ import PYTHON_TRACER from '../../debugger-panel/pythonTracer.py?raw';
 import { hydrateTimelineFromArray } from '../../timeline/timelineState';
 import { setCodeTimeline, type TraceStep } from '../../debugger-panel/codeTimelineState';
 import { setHandlers } from '../../visual-panel/handlersState';
-import { setCurrentStepOutputs } from '../../output-terminal/terminalState';
+import { setCurrentStepOutputs, setBuilderOutput, appendClickOutput } from '../../output-terminal/terminalState';
 
 // ---------------------------------------------------------------------------
 // Pyodide runtime
@@ -93,7 +93,8 @@ export async function executePythonCode(
     await py.runPythonAsync('VisualElem._clear_registry()');
 
     const escapedVB = escapeForTripleQuote(visualBuilderCode);
-    await py.runPythonAsync(`exec('''${escapedVB}''')`);
+    const builderOutput: string = await py.runPythonAsync(`_exec_builder_code('''${escapedVB}''')`);
+    setBuilderOutput(builderOutput);
 
     const escapedCode = escapeForTripleQuote(debuggerCode);
     const resultJson: string = await py.runPythonAsync(
@@ -141,9 +142,12 @@ export async function executeClickHandler(
 ): Promise<ClickHandlerResult> {
   if (!pyodide) return null;
   try {
-    const debugCall: string | null = await pyodide.runPythonAsync(
-      `_handle_click(${elemId}, ${row}, ${col})`,
+    const clickResultJson: string = await pyodide.runPythonAsync(
+      `_handle_click_with_output(${elemId}, ${row}, ${col})`,
     );
+    const clickResult = JSON.parse(clickResultJson) as { debugCall: string | null; output: string };
+    appendClickOutput(clickResult.output);
+    const debugCall = clickResult.debugCall;
     const snapshotJson: string = await pyodide.runPythonAsync(`_serialize_visual_builder()`);
     const snapshot = JSON.parse(snapshotJson) as VisualBuilderElementBase[];
     const handlersJson: string = await pyodide.runPythonAsync(`_serialize_handlers_json()`);
