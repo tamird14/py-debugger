@@ -19,8 +19,8 @@ export interface PropertyDoc {
   default?: string;
 }
 
-export interface ClassDoc {
-  className: string;
+export interface ObjDoc {
+  objName: string;
   docstring: string;
   properties: PropertyDoc[];
   methods?: { name: string; signature: string; docstring: string }[];
@@ -35,11 +35,11 @@ import '../visual-panel/render-objects/arrow/Arrow';
 import '../visual-panel/render-objects/label/Label';
 import '../visual-panel/render-objects/array/arrayShapes';
 
-export function getVisualElemSchema(): ClassDoc[] {
+export function getVisualElemSchema(): ObjDoc[] {
   return [PANEL_SCHEMA, ...getAllSchemas()];
 }
 
-export const VISUAL_ELEM_SCHEMA: ClassDoc[] = getVisualElemSchema();
+export const VISUAL_ELEM_SCHEMA: ObjDoc[] = getVisualElemSchema();
 
 export { FUNCTIONS_SCHEMA } from './functionsSchema';
 

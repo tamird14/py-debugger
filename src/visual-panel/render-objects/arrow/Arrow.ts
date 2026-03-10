@@ -1,5 +1,5 @@
 import { registerVisualElement } from "../../types/elementRegistry";
-import type { ClassDoc } from "../../../api/visualBuilder";
+import type { ObjDoc } from "../../../api/visualBuilder";
 import { rgbToHex } from "../../../api/visualBuilder";
 import { BasicShape } from "../BasicShape";
 
@@ -28,8 +28,8 @@ export class Arrow extends BasicShape {
   }
 }
 
-export const ARROW_SCHEMA: ClassDoc = {
-  className: 'Arrow',
+export const ARROW_SCHEMA: ObjDoc = {
+  objName: 'Arrow',
   docstring: 'An arrow shape on the grid. Points in the given orientation and can be rotated.',
   properties: [
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the bounding box.', default: '(0, 0)' },

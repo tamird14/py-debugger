@@ -1,4 +1,4 @@
-import type { ClassDoc } from '../../../api/visualBuilder';
+import type { ObjDoc } from '../../../api/visualBuilder';
 import { registerRenderer } from '../../views/rendererRegistry';
 import { useTheme } from '../../../contexts/ThemeContext';
 import type { CellStyle } from '../../types/grid';
@@ -42,8 +42,8 @@ registerRenderer<PanelCell>('panel', (element) => (
   <PanelCellView panel={element as PanelCell} />
 ));
 
-export const PANEL_SCHEMA: ClassDoc = {
-  className: 'Panel',
+export const PANEL_SCHEMA: ObjDoc = {
+  objName: 'Panel',
   docstring: 'Container for grouping visual elements. Use add(elem) and remove(elem) to manage children.',
   properties: [
     { name: 'name', type: 'str', description: 'Panel title.', default: '"Panel"' },

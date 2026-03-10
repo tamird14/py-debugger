@@ -1,6 +1,6 @@
 import { registerVisualElement } from "../../types/elementRegistry";
 import type { RenderableObjectData } from "../../types/grid";
-import type { ClassDoc } from "../../../api/visualBuilder";
+import type { ObjDoc } from "../../../api/visualBuilder";
 import { rgbToHex } from "../../../api/visualBuilder";
 import { BasicShape } from "../BasicShape";
 
@@ -20,8 +20,8 @@ export class Rect extends BasicShape {
   }
 }
 
-export const RECT_SCHEMA: ClassDoc = {
-  className: 'Rect',
+export const RECT_SCHEMA: ObjDoc = {
+  objName: 'Rect',
   docstring: 'A rectangle shape on the grid.',
   properties: [
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the rectangle.', default: '(0, 0)' },

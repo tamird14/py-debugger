@@ -1,5 +1,5 @@
 import { registerVisualElement } from "../../types/elementRegistry";
-import type { ClassDoc } from "../../../api/visualBuilder";
+import type { ObjDoc } from "../../../api/visualBuilder";
 import { rgbToHex } from "../../../api/visualBuilder";
 import { BasicShape } from "../BasicShape";
 
@@ -19,8 +19,8 @@ export class Circle extends BasicShape {
   }
 }
 
-export const CIRCLE_SCHEMA: ClassDoc = {
-  className: 'Circle',
+export const CIRCLE_SCHEMA: ObjDoc = {
+  objName: 'Circle',
   docstring: 'A circle (or ellipse) shape on the grid.',
   properties: [
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the bounding box.', default: '(0, 0)' },

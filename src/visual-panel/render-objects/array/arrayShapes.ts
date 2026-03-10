@@ -1,7 +1,7 @@
 import type { VisualBuilderElementBase } from "../../../api/visualBuilder";
 import { rgbToHex } from "../../../api/visualBuilder";
 import type { RenderableObjectData, CellStyle, PanelStyle } from "../../types/grid";
-import type { ClassDoc } from "../../../api/visualBuilder";
+import type { ObjDoc } from "../../../api/visualBuilder";
 import { registerVisualElement } from "../../types/elementRegistry";
 import { getArrayOffset } from "../../types/grid";
 
@@ -184,8 +184,8 @@ export class Array1D implements VisualBuilderElementBase {
   }
 }
 
-export const ARRAY_SCHEMA: ClassDoc = {
-  className: 'Array',
+export const ARRAY_SCHEMA: ObjDoc = {
+  objName: 'Array',
   docstring: 'Displays an array of values as square cells on the grid.',
   properties: [
     { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums").', default: '""' },
@@ -269,8 +269,8 @@ export class Array2D implements VisualBuilderElementBase {
   }
 }
 
-export const ARRAY2D_SCHEMA: ClassDoc = {
-  className: 'Array2D',
+export const ARRAY2D_SCHEMA: ObjDoc = {
+  objName: 'Array2D',
   docstring: 'Displays a 2D array of values as a grid of square cells.',
   properties: [
     { name: 'var_name', type: 'str', description: 'Name of the 2D array variable.', default: '""' },

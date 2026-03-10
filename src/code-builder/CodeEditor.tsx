@@ -106,13 +106,13 @@ export function CodeEditor({
         // New word: suggest class names
         const partial = word.word;
         for (const cls of VISUAL_ELEM_SCHEMA) {
-          if (partial && !cls.className.toLowerCase().startsWith(partial.toLowerCase())) continue;
+          if (partial && !cls.objName.toLowerCase().startsWith(partial.toLowerCase())) continue;
           items.push({
-            label: cls.className,
+            label: cls.objName,
             kind: monaco.languages.CompletionItemKind.Class,
             detail: `(${cls.properties.filter(p => p.default !== undefined).map(p => `${p.name}=${p.default}`).join(', ')})`,
             documentation: cls.docstring,
-            insertText: cls.className,
+            insertText: cls.objName,
             range,
           });
         }
@@ -128,9 +128,9 @@ export function CodeEditor({
         const name = wordAt.word;
 
         for (const cls of VISUAL_ELEM_SCHEMA) {
-          if (cls.className === name) {
+          if (cls.objName === name) {
             const content = [
-              `**${cls.className}**`,
+              `**${cls.objName}**`,
               cls.docstring,
               ...cls.properties.map((p) => `- \`${p.name}\`: ${p.type}${p.default !== undefined ? ` = ${p.default}` : ''} — ${p.description}`),
               ...(cls.methods ?? []).map((m) => `- \`${m.signature}\` — ${m.docstring}`),

@@ -1,5 +1,5 @@
 import { registerVisualElement } from "../../types/elementRegistry";
-import type { ClassDoc, VisualBuilderElementBase } from "../../../api/visualBuilder";
+import type { ObjDoc, VisualBuilderElementBase } from "../../../api/visualBuilder";
 import { rgbToHex } from "../../../api/visualBuilder";
 
 interface CellStyle {
@@ -46,8 +46,8 @@ export class Label implements VisualBuilderElementBase {
   }
 }
 
-export const LABEL_SCHEMA: ClassDoc = {
-  className: 'Label',
+export const LABEL_SCHEMA: ObjDoc = {
+  objName: 'Label',
   docstring: 'Text label.',
   properties: [
     { name: 'label', type: 'str', description: 'Display text.', default: '""' },

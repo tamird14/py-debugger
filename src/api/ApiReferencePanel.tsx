@@ -1,21 +1,21 @@
 import { useRef, useState, useCallback } from "react";
 import { VISUAL_ELEM_SCHEMA, FUNCTIONS_SCHEMA } from "../api/visualBuilder";
-import type { ClassDoc } from "../api/visualBuilder";
+import type { ObjDoc } from "../api/visualBuilder";
 
 interface ApiReferencePanelProps {
   onClose: () => void;
 }
 
-function SchemaList({ schema }: { schema: ClassDoc[] }) {
+function SchemaList({ schema }: { schema: ObjDoc[] }) {
   return (
     <div className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 space-y-3">
       {schema.map((cls) => (
         <div
-          key={cls.className}
+          key={cls.objName}
           className="border-b border-gray-300 dark:border-gray-600 pb-2 last:border-0"
         >
           <div className="font-mono font-medium text-gray-900 dark:text-gray-200">
-            {cls.className}
+            {cls.objName}
           </div>
 
           <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
