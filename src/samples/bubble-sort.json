@@ -1,4 +1,7 @@
 {
   "builderCode": "panel = Panel('main')\npanel.position = (1,1)\n\narr = Array(arr=V('arr'))\npanel.add(arr)\narr.position=(1,0)\n\n\nclass CRect(Rect):\n\n    def on_click(self, position: tuple[int, int]):\n        self.height = 5\n        return DebugCall('temp()')\n\nrect = CRect()\nrect.position = V('(0,n-i)')\nrect.color = (255,100,100)\nrect.alpha = 0.8\nrect.height = 2\nrect.width = V('i')\npanel.add(rect)\n\nar1 = Arrow()\nar1.orientation = 'down'\nar1.position = V('(0, j)')\nar1.color = (0,0,255)\npanel.add(ar1)\n\nar2 = Arrow()\nar2.orientation = 'down'\nar2.position = V('(0, j+1)')\nar2.color = (0,150,255)\npanel.add(ar2)\n",
-  "debuggerCode": "# Bubble sort - step through this code in the debugger\narr = [5, 3, 8, 1, 9, 2, 7, 4]\nn = len(arr)\n\nfor i in range(n):\n    for j in range(n - i - 1):\n        if arr[j] > arr[j + 1]:\n            arr[j], arr[j + 1] = arr[j + 1], arr[j]\n\ndef temp():    \n    for k in range(10):\n        print(k)\n        arr[0] = k\n"
+  "debuggerCode": "# Bubble sort - step through this code in the debugger\narr = [5, 3, 8, 1, 9, 2, 7, 4]\nn = len(arr)\n\nfor i in range(n):\n    for j in range(n - i - 1):\n        if arr[j] > arr[j + 1]:\n            arr[j], arr[j + 1] = arr[j + 1], arr[j]\n\ndef temp():    \n    for k in range(10):\n        print(k)\n        arr[0] = k\n",
+  "breakpoints": [
+    7
+  ]
 }
