@@ -30,6 +30,7 @@ interface GridProps {
   onSelectTextBox?: (id: string | null) => void;
   onTextBoxAdded?: (box: TextBox) => void;
   onTextBoxChange?: (box: TextBox) => void;
+  onTextBoxDelete?: (id: string) => void;
 }
 
 export interface GridHandle {
@@ -136,6 +137,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   onSelectTextBox,
   onTextBoxAdded,
   onTextBoxChange,
+  onTextBoxDelete,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridContentRef = useRef<HTMLDivElement>(null);
@@ -318,6 +320,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
               onSelectTextBox={onSelectTextBox ?? (() => {})}
               onTextBoxAdded={onTextBoxAdded ?? (() => {})}
               onTextBoxChange={onTextBoxChange ?? (() => {})}
+              onTextBoxDelete={onTextBoxDelete ?? (() => {})}
             />
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react';
 import type { TextBox } from './types';
+import { TextBoxFormatToolbar } from './TextBoxFormatToolbar';
 
 export const CELL_SIZE = 40;
 const MIN_CELLS = 2;
@@ -11,6 +12,7 @@ interface TextBoxItemProps {
   selected: boolean;
   onSelect: (id: string) => void;
   onChange: (box: TextBox) => void;
+  onDelete: (id: string) => void;
 }
 
 type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se';
@@ -22,7 +24,7 @@ const handlePositions: Record<ResizeHandle, React.CSSProperties> = {
   se: { bottom: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2, cursor: 'se-resize' },
 };
 
-export function TextBoxItem({ box, zoom, selected, onSelect, onChange }: TextBoxItemProps) {
+export function TextBoxItem({ box, zoom, selected, onSelect, onChange, onDelete }: TextBoxItemProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -135,6 +137,15 @@ export function TextBoxItem({ box, zoom, selected, onSelect, onChange }: TextBox
       }}
       onMouseDown={handleBodyMouseDown}
     >
+      {/* Formatting toolbar — shown above the box when selected */}
+      {selected && (
+        <TextBoxFormatToolbar
+          box={box}
+          onChange={(patch) => onChange({ ...box, ...patch })}
+          onDelete={() => onDelete(box.id)}
+        />
+      )}
+
       <textarea
         ref={textareaRef}
         value={box.text}

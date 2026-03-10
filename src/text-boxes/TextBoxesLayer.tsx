@@ -17,6 +17,7 @@ interface TextBoxesLayerProps {
   onSelectTextBox: (id: string | null) => void;
   onTextBoxAdded: (box: TextBox) => void;
   onTextBoxChange: (box: TextBox) => void;
+  onTextBoxDelete: (id: string) => void;
 }
 
 export function TextBoxesLayer({
@@ -27,6 +28,7 @@ export function TextBoxesLayer({
   onSelectTextBox,
   onTextBoxAdded,
   onTextBoxChange,
+  onTextBoxDelete,
 }: TextBoxesLayerProps) {
   const [drawing, setDrawing] = useState<DrawState | null>(null);
   const isDrawingRef = useRef(false);
@@ -122,6 +124,7 @@ export function TextBoxesLayer({
           selected={selectedId === box.id}
           onSelect={onSelectTextBox}
           onChange={onTextBoxChange}
+          onDelete={onTextBoxDelete}
         />
       ))}
 

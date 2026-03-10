@@ -88,6 +88,11 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
       onTextBoxesChange(textBoxes.map((b) => (b.id === updated.id ? updated : b)));
     }, [textBoxes, onTextBoxesChange]);
 
+    const handleTextBoxDelete = useCallback((id: string) => {
+      onTextBoxesChange(textBoxes.filter((b) => b.id !== id));
+      setSelectedTextBoxId(null);
+    }, [textBoxes, onTextBoxesChange]);
+
     const handleScreenshot = useCallback(async () => {
       const element = gridRef.current?.captureElement();
       if (!element || isCapturing) return;
@@ -195,6 +200,7 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
             onSelectTextBox={setSelectedTextBoxId}
             onTextBoxAdded={handleTextBoxAdded}
             onTextBoxChange={handleTextBoxChange}
+            onTextBoxDelete={handleTextBoxDelete}
           />
         </div>
       </div>
