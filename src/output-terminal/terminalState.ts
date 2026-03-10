@@ -1,83 +1,135 @@
-// ── Builder output ───────────────────────────────────────────────────────────
-// Static output captured once when exec(visualBuilderCode) runs.
-let _builderOutput = '';
+export type LineSource = 'debugger' | 'builder' | 'marker';
+
+export interface TerminalLine {
+  text: string;
+  source: LineSource;
+}
+
+function toLines(text: string, source: LineSource): TerminalLine[] {
+  if (!text) return [];
+  const parts = text.split('\n');
+  if (parts[parts.length - 1] === '') parts.pop();
+  return parts.map((t) => ({ text: t, source }));
+}
+
+function ensureNewline(s: string): string {
+  return s && !s.endsWith('\n') ? s + '\n' : s;
+}
+
+// ── Static builder output ─────────────────────────────────────────────────────
+// Captured once when exec(visualBuilderCode) runs.
+let _builderInitOutput = '';
 
 export function setBuilderOutput(text: string): void {
-  _builderOutput = text;
+  _builderInitOutput = text;
 }
-
 export function getBuilderOutput(): string {
-  return _builderOutput;
+  return _builderInitOutput;
 }
 
-// ── Debugger output stream ────────────────────────────────────────────────────
-// Output from all finished trace/debug-call segments, including their markers.
-let _committedOutput = '';
-// Per-step output deltas for the currently active trace or debug call.
-let _currentStepOutputs: string[] = [];
+// ── Current segment ───────────────────────────────────────────────────────────
+// Per-step deltas for the segment currently being navigated.
+let _currentDebuggerSteps: string[] = [];
+let _currentBuilderSteps: string[] = [];
 
-/** Replace the current segment's per-step deltas (called after each trace/debug-call run). */
 export function setCurrentStepOutputs(outputs: string[]): void {
-  _currentStepOutputs = outputs;
+  _currentDebuggerSteps = outputs;
 }
+export function setBuilderStepOutputs(outputs: string[]): void {
+  _currentBuilderSteps = outputs;
+}
+
+// ── Committed output (past segments) ─────────────────────────────────────────
+// Debugger tab: plain concatenated string of all past debugger output + markers.
+let _committedDebugger = '';
+// Builder tab: plain concatenated string of all past builder-step output + click output.
+let _committedBuilder = '';
+// Combined tab: structured lines with source, ready to render with colours.
+let _committedCombinedLines: TerminalLine[] = [];
 
 /**
- * Append a marker line to the committed output (e.g. at the start of a debug call).
- * A leading newline is added when there is already committed content so the marker
- * always starts on its own line.
+ * Append a marker line (e.g. '----- end trace -----') to the debugger and
+ * combined committed streams.
  */
 export function appendMarker(text: string): void {
-  if (_committedOutput && !_committedOutput.endsWith('\n')) {
-    _committedOutput += '\n';
-  }
-  _committedOutput += text + '\n';
+  _committedDebugger = ensureNewline(_committedDebugger) + text + '\n';
+  _committedCombinedLines.push({ text, source: 'marker' });
 }
 
 /**
- * Seal the current segment: join all its step outputs, optionally append an end marker,
- * then move everything into _committedOutput and clear the current segment.
+ * Append click-handler output immediately (before the debug call it may trigger).
+ * Goes into both the builder stream and the combined stream.
+ */
+export function appendClickOutput(text: string): void {
+  if (!text) return;
+  _committedBuilder = ensureNewline(_committedBuilder) + text;
+  _committedCombinedLines.push(...toLines(text, 'builder'));
+}
+
+/**
+ * Seal the current segment: interleave debugger + builder step outputs into
+ * the committed streams, then optionally add an end marker.
  */
 export function commitCurrentSegment(endMarker?: string): void {
-  const segmentOutput = _currentStepOutputs.join('');
-  if (segmentOutput) {
-    if (_committedOutput && !_committedOutput.endsWith('\n')) {
-      _committedOutput += '\n';
-    }
-    _committedOutput += segmentOutput;
+  // Debugger stream: flat concat
+  _committedDebugger = ensureNewline(_committedDebugger) + _currentDebuggerSteps.join('');
+
+  // Builder stream: flat concat of per-step builder output
+  const builderSegment = _currentBuilderSteps.join('');
+  if (builderSegment) {
+    _committedBuilder = ensureNewline(_committedBuilder) + builderSegment;
   }
+
+  // Combined stream: interleave step by step
+  const len = Math.max(_currentDebuggerSteps.length, _currentBuilderSteps.length);
+  for (let i = 0; i < len; i++) {
+    _committedCombinedLines.push(...toLines(_currentDebuggerSteps[i] ?? '', 'debugger'));
+    _committedCombinedLines.push(...toLines(_currentBuilderSteps[i] ?? '', 'builder'));
+  }
+
   if (endMarker) {
-    if (_committedOutput && !_committedOutput.endsWith('\n')) {
-      _committedOutput += '\n';
-    }
-    _committedOutput += endMarker + '\n';
+    _committedDebugger = ensureNewline(_committedDebugger) + endMarker + '\n';
+    _committedCombinedLines.push({ text: endMarker, source: 'marker' });
   }
-  _currentStepOutputs = [];
+
+  _currentDebuggerSteps = [];
+  _currentBuilderSteps = [];
+}
+
+// ── Getters ───────────────────────────────────────────────────────────────────
+
+/** Debugger tab: plain text, reactive to currentStep. */
+export function getDebuggerOutput(currentStep: number): string {
+  return _committedDebugger + _currentDebuggerSteps.slice(0, currentStep + 1).join('');
+}
+
+/** Builder tab: plain text of init + committed builder steps + current builder steps. */
+export function getBuilderStepOutput(currentStep: number): string {
+  return _committedBuilder + _currentBuilderSteps.slice(0, currentStep + 1).join('');
 }
 
 /**
- * Returns the debugger stream text: everything committed so far plus the
- * current segment's output up to (and including) the given step index.
+ * Combined tab: structured lines — committed combined + current segment
+ * interleaved up to currentStep.
  */
-export function getTerminalOutput(currentStep: number): string {
-  return _committedOutput + _currentStepOutputs.slice(0, currentStep + 1).join('');
+export function getCombinedLines(currentStep: number): TerminalLine[] {
+  const lines = [..._committedCombinedLines];
+  const len = Math.min(
+    currentStep + 1,
+    Math.max(_currentDebuggerSteps.length, _currentBuilderSteps.length),
+  );
+  for (let i = 0; i < len; i++) {
+    lines.push(...toLines(_currentDebuggerSteps[i] ?? '', 'debugger'));
+    lines.push(...toLines(_currentBuilderSteps[i] ?? '', 'builder'));
+  }
+  return lines;
 }
 
-// ── Click / event output ──────────────────────────────────────────────────────
-// Output captured from visual-builder click handlers, accumulated across events.
-let _clickOutputs: string[] = [];
-
-export function appendClickOutput(text: string): void {
-  if (text) _clickOutputs.push(text);
-}
-
-export function getClickOutput(): string {
-  return _clickOutputs.join('');
-}
-
-// ── Reset ─────────────────────────────────────────────────────────────────────
 export function clearAll(): void {
-  _builderOutput = '';
-  _committedOutput = '';
-  _currentStepOutputs = [];
-  _clickOutputs = [];
+  _builderInitOutput = '';
+  _committedDebugger = '';
+  _committedBuilder = '';
+  _committedCombinedLines = [];
+  _currentDebuggerSteps = [];
+  _currentBuilderSteps = [];
 }
