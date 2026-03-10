@@ -5,6 +5,7 @@ import { useGridState } from '../visual-panel/hooks/useGridState';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
 import { executeClickHandler, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
 import { getConstructor } from '../visual-panel/types/elementRegistry';
+import type { TextBox } from '../text-boxes/types';
 
 /* ---------- Shared Tailwind class groups ---------- */
 
@@ -28,10 +29,12 @@ interface GridAreaProps {
   darkMode: boolean;
   mouseEnabled: boolean;
   onDebugCall?: (expression: string) => void;
+  textBoxes: TextBox[];
+  onTextBoxesChange: (boxes: TextBox[]) => void;
 }
 
 export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
-  function GridArea({ darkMode, mouseEnabled, onDebugCall }, ref) {
+  function GridArea({ darkMode, mouseEnabled, onDebugCall, textBoxes, onTextBoxesChange }, ref) {
     const {
       cells,
       overlayCells,
@@ -46,6 +49,8 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
 
     const gridRef = useRef<GridHandle>(null);
     const [isCapturing, setIsCapturing] = useState(false);
+    const [addingTextBox, setAddingTextBox] = useState(false);
+    const [selectedTextBoxId, setSelectedTextBoxId] = useState<string | null>(null);
 
     useImperativeHandle(ref, () => ({ loadVisualBuilderObjects }), [loadVisualBuilderObjects]);
 
@@ -72,6 +77,16 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
         onDebugCall?.(result.debugCall);
       }
     }, [loadVisualBuilderObjects, onDebugCall]);
+
+    const handleTextBoxAdded = useCallback((box: TextBox) => {
+      onTextBoxesChange([...textBoxes, box]);
+      setSelectedTextBoxId(box.id);
+      setAddingTextBox(false);
+    }, [textBoxes, onTextBoxesChange]);
+
+    const handleTextBoxChange = useCallback((updated: TextBox) => {
+      onTextBoxesChange(textBoxes.map((b) => (b.id === updated.id ? updated : b)));
+    }, [textBoxes, onTextBoxesChange]);
 
     const handleScreenshot = useCallback(async () => {
       const element = gridRef.current?.captureElement();
@@ -152,6 +167,13 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
             >
               {isCapturing ? '⏳' : '📷'}
             </button>
+            <button
+              onClick={() => setAddingTextBox((v) => !v)}
+              className={`${buttonNeutral}${addingTextBox ? ' ring-2 ring-inset ring-indigo-500' : ''}`}
+              title="Add text annotation (click-drag on grid)"
+            >
+              T+
+            </button>
           </div>
         </div>
 
@@ -167,6 +189,12 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
             darkMode={darkMode}
             mouseEnabled={mouseEnabled}
             onElementClick={handleElementClick}
+            textBoxes={textBoxes}
+            selectedTextBoxId={selectedTextBoxId}
+            addingTextBox={addingTextBox}
+            onSelectTextBox={setSelectedTextBoxId}
+            onTextBoxAdded={handleTextBoxAdded}
+            onTextBoxChange={handleTextBoxChange}
           />
         </div>
       </div>

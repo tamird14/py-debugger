@@ -12,6 +12,7 @@ import { getStateAt, getMaxTime, getTimeline } from '../timeline/timelineState';
 import { getCodeStepAt } from '../debugger-panel/codeTimelineState';
 import SAMPLE_VISUAL_BUILDER from '../code-builder/sample.py?raw';
 import SAMPLE_DEBUGGER from '../debugger-panel/debuggerSample.py?raw';
+import type { TextBox } from '../text-boxes/types';
 
 /* ---------- Shared Tailwind class groups ---------- */
 
@@ -39,6 +40,7 @@ function App() {
   const [apiReferenceOpen, setApiReferenceOpen] = useState(false);
 
   const [debugCallSuffix, setDebugCallSuffix] = useState<string | null>(null);
+  const [textBoxes, setTextBoxes] = useState<TextBox[]>([]);
 
   type AppMode = 'idle' | 'trace' | 'interactive' | 'debug_in_event';
   const [appMode, setAppMode] = useState<AppMode>('idle');
@@ -176,6 +178,7 @@ function App() {
       builderCode: visualBuilderCode,
       debuggerCode,
       breakpoints: [...breakpoints],
+      textBoxes,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -188,7 +191,7 @@ function App() {
     URL.revokeObjectURL(url);
   }, [visualBuilderCode, debuggerCode, breakpoints]);
 
-  const handleLoad = useCallback(async (data: { builderCode?: string; debuggerCode?: string; breakpoints?: number[] }) => {
+  const handleLoad = useCallback(async (data: { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }) => {
     if (!data.builderCode) {
       setAnalyzeError('Invalid file: missing builderCode field');
       return;
@@ -197,6 +200,7 @@ function App() {
     setVisualBuilderCode(data.builderCode);
     setDebuggerCode(dbgCode);
     setBreakpoints(data.breakpoints ? new Set(data.breakpoints) : new Set());
+    setTextBoxes(data.textBoxes ?? []);
     await runAnalyze(data.builderCode, dbgCode);
   }, [runAnalyze]);
 
@@ -340,7 +344,14 @@ function App() {
           {/* Right panel - Grid Area */}
           <Panel defaultSize={50} minSize={20}>
             <div className="h-full relative">
-              <GridArea ref={gridAreaRef} darkMode={darkMode} mouseEnabled={mouseEnabled} onDebugCall={handleDebugCall} />
+              <GridArea
+                ref={gridAreaRef}
+                darkMode={darkMode}
+                mouseEnabled={mouseEnabled}
+                onDebugCall={handleDebugCall}
+                textBoxes={textBoxes}
+                onTextBoxesChange={setTextBoxes}
+              />
 
               {apiReferenceOpen && (
                 <ApiReferencePanel

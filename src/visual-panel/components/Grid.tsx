@@ -2,6 +2,8 @@ import { useRef, useCallback, useMemo, memo, forwardRef, useImperativeHandle, us
 import { GridCell } from './GridCell';
 import type { RenderableObjectData, PanelStyle } from '../types/grid';
 import { PANEL_STYLE_DEFAULT } from '../types/grid';
+import type { TextBox } from '../../text-boxes/types';
+import { TextBoxesLayer } from '../../text-boxes/TextBoxesLayer';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -21,6 +23,13 @@ interface GridProps {
   darkMode?: boolean;
   mouseEnabled?: boolean;
   onElementClick?: (elemId: number, position: [number, number]) => void;
+  // Text box props
+  textBoxes?: TextBox[];
+  selectedTextBoxId?: string | null;
+  addingTextBox?: boolean;
+  onSelectTextBox?: (id: string | null) => void;
+  onTextBoxAdded?: (box: TextBox) => void;
+  onTextBoxChange?: (box: TextBox) => void;
 }
 
 export interface GridHandle {
@@ -121,6 +130,12 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   darkMode = false,
   mouseEnabled = false,
   onElementClick,
+  textBoxes = [],
+  selectedTextBoxId = null,
+  addingTextBox = false,
+  onSelectTextBox,
+  onTextBoxAdded,
+  onTextBoxChange,
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridContentRef = useRef<HTMLDivElement>(null);
@@ -282,6 +297,27 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
         <div className="absolute inset-0 pointer-events-none">
           <div className="relative w-full h-full">
             {renderedPanelHandles}
+          </div>
+        </div>
+
+        {/* Text boxes layer */}
+        <div
+          className="absolute inset-0"
+          style={{ pointerEvents: addingTextBox ? 'auto' : 'none' }}
+          onMouseDown={!addingTextBox ? (e) => {
+            // Deselect when clicking the grid background (not a text box)
+            if (e.target === e.currentTarget) onSelectTextBox?.(null);
+          } : undefined}
+        >
+          <div className="relative w-full h-full">
+            <TextBoxesLayer
+              textBoxes={textBoxes}
+              selectedId={selectedTextBoxId}
+              addingTextBox={addingTextBox}
+              onSelectTextBox={onSelectTextBox ?? (() => {})}
+              onTextBoxAdded={onTextBoxAdded ?? (() => {})}
+              onTextBoxChange={onTextBoxChange ?? (() => {})}
+            />
           </div>
         </div>
       </div>
