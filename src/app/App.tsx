@@ -134,6 +134,7 @@ function App() {
   }, [currentStep, stepCount, breakpoints]);
 
   const handleEdit = useCallback(() => {
+    setDebugCallSuffix(null);
     setAnalyzeStatus('dirty');
     setAppMode('idle');
   }, []);
