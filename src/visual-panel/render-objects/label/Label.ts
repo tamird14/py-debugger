@@ -48,16 +48,16 @@ export class Label implements VisualBuilderElementBase {
 
 export const LABEL_SCHEMA: ClassDoc = {
   className: 'Label',
-  constructorParams: 'label: str = ""',
+  constructorParams: 'label=""',
   docstring: 'Text label.',
   properties: [
-    { name: 'label', type: 'str', description: 'Display text.' },
-    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).' },
-    { name: 'width', type: 'int', description: 'Width in grid cells.' },
-    { name: 'height', type: 'int', description: 'Height in grid cells.' },
-    { name: 'font_size', type: 'int', description: 'Font size in pixels.' },
-    { name: 'color', type: 'tuple[int, int, int]', description: 'RGB text color.' },
-    { name: 'visible', type: 'bool', description: 'Show or hide the label.' },
+    { name: 'label', type: 'str', description: 'Display text.', default: '""' },
+    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).', default: '(0, 0)' },
+    { name: 'width', type: 'int', description: 'Width in grid cells.', default: '1' },
+    { name: 'height', type: 'int', description: 'Height in grid cells.', default: '1' },
+    { name: 'font_size', type: 'int', description: 'Font size in pixels.', default: '14' },
+    { name: 'color', type: 'tuple[int, int, int] | None', description: 'RGB text color.', default: 'None' },
+    { name: 'visible', type: 'bool', description: 'Show or hide the label.', default: 'True' },
   ],
 };
 

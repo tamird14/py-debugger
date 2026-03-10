@@ -1,7 +1,8 @@
+print('Hello World')
 panel = Panel('main')
 panel.position = (1,1)
 
-arr = Array(arr=V('arr'))
+arr = Array(V('arr'))
 panel.add(arr)
 arr.position=(1,0)
 
@@ -9,6 +10,7 @@ arr.position=(1,0)
 class CRect(Rect):
 
     def on_click(self, position: tuple[int, int]):
+        print(f'Clicked at {position}')
         self.height = 5
         return DebugCall('temp()')
 
@@ -31,3 +33,8 @@ ar2.orientation = 'down'
 ar2.position = V('(0, j+1)')
 ar2.color = (0,150,255)
 panel.add(ar2)
+
+counter = 0
+def update(params, scope):
+    print(f'{counter=}')
+    counter += 1

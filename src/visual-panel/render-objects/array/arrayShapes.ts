@@ -186,15 +186,15 @@ export class Array1D implements VisualBuilderElementBase {
 
 export const ARRAY_SCHEMA: ClassDoc = {
   className: 'Array',
-  constructorParams: 'var_name: str = ""',
+  constructorParams: 'arr=None',
   docstring: 'Displays an array of values as square cells on the grid.',
   properties: [
-    { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums").' },
-    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the first cell.' },
-    { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout direction.' },
-    { name: 'length', type: 'int', description: 'Number of cells (default 5).' },
-    { name: 'show_index', type: 'bool', description: 'Whether to show [i] index labels. Default True.' },
-    { name: 'visible', type: 'bool', description: 'Show or hide the array.' },
+    { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums").', default: '""' },
+    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the first cell.', default: '(0, 0)' },
+    { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout direction.', default: '"right"' },
+    { name: 'length', type: 'int', description: 'Number of cells (read-only, derived from arr).', default: '5' },
+    { name: 'show_index', type: 'bool', description: 'Whether to show [i] index labels.', default: 'True' },
+    { name: 'visible', type: 'bool', description: 'Show or hide the array.', default: 'True' },
   ],
 };
 
@@ -272,15 +272,15 @@ export class Array2D implements VisualBuilderElementBase {
 
 export const ARRAY2D_SCHEMA: ClassDoc = {
   className: 'Array2D',
-  constructorParams: 'var_name: str = ""',
+  constructorParams: 'var_name=""',
   docstring: 'Displays a 2D array of values as a grid of square cells.',
   properties: [
-    { name: 'var_name', type: 'str', description: 'Name of the 2D array variable.' },
-    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).' },
-    { name: 'num_rows', type: 'int', description: 'Number of rows.' },
-    { name: 'num_cols', type: 'int', description: 'Number of columns.' },
-    { name: 'show_index', type: 'bool', description: 'Whether to show [i][j] index labels. Default True.' },
-    { name: 'visible', type: 'bool', description: 'Show or hide the array.' },
+    { name: 'var_name', type: 'str', description: 'Name of the 2D array variable.', default: '""' },
+    { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).', default: '(0, 0)' },
+    { name: 'num_rows', type: 'int', description: 'Number of rows.', default: '3' },
+    { name: 'num_cols', type: 'int', description: 'Number of columns.', default: '3' },
+    { name: 'show_index', type: 'bool', description: 'Whether to show [i][j] index labels.', default: 'True' },
+    { name: 'visible', type: 'bool', description: 'Show or hide the array.', default: 'True' },
   ],
 };
 
