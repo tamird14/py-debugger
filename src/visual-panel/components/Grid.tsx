@@ -188,24 +188,25 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   const objectsToRender = useMemo((): RenderableObject[] => {
     const objects: RenderableObject[] = [];
 
-    for (const [key, cellData] of cells) {
+    for (const [posKey, cellData] of cells) {
       if (cellData.panel) continue;
-      const [row, col] = key.split(',').map(Number);
+      const [row, col] = posKey.split(',').map(Number);
       const baseWidth = cellData.shapeProps?.width ?? 1;
       const baseHeight = cellData.shapeProps?.height ?? 1;
       objects.push({
-        key, row, col, cellData,
+        key: cellData.objectId ?? posKey,
+        row, col, cellData,
         widthCells: baseWidth,
         heightCells: baseHeight,
       });
     }
 
-    for (const [key, cellData] of overlayCells) {
-      const [row, col] = key.split(',').map(Number);
+    for (const [posKey, cellData] of overlayCells) {
+      const [row, col] = posKey.split(',').map(Number);
       const baseWidth = cellData.shapeProps?.width ?? 1;
       const baseHeight = cellData.shapeProps?.height ?? 1;
       objects.push({
-        key: 'overlay-' + key,
+        key: 'overlay-' + (cellData.objectId ?? posKey),
         row, col, cellData,
         widthCells: baseWidth,
         heightCells: baseHeight,
