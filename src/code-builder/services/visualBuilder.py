@@ -48,6 +48,12 @@ class DebugCall:
         self.expression = expression
 
 
+class RunCall:
+    """Return this from an event handler to execute expression silently and refresh visuals."""
+    def __init__(self, expression: str):
+        self.expression = expression
+
+
 class VisualElem:
     _registry = []
     _vis_elem_id = 0
@@ -260,9 +266,9 @@ def _serialize_elem(elem, vb_id):
 def _handle_click(elem_id, row, col):
     """Call on_click on the element with the given id.
 
-    Returns the debug expression string if the handler returned a DebugCall,
-    or None for a plain visual update. The caller is responsible for fetching
-    the updated snapshot via _serialize_visual_builder().
+    Returns a tagged tuple ('debug'|'run'|None, expression|None).
+    The caller is responsible for fetching the updated snapshot via
+    _serialize_visual_builder().
     """
     result = None
     for elem in VisualElem._registry:
@@ -270,8 +276,10 @@ def _handle_click(elem_id, row, col):
             result = elem.on_click((row, col))
             break
     if isinstance(result, DebugCall):
-        return result.expression
-    return None
+        return ('debug', result.expression)
+    if isinstance(result, RunCall):
+        return ('run', result.expression)
+    return (None, None)
 
 
 def _serialize_handlers():
@@ -303,16 +311,39 @@ def _exec_builder_code(code):
 
 
 def _handle_click_with_output(elem_id, row, col):
-    """Like _handle_click but captures stdout. Returns JSON {debugCall, output}."""
+    """Like _handle_click but captures stdout. Returns JSON {debugCall, runCall, output}."""
     import io as _io, sys as _sys, json as _json
     _old_stdout = _sys.stdout
     _capture = _io.StringIO()
     _sys.stdout = _capture
     try:
-        _result = _handle_click(elem_id, row, col)
+        _kind, _expr = _handle_click(elem_id, row, col)
     finally:
         _sys.stdout = _old_stdout
-    return _json.dumps({'debugCall': _result, 'output': _capture.getvalue()})
+    return _json.dumps({
+        'debugCall': _expr if _kind == 'debug' else None,
+        'runCall':   _expr if _kind == 'run'   else None,
+        'output': _capture.getvalue(),
+    })
+
+
+def _execute_run_call(expression: str) -> str:
+    """Execute expression silently in _exec_context, return snapshot + handlers JSON."""
+    import io as _io, sys as _sys, json as _json
+    _old_stdout = _sys.stdout
+    _capture = _io.StringIO()
+    _sys.stdout = _capture
+    try:
+        exec(expression, _exec_context)
+    finally:
+        _sys.stdout = _old_stdout
+    snapshot = _json.loads(_serialize_visual_builder())
+    handlers = _serialize_handlers()
+    return _json.dumps({
+        'snapshot': snapshot,
+        'handlers': handlers,
+        'output': _capture.getvalue(),
+    })
 
 
 def _serialize_visual_builder():
