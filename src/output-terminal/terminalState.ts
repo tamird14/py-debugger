@@ -22,6 +22,7 @@ let _builderInitOutput = '';
 
 export function setBuilderOutput(text: string): void {
   _builderInitOutput = text;
+  _notify();
 }
 export function getBuilderOutput(): string {
   return _builderInitOutput;
@@ -34,9 +35,11 @@ let _currentBuilderSteps: string[] = [];
 
 export function setCurrentStepOutputs(outputs: string[]): void {
   _currentDebuggerSteps = outputs;
+  _notify();
 }
 export function setBuilderStepOutputs(outputs: string[]): void {
   _currentBuilderSteps = outputs;
+  _notify();
 }
 
 // ── Committed output (past segments) ─────────────────────────────────────────
@@ -54,6 +57,7 @@ let _committedCombinedLines: TerminalLine[] = [];
 export function appendMarker(text: string): void {
   _committedDebugger = ensureNewline(_committedDebugger) + text + '\n';
   _committedCombinedLines.push({ text, source: 'marker' });
+  _notify();
 }
 
 /**
@@ -64,6 +68,7 @@ export function appendClickOutput(text: string): void {
   if (!text) return;
   _committedBuilder = ensureNewline(_committedBuilder) + text;
   _committedCombinedLines.push(...toLines(text, 'builder'));
+  _notify();
 }
 
 /**
@@ -94,6 +99,7 @@ export function commitCurrentSegment(endMarker?: string): void {
 
   _currentDebuggerSteps = [];
   _currentBuilderSteps = [];
+  _notify();
 }
 
 // ── Getters ───────────────────────────────────────────────────────────────────
@@ -132,4 +138,23 @@ export function clearAll(): void {
   _committedCombinedLines = [];
   _currentDebuggerSteps = [];
   _currentBuilderSteps = [];
+  _notify();
+}
+
+// ── Change notification ────────────────────────────────────────────────────
+let _version = 0;
+const _listeners = new Set<() => void>();
+
+function _notify(): void {
+  _version++;
+  _listeners.forEach((fn) => fn());
+}
+
+export function subscribeTerminal(fn: () => void): () => void {
+  _listeners.add(fn);
+  return () => _listeners.delete(fn);
+}
+
+export function getTerminalVersion(): number {
+  return _version;
 }

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   getCombinedLines,
   getBuilderOutput,
   getBuilderStepOutput,
   getDebuggerOutput,
+  subscribeTerminal,
+  getTerminalVersion,
   type TerminalLine,
 } from './terminalState';
 
@@ -26,6 +28,7 @@ function splitLines(text: string): string[] {
 }
 
 export function OutputTerminal({ currentStep }: OutputTerminalProps) {
+  useSyncExternalStore(subscribeTerminal, getTerminalVersion);
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TerminalTab>('combined');
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
