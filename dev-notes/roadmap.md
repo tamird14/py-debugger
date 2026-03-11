@@ -20,15 +20,17 @@ Project management file — not linked from dev-notes.md.
 
 ## Open Assignments / Cleanup
 
-1. Check if `setDebugCallSuffix` can be handled at `CodeEditorArea` level instead of `App.tsx` (see [sharp-edges.md → debugCallSuffix](./sharp-edges.md))
-2. Evaluate whether both `'dirty'` and `'idle'` states are still needed for the Analyze button (`analyzeStatus`)
-3. If debugger code is empty (only blank lines or comments), skip the initial trace step and jump directly to interactive mode
-4. Move save\load to top row, instad of the code panel.
-5. Make variables panel collapsible as well
-6. remove footer
-7. Improve error viewing to be relative to the code itself, and not to the python engine. Also, jump automatically to the editor tab with the error.
-8. When the timeline buttons are hidden, the top row becomes shorter and it jumps the whole app. Keep the height constant in all modes.
-9. defend against infinite loops in the builder code. Don't let the program freeze.
+1. App - Check if `setDebugCallSuffix` can be handled at `CodeEditorArea` level instead of `App.tsx` (see [sharp-edges.md → debugCallSuffix](./sharp-edges.md))
+2. App - Evaluate whether both `'dirty'` and `'idle'` states are still needed for the Analyze button (`analyzeStatus`)
+3. Flow - If debugger code is empty (only blank lines or comments), skip the initial trace step and jump directly to interactive mode
+4. UI - Move save\load to top row, instad of the code panel.
+5. UI - Make variables panel collapsible as well
+6. UI - remove footer
+7. UI - When the timeline buttons are hidden, the top row becomes shorter and it jumps the whole app. Keep the height constant in all modes.
+8. python - Improve error viewing to be relative to the code itself, and not to the python engine. Also, jump automatically to the editor tab with the error.
+9. python - defend against infinite loops in the builder code. Don't let the program freeze.
+10. python - event handling output doesn't update automatically, only when switching between the output tabs
+11. python - In the Mouse handling, does python have access to global variables?
 
 ---
 
