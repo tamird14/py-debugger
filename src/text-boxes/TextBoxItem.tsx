@@ -150,6 +150,7 @@ export function TextBoxItem({ box, zoom, selected, onSelect, onChange, onDelete 
         cursor: selected && !editing ? 'move' : 'default',
       }}
       onMouseDown={handleBodyMouseDown}
+      onDoubleClick={() => setEditing(true)}
     >
       {/* Formatting toolbar — shown above the box when selected */}
       {selected && (
@@ -158,8 +159,6 @@ export function TextBoxItem({ box, zoom, selected, onSelect, onChange, onDelete 
           effectiveColor={box.color ?? (darkMode ? '#f9fafb' : '#111827')}
           onChange={(patch) => onChange({ ...box, ...patch })}
           onDelete={() => onDelete(box.id)}
-          editing={editing}
-          onToggleEditing={() => setEditing((e) => !e)}
         />
       )}
 
@@ -167,6 +166,12 @@ export function TextBoxItem({ box, zoom, selected, onSelect, onChange, onDelete 
         ref={textareaRef}
         value={box.text}
         onChange={(e) => onChange({ ...box, text: e.target.value })}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setEditing(false);
+            e.preventDefault();
+          }
+        }}
         style={{
           width: '100%',
           height: '100%',
