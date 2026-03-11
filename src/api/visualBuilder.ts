@@ -34,6 +34,7 @@ import '../visual-panel/render-objects/circle/Circle';
 import '../visual-panel/render-objects/arrow/Arrow';
 import '../visual-panel/render-objects/label/Label';
 import '../visual-panel/render-objects/array/arrayShapes';
+import '../visual-panel/render-objects/line/Line';
 
 export function getVisualElemSchema(): ObjDoc[] {
   return [PANEL_SCHEMA, ...getAllSchemas()];

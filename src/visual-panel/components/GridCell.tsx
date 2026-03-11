@@ -9,6 +9,7 @@ import '../render-objects/label/LabelView';
 import '../render-objects/array/ArrayValueView';
 import '../render-objects/array/Array2DView';
 import '../render-objects/panel/PanelView';
+import '../render-objects/line/LineView';
 
 interface GridCellProps {
   row: number;
