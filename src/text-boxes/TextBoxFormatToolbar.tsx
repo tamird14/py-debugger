@@ -7,11 +7,9 @@ interface TextBoxFormatToolbarProps {
   effectiveColor: string;
   onChange: (patch: Partial<TextBox>) => void;
   onDelete: () => void;
-  editing: boolean;
-  onToggleEditing: () => void;
 }
 
-export function TextBoxFormatToolbar({ box, effectiveColor, onChange, onDelete, editing, onToggleEditing }: TextBoxFormatToolbarProps) {
+export function TextBoxFormatToolbar({ box, effectiveColor, onChange, onDelete }: TextBoxFormatToolbarProps) {
   return (
     <div
       style={{
@@ -31,27 +29,6 @@ export function TextBoxFormatToolbar({ box, effectiveColor, onChange, onDelete, 
       }}
       onMouseDown={(e) => e.stopPropagation()} // don't trigger move drag
     >
-      {/* Edit/Move mode toggle */}
-      <button
-        onClick={onToggleEditing}
-        title={editing ? 'Switch to move mode' : 'Switch to edit mode'}
-        style={{
-          background: editing ? '#6366f1' : 'none',
-          border: '1px solid #6366f1',
-          borderRadius: 3,
-          color: editing ? '#ffffff' : '#a5b4fc',
-          fontSize: 11,
-          padding: '1px 5px',
-          cursor: 'pointer',
-          lineHeight: 1,
-        }}
-      >
-        {editing ? '✎ Edit' : '✥ Move'}
-      </button>
-
-      {/* Divider */}
-      <div style={{ width: 1, height: 16, background: '#4b5563' }} />
-
       {/* Font size */}
       <select
         value={box.fontSize}
