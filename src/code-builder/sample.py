@@ -33,8 +33,3 @@ ar2.orientation = 'down'
 ar2.position = V('(0, j+1)')
 ar2.color = (0,150,255)
 panel.add(ar2)
-
-counter = 0
-def update(params, scope):
-    print(f'{counter=}')
-    counter += 1
