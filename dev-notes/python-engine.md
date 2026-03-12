@@ -306,6 +306,21 @@ Python `print()` output is captured by redirecting `sys.stdout` before each exec
 - **Debugger** tab: output from `_visual_code_trace(debuggerCode)`
 - **Combined** tab: both together
 
+### Output Capture — Import Files
+
+Both builder and debugger import files are bundled at build time and written to Pyodide's VFS during `loadPythonRuntime()`, making them importable with standard Python `import` syntax.
+
+**How it works:**
+- Files in `src/builder-imports/*.py` → importable in builder code
+- Files in `src/debugger-imports/*.py` → importable in debugger code
+- Vite's `import.meta.glob('.../*.py', { eager: true, as: 'raw' })` bundles the files at build time
+- `py.FS.writeFile('/home/pyodide/<filename>', content)` writes each file to the Pyodide VFS
+- `/home/pyodide` is in `sys.path` by default, so `import my_module` works normally
+
+**Tracer behavior with debugger imports:** The tracer only records steps for frames where `co_filename in ('<exec>', '<string>')`. Functions from import files have a real filepath (`/home/pyodide/...`) and are silently skipped — they execute normally but produce no trace steps.
+
+**Future work (TODO):** Allow uploading import files directly in the app while running. At that point, uploaded files would also be persisted in the JSON save/load format.
+
 ### Key Files Summary
 
 | File | Purpose |
@@ -315,3 +330,5 @@ Python `print()` output is captured by redirecting `sys.stdout` before each exec
 | `src/debugger-panel/pythonTracer.py` | Tracer, V(), _exec_context, timeline building |
 | `src/code-builder/services/pythonExecutor.ts` | All TypeScript↔Pyodide calls |
 | `src/output-terminal/terminalState.ts` | Output capture and tab segmentation |
+| `src/builder-imports/*.py` | User-extendable Python helpers importable in builder code |
+| `src/debugger-imports/*.py` | User-extendable Python helpers importable in debugger code |
