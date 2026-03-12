@@ -103,40 +103,6 @@ function App() {
     setCurrentStep(clamped);
   }, []);
 
-  const goToNextBreakpoint = useCallback(() => {
-    const max = getMaxTime();
-    for (let t = currentStep + 1; t <= max; t++) {
-      const line = getStepLine(t);
-      if (line != null && breakpoints.has(line)) { goToStep(t); return; }
-    }
-  }, [currentStep, breakpoints, goToStep]);
-
-  const goToPrevBreakpoint = useCallback(() => {
-    for (let t = currentStep - 1; t >= 0; t--) {
-      const line = getStepLine(t);
-      if (line != null && breakpoints.has(line)) { goToStep(t); return; }
-    }
-  }, [currentStep, breakpoints, goToStep]);
-
-  const hasNextBreakpoint = useMemo(() => {
-    const max = getMaxTime();
-    for (let t = currentStep + 1; t <= max; t++) {
-      const line = getStepLine(t);
-      if (line != null && breakpoints.has(line)) return true;
-    }
-    return false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, stepCount, breakpoints]);
-
-  const hasPrevBreakpoint = useMemo(() => {
-    for (let t = currentStep - 1; t >= 0; t--) {
-      const line = getStepLine(t);
-      if (line != null && breakpoints.has(line)) return true;
-    }
-    return false;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, stepCount, breakpoints]);
-
   // ---------------------------------------------------------------------------
   // Main Flow
   // ---------------------------------------------------------------------------
@@ -359,13 +325,9 @@ function App() {
             <TimelineControls
               currentStep={currentStep}
               stepCount={stepCount}
-              onPrevStep={() => goToStep(currentStep - 1)}
-              onNextStep={() => goToStep(currentStep + 1)}
               onGoToStep={goToStep}
-              onPrevBreakpoint={goToPrevBreakpoint}
-              onNextBreakpoint={goToNextBreakpoint}
-              hasPrevBreakpoint={hasPrevBreakpoint}
-              hasNextBreakpoint={hasNextBreakpoint}
+              getStepLine={getStepLine}
+              breakpoints={breakpoints}
             />
           </div>
 

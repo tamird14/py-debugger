@@ -1,33 +1,60 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
 interface TimelineControlsProps {
   currentStep: number;
   stepCount: number;
-  onPrevStep: () => void;
-  onNextStep: () => void;
   onGoToStep: (step: number) => void;
-  onPrevBreakpoint?: () => void;
-  onNextBreakpoint?: () => void;
-  hasPrevBreakpoint?: boolean;
-  hasNextBreakpoint?: boolean;
+  getStepLine: (step: number) => number | null;
+  breakpoints: Set<number>;
 }
 
 export function TimelineControls({
   currentStep,
   stepCount,
-  onPrevStep,
-  onNextStep,
   onGoToStep,
-  onPrevBreakpoint,
-  onNextBreakpoint,
-  hasPrevBreakpoint = false,
-  hasNextBreakpoint = false,
+  getStepLine,
+  breakpoints,
 }: TimelineControlsProps) {
   const [inputValue, setInputValue] = useState(String(currentStep));
 
   useEffect(() => {
     setInputValue(String(currentStep));
   }, [currentStep]);
+
+  const onPrevStep = useCallback(() => onGoToStep(currentStep - 1), [currentStep, onGoToStep]);
+  const onNextStep = useCallback(() => onGoToStep(currentStep + 1), [currentStep, onGoToStep]);
+
+  const goToNextBreakpoint = useCallback(() => {
+    const max = stepCount - 1;
+    for (let t = currentStep + 1; t <= max; t++) {
+      const line = getStepLine(t);
+      if (line != null && breakpoints.has(line)) { onGoToStep(t); return; }
+    }
+  }, [currentStep, stepCount, breakpoints, getStepLine, onGoToStep]);
+
+  const goToPrevBreakpoint = useCallback(() => {
+    for (let t = currentStep - 1; t >= 0; t--) {
+      const line = getStepLine(t);
+      if (line != null && breakpoints.has(line)) { onGoToStep(t); return; }
+    }
+  }, [currentStep, breakpoints, getStepLine, onGoToStep]);
+
+  const hasNextBreakpoint = useMemo(() => {
+    const max = stepCount - 1;
+    for (let t = currentStep + 1; t <= max; t++) {
+      const line = getStepLine(t);
+      if (line != null && breakpoints.has(line)) return true;
+    }
+    return false;
+  }, [currentStep, stepCount, breakpoints, getStepLine]);
+
+  const hasPrevBreakpoint = useMemo(() => {
+    for (let t = currentStep - 1; t >= 0; t--) {
+      const line = getStepLine(t);
+      if (line != null && breakpoints.has(line)) return true;
+    }
+    return false;
+  }, [currentStep, breakpoints, getStepLine]);
 
   if (stepCount === 0) return null;
 
@@ -74,16 +101,14 @@ export function TimelineControls({
         ←
       </button>
 
-      {onPrevBreakpoint && (
-        <button
-          onClick={onPrevBreakpoint}
-          disabled={!hasPrevBreakpoint}
-          className={hasPrevBreakpoint ? btnBreakpoint : btnBreakpointDisabled}
-          title="Previous breakpoint"
-        >
-          ●←
-        </button>
-      )}
+      <button
+        onClick={goToPrevBreakpoint}
+        disabled={!hasPrevBreakpoint}
+        className={hasPrevBreakpoint ? btnBreakpoint : btnBreakpointDisabled}
+        title="Previous breakpoint"
+      >
+        ●←
+      </button>
 
       {/* Editable step input */}
       <input
@@ -99,16 +124,14 @@ export function TimelineControls({
       />
       <span className="text-xs text-gray-500 dark:text-gray-400">/ {maxStep}</span>
 
-      {onNextBreakpoint && (
-        <button
-          onClick={onNextBreakpoint}
-          disabled={!hasNextBreakpoint}
-          className={hasNextBreakpoint ? btnBreakpoint : btnBreakpointDisabled}
-          title="Next breakpoint"
-        >
-          →●
-        </button>
-      )}
+      <button
+        onClick={goToNextBreakpoint}
+        disabled={!hasNextBreakpoint}
+        className={hasNextBreakpoint ? btnBreakpoint : btnBreakpointDisabled}
+        title="Next breakpoint"
+      >
+        →●
+      </button>
 
       <button
         onClick={onNextStep}
