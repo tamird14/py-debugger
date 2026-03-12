@@ -147,6 +147,12 @@ function App() {
     setAppMode('idle');
   }, []);
 
+  const isCodeEmpty = (code: string) =>
+    code.split('\n').every((line) => {
+      const trimmed = line.trim();
+      return trimmed === '' || trimmed.startsWith('#');
+    });
+
   const runAnalyze = useCallback(async (vbCode: string, dbgCode: string) => {
     setIsAnalyzing(true);
     setAnalyzeError(undefined);
@@ -156,11 +162,14 @@ function App() {
       const result = await executePythonCode(vbCode, dbgCode);
 
       if (result.success) {
+        const skipTrace = isCodeEmpty(dbgCode);
         setStepCount(getMaxTime() + 1);
-        setCurrentStep(0);
-        gridAreaRef.current?.loadVisualBuilderObjects(getTimeline()[0]);
+        setCurrentStep(skipTrace ? getMaxTime() : 0);
+        gridAreaRef.current?.loadVisualBuilderObjects(
+          skipTrace ? getTimeline()[getMaxTime()] ?? getTimeline()[0] : getTimeline()[0]
+        );
         setAnalyzeStatus('success');
-        setAppMode('trace');
+        setAppMode(skipTrace ? 'interactive' : 'trace');
       } else {
         setAnalyzeError(result.error);
         setAnalyzeStatus('error');
