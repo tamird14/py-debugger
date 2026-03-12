@@ -6,6 +6,19 @@ interface VariablePanelProps {
 
 function formatValue(value: unknown, type: string): string {
   if (type.startsWith('arr')) return JSON.stringify(value);
+  if (type === 'none') return 'None';
+  if (type === 'tuple') {
+    return '(' + (value as unknown[]).map(v => JSON.stringify(v)).join(', ') + ')';
+  }
+  if (type === 'dict') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (!entries.length) return '{}';
+    return '{' + entries.map(([k, v]) => `'${k}': ${JSON.stringify(v)}`).join(', ') + '}';
+  }
+  if (type === 'set') {
+    return '{' + (value as unknown[]).map(v => JSON.stringify(v)).join(', ') + '}';
+  }
+  // int, float, str, custom class names (repr string), and any future types
   return String(value);
 }
 
