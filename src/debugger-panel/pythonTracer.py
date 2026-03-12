@@ -1,5 +1,6 @@
 import sys
 import json
+import copy
 from io import StringIO
 from types import FrameType
 from typing import Any, Dict, List, Tuple, Optional, Set, TypedDict, Literal, TextIO
@@ -59,7 +60,7 @@ def _capture_variables(
             continue
         if callable(value) or isinstance(value, type):
             continue
-        result[name] = value
+        result[name] = copy.deepcopy(value)
 
     return result
 
@@ -261,7 +262,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
     next_params = {}
     for step in code_trace[::-1]:
         next_params.update(step['variables'])
-        step['variables'].update(next_params)
+        step['variables'].update({k: copy.deepcopy(v) for k, v in next_params.items()})
 
     for step in code_trace:
         _builder_cap = StringIO()
