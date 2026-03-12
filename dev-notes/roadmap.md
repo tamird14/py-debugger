@@ -16,7 +16,6 @@ Project management file — not linked from dev-notes.md.
 5. View only modes: Let a user only see the debugger editor and visual panel from a premade code. User can only trace and use the mouse interaction, but not change anything else.
 6. Redo the about page (and add there links to homepage)
 7. Add animation between snapshots. Each element should have an id, and when moving between snapshots, it will animate the changes (e.g. move, change size, color, etc). Have a fix time per animation, and have a toggle button somewhere to have also simple non animation steps.
-8. add z-value to object for rendering layer
 
 ## Open Assignments / Cleanup
 

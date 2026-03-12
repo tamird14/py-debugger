@@ -5,7 +5,7 @@ import PYTHON_TRACER from '../../debugger-panel/pythonTracer.py?raw';
 import { hydrateTimelineFromArray } from '../../timeline/timelineState';
 import { setCodeTimeline, type TraceStep } from '../../debugger-panel/codeTimelineState';
 import { setHandlers } from '../../visual-panel/handlersState';
-import { setCurrentStepOutputs, setBuilderStepOutputs, setBuilderOutput, appendClickOutput } from '../../output-terminal/terminalState';
+import { setCurrentStepOutputs, setBuilderStepOutputs, setBuilderOutput, appendClickOutput, appendError } from '../../output-terminal/terminalState';
 
 // ---------------------------------------------------------------------------
 // Pyodide runtime
@@ -111,6 +111,43 @@ function cleanPythonError(error: unknown): string {
     : msg;
 }
 
+/**
+ * If the traceback contains any frames from user code (`<string>` filename),
+ * filter out all non-user frames and keep only those + the exception message.
+ * If no `<string>` frames exist (internal/wrapper error), return the full error.
+ */
+function filterTraceback(error: string): string {
+  const lines = error.split('\n');
+  const hasUserFrame = lines.some((line) => /^\s+File "<string>"/.test(line));
+  if (!hasUserFrame) return error;
+
+  const result: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line === 'Traceback (most recent call last):') {
+      result.push(line);
+      i++;
+      continue;
+    }
+    if (/^ {2}File "/.test(line)) {
+      const isUserFrame = line.startsWith('  File "<string>"');
+      const frameLines = [line];
+      i++;
+      // collect source/pointer lines belonging to this frame (indented 4+ spaces)
+      while (i < lines.length && lines[i].startsWith('    ')) {
+        frameLines.push(lines[i++]);
+      }
+      if (isUserFrame) result.push(...frameLines);
+      continue;
+    }
+    result.push(line);
+    i++;
+  }
+  while (result.length > 0 && result[result.length - 1] === '') result.pop();
+  return result.join('\n');
+}
+
 type TraceStep_WithOutput = TraceStep & { output?: string; builder_output?: string };
 
 type TraceResult = {
@@ -167,7 +204,9 @@ export async function executePythonCode(
     return { success: true };
   } catch (error) {
     console.error('Execution error:', error);
-    return { success: false, error: cleanPythonError(error) };
+    const msg = filterTraceback(cleanPythonError(error));
+    appendError(msg);
+    return { success: false, error: msg };
   }
 }
 
@@ -187,7 +226,9 @@ export async function executeDebugCall(expression: string, lineOffset: number): 
     applyTimeline(parsed);
     return { stepCount: parsed.code_timeline.length };
   } catch (error) {
-    return { stepCount: 0, error: cleanPythonError(error) };
+    const msg = filterTraceback(cleanPythonError(error));
+    appendError(msg);
+    return { stepCount: 0, error: msg };
   }
 }
 
@@ -235,6 +276,8 @@ export async function executeClickHandler(
     return debugCall ? { snapshot, debugCall } : { snapshot };
   } catch (error) {
     console.error('Click handler error:', error);
-    return { snapshot: [], error: cleanPythonError(error) };
+    const msg = filterTraceback(cleanPythonError(error));
+    appendError(msg);
+    return { snapshot: [], error: msg };
   }
 }

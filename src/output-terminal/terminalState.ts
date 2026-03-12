@@ -72,9 +72,11 @@ export function appendClickOutput(text: string): void {
 }
 
 /**
- * Append a click-handler error to the terminal in red.
+ * Append an error to the terminal in red (combined tab) and as plain text in
+ * the builder stream. Use this for any execution error: click handlers,
+ * builder code, debugger code, etc.
  */
-export function appendClickError(text: string): void {
+export function appendError(text: string): void {
   if (!text) return;
   _committedBuilder = ensureNewline(_committedBuilder) + text + '\n';
   _committedCombinedLines.push(...toLines(text, 'error'));
