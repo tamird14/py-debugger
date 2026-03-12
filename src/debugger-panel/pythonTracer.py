@@ -9,13 +9,12 @@ class VariableValue(TypedDict):
     type: str
     value: Any
 
+# TraceStep.variables holds raw Python values internally (not VariableValue wrappers).
+# They are converted to VariableValue dicts only at the TypeScript boundary
+# via _serialize_variables_for_ts(), right before json.dumps.
 class TraceStep(TypedDict):
-    variables: Dict[str, VariableValue]
+    variables: Dict[str, Any]
     scope: List[Tuple[str, int]]
-
-class TraceResult(TypedDict):
-    steps: List[TraceStep]
-    output: str
 
 MAX_TRACE_STEPS = 1000  # TODO: make this user-configurable
 
@@ -27,12 +26,16 @@ _original_stdout = sys.stdout
 def _capture_variables(
     frame: FrameType,
     exclude_vars: Optional[Set[str]] = None
-) -> Dict[str, VariableValue]:
-    """Capture variables from a frame, converting to our format."""
+) -> Dict[str, Any]:
+    """Capture variables from a frame as raw Python values.
+
+    Returns {name: raw_python_value}. Type conversion for the TypeScript
+    boundary happens later in _serialize_variables_for_ts().
+    """
     if exclude_vars is None:
         exclude_vars = set()
 
-    result: Dict[str, VariableValue] = {}
+    result: Dict[str, Any] = {}
     local_vars = frame.f_locals.copy()
     # When inside a function, also expose enclosing scopes (closures + globals)
     # so V-expressions referencing outer variables still evaluate correctly.
@@ -54,28 +57,52 @@ def _capture_variables(
             continue
         if name in exclude_vars:
             continue
+        if callable(value) or isinstance(value, type):
+            continue
+        result[name] = value
 
-        if isinstance(value, bool):
-            result[name] = {'type': 'int', 'value': 1 if value else 0}
-        elif isinstance(value, int):
-            result[name] = {'type': 'int', 'value': value}
-        elif isinstance(value, float):
-            result[name] = {'type': 'float', 'value': value}
-        elif isinstance(value, str):
-            result[name] = {'type': 'str', 'value': value}
-        elif isinstance(value, list):
-            if len(value) > 0 and all(isinstance(row, list) for row in value):
-                if all(isinstance(x, (int, float, bool)) for row in value for x in row):
-                    int_values = [[int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in row] for row in value]
-                    result[name] = {'type': 'arr2d[int]', 'value': int_values}
-                elif all(isinstance(x, str) for row in value for x in row):
-                    result[name] = {'type': 'arr2d[str]', 'value': value}
-            elif all(isinstance(x, (int, float, bool)) for x in value):
-                int_values = [int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in value]
-                result[name] = {'type': 'arr[int]', 'value': int_values}
-            elif all(isinstance(x, str) for x in value):
-                result[name] = {'type': 'arr[str]', 'value': value}
+    return result
 
+
+def _serialize_value_for_ts(value: Any) -> Optional[VariableValue]:
+    """Convert a single raw Python value to a JSON-safe VariableValue for TypeScript.
+
+    Returns None for types that should be silently skipped.
+    Extended in a second pass to support dict, set, tuple, None, and custom objects.
+    """
+    if isinstance(value, bool):
+        return {'type': 'int', 'value': 1 if value else 0}
+    if isinstance(value, int):
+        return {'type': 'int', 'value': value}
+    if isinstance(value, float):
+        return {'type': 'float', 'value': value}
+    if isinstance(value, str):
+        return {'type': 'str', 'value': value}
+    if isinstance(value, list):
+        if len(value) > 0 and all(isinstance(row, list) for row in value):
+            if all(isinstance(x, (int, float, bool)) for row in value for x in row):
+                int_values = [[int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in row] for row in value]
+                return {'type': 'arr2d[int]', 'value': int_values}
+            elif all(isinstance(x, str) for row in value for x in row):
+                return {'type': 'arr2d[str]', 'value': value}
+        elif all(isinstance(x, (int, float, bool)) for x in value):
+            int_values = [int(x) if isinstance(x, (int, float)) else (1 if x else 0) for x in value]
+            return {'type': 'arr[int]', 'value': int_values}
+        elif all(isinstance(x, str) for x in value):
+            return {'type': 'arr[str]', 'value': value}
+    return None
+
+
+def _serialize_variables_for_ts(raw_vars: Dict[str, Any]) -> Dict[str, VariableValue]:
+    """Convert {name: raw_python_value} to {name: VariableValue} for json.dumps."""
+    result: Dict[str, VariableValue] = {}
+    for name, value in raw_vars.items():
+        try:
+            serialized = _serialize_value_for_ts(value)
+            if serialized is not None:
+                result[name] = serialized
+        except Exception:
+            pass
     return result
 
 TraceEvent = Literal["call", "line", "return", "exception", "opcode"]
@@ -128,7 +155,7 @@ def _trace_function(
 
 _exec_context: dict = {}
 
-def _run_with_trace(code_str: str, persistent: bool = False) -> TraceResult:
+def _run_with_trace(code_str: str, persistent: bool = False) -> Dict[str, Any]:
     """Run code with tracing enabled.
 
     When persistent=False (initial trace) a fresh exec_globals dict is created
@@ -184,8 +211,7 @@ class V:
 
     def eval(self):
         try:
-            params = {k: v['value'] for k, v in V.params.items()}
-            return eval(self.expr, {"__builtins__": {}}, {**V.SAFE_GLOBALS, **params})
+            return eval(self.expr, {"__builtins__": {}}, {**V.SAFE_GLOBALS, **V.params})
         except Exception:
             return self.expr
 
@@ -215,11 +241,10 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
         step['variables'].update(next_params)
 
     for step in code_trace:
-        params = {key: v['value'] for key, v in step['variables'].items()}
         _builder_cap = StringIO()
         sys.stdout = _builder_cap
         try:
-            update(params, step['scope'])
+            update(step['variables'], step['scope'])
         finally:
             sys.stdout = _original_stdout
         step['builder_output'] = _builder_cap.getvalue()
@@ -234,6 +259,10 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
     if not timeline:
         code_trace = [{'variables': {}, 'scope': [], 'output': '', 'builder_output': ''}]
         timeline = [json.loads(_serialize_visual_builder())]
+
+    # Serialize raw Python values to JSON-safe VariableValue dicts for TypeScript.
+    for step in code_trace:
+        step['variables'] = _serialize_variables_for_ts(step['variables'])
 
     return json.dumps({
         'code_timeline': code_trace,
