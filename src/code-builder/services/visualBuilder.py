@@ -164,7 +164,7 @@ class Panel(VisualElem):
 
 
 class Label(VisualElem):
-    def __init__(self, label="", position=(0, 0), width=1, height=1, font_size=14, color=None, visible=True):
+    def __init__(self, label="", position=(0, 0), width=1, height=1, font_size=14, color=None, visible=True, z=0):
         super().__init__()
         self.label = label
         self.position = position
@@ -173,6 +173,7 @@ class Label(VisualElem):
         self.font_size = font_size
         self.color = color
         self.visible = visible
+        self.z = z
 
     def _serialize(self):
         out = self._serialize_base()
@@ -204,7 +205,7 @@ class Var(VisualElem):
 
 
 class Array(VisualElem):
-    def __init__(self, arr=None, var_name="", position=(0, 0), direction="right", show_index=True, visible=True):
+    def __init__(self, arr=None, var_name="", position=(0, 0), direction="right", show_index=True, visible=True, z=0):
         super().__init__()
         if arr is None:
             arr = []
@@ -216,6 +217,7 @@ class Array(VisualElem):
         self.visible = visible
         self.color = None
         self.font_size = None
+        self.z = z
 
     @property
     def length(self):
@@ -238,7 +240,7 @@ class Array(VisualElem):
 
 class Array2D(VisualElem):
     """Display a 2D list variable as a matrix on the grid."""
-    def __init__(self, var_name="", position=(0, 0), num_rows=3, num_cols=3, show_index=True, visible=True):
+    def __init__(self, var_name="", position=(0, 0), num_rows=3, num_cols=3, show_index=True, visible=True, z=0):
         super().__init__()
         self.var_name = var_name
         self.position = position
@@ -247,6 +249,7 @@ class Array2D(VisualElem):
         self._dims_manually_set = False
         self.show_index = show_index
         self.visible = visible
+        self.z = z
         self.color = None
         self.font_size = None
 

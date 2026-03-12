@@ -113,6 +113,7 @@ export class Array1D implements VisualBuilderElementBase {
   showIndex: boolean;
   varName?: string;
   alpha: number;
+  z: number;
   panelId?: string;
   style?: CellStyle;
 
@@ -126,6 +127,7 @@ export class Array1D implements VisualBuilderElementBase {
     this.showIndex = el.showIndex ?? true;
     this.varName = el.varName;
     this.alpha = el.alpha ?? 1;
+    this.z = el.z ?? 0;
     this.panelId = el.panelId;
 
     const color = el.color ? rgbToHex(el.color) : undefined;
@@ -208,6 +210,7 @@ export class Array2D implements VisualBuilderElementBase {
   showIndex: boolean;
   varName?: string;
   alpha: number;
+  z: number;
   panelId?: string;
   style?: CellStyle;
 
@@ -218,6 +221,7 @@ export class Array2D implements VisualBuilderElementBase {
     this.showIndex = el.showIndex ?? true;
     this.varName = el.varName;
     this.alpha = el.alpha ?? 1;
+    this.z = el.z ?? 0;
     this.panelId = el.panelId;
 
     const color = el.color ? rgbToHex(el.color) : undefined;

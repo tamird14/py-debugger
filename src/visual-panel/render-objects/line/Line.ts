@@ -10,6 +10,7 @@ export class Line implements VisualBuilderElementBase {
   alpha: number;
   panelId?: string;
 
+  z: number;
   start: [number, number];
   end: [number, number];
   color: [number, number, number];
@@ -23,6 +24,7 @@ export class Line implements VisualBuilderElementBase {
     this.position = el.position ?? [0, 0];
     this.visible = el.visible ?? true;
     this.alpha = el.alpha ?? 1;
+    this.z = el.z ?? 0;
     this.panelId = el.panelId;
     this.start = el.start ?? [0, 0];
     this.end = el.end ?? [1, 1];

@@ -333,6 +333,7 @@ export function useGridState() {
                 shapeProps: { width: panelInfo.width, height: panelInfo.height },
                 panelId: parentPanelId,
                 zOrder: z,
+                userZ: (el as any).z ?? 0,
               },
               position: { row: panelRow, col: panelCol },
               zOrder: z++,

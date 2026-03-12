@@ -2,13 +2,14 @@
 
 
 class Rect(VisualElem):
-    def __init__(self, position=(0, 0), width=1, height=1, color=(34, 197, 94), visible=True):
+    def __init__(self, position=(0, 0), width=1, height=1, color=(34, 197, 94), visible=True, z=0):
         super().__init__()
         self.position = position
         self.width = width
         self.height = height
         self.color = color
         self.visible = visible
+        self.z = z
 
     def _serialize(self):
         out = self._serialize_base()
@@ -20,13 +21,14 @@ class Rect(VisualElem):
 
 
 class Circle(VisualElem):
-    def __init__(self, position=(0, 0), width=1, height=1, color=(59, 130, 246), visible=True):
+    def __init__(self, position=(0, 0), width=1, height=1, color=(59, 130, 246), visible=True, z=0):
         super().__init__()
         self.position = position
         self.width = width
         self.height = height
         self.color = color
         self.visible = visible
+        self.z = z
 
     def _serialize(self):
         out = self._serialize_base()
@@ -38,7 +40,7 @@ class Circle(VisualElem):
 
 
 class Arrow(VisualElem):
-    def __init__(self, position=(0, 0), width=1, height=1, color=(16, 185, 129), orientation="up", rotation=0, visible=True):
+    def __init__(self, position=(0, 0), width=1, height=1, color=(16, 185, 129), orientation="up", rotation=0, visible=True, z=0):
         super().__init__()
         self.position = position
         self.width = width
@@ -47,6 +49,7 @@ class Arrow(VisualElem):
         self.orientation = orientation
         self.rotation = rotation
         self.visible = visible
+        self.z = z
 
     def _serialize(self):
         out = self._serialize_base()
@@ -62,7 +65,7 @@ class Arrow(VisualElem):
 class Line(VisualElem):
     def __init__(self, start=(0, 0), end=(1, 1), color=(239, 68, 68),
                  stroke_weight=2, start_offset=(0.5, 0.5), end_offset=(0.5, 0.5),
-                 start_cap='none', end_cap='arrow'):
+                 start_cap='none', end_cap='arrow', z=0):
         super().__init__()
         self.start = start
         self.end = end
@@ -72,6 +75,7 @@ class Line(VisualElem):
         self.end_offset = end_offset
         self.start_cap = start_cap
         self.end_cap = end_cap
+        self.z = z
 
     @property
     def position(self):

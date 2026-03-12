@@ -18,6 +18,7 @@ export class Label implements VisualBuilderElementBase {
   color?: [number, number, number];
   fontSize?: number;
   alpha: number;
+  z: number;
   panelId?: string;
 
   constructor(el: any) {
@@ -29,6 +30,7 @@ export class Label implements VisualBuilderElementBase {
     this.color = el.color;
     this.fontSize = el.fontSize;
     this.alpha = el.alpha ?? 1;
+    this.z = el.z ?? 0;
     this.panelId = el.panelId;
     
   }

@@ -7,6 +7,7 @@ export interface VisualBuilderElementBase {
   position: [number, number]; // common position
   visible?: boolean;          // optional, default true
   alpha?: number;             // optional, default 1
+  z?: number;                 // depth layer: lower = closer = rendered on top, default 0
   panelId?: string;
 }
 
