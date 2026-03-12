@@ -5,6 +5,7 @@ export abstract class BasicShape implements VisualBuilderElementBase {
   position: [number, number];
   visible: boolean = true;
   alpha: number;
+  z: number;
   panelId?: string;
   width: number;
   height: number;
@@ -16,6 +17,7 @@ export abstract class BasicShape implements VisualBuilderElementBase {
     this.position = el.position ?? [0, 0];
     this.visible = el.visible ?? true;
     this.alpha = el.alpha ?? 1;
+    this.z = el.z ?? 0;
     this.panelId = el.panelId;
 
     this.width = el.width ?? 1;

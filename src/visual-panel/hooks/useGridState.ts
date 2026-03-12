@@ -365,7 +365,7 @@ export function useGridState() {
               : undefined;
             next.set(gridId, {
               id: gridId,
-              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z, clickData },
+              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z, userZ: (el as any).z ?? 0, clickData },
               position: targetPosition,
               zOrder: z++,
             });

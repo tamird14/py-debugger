@@ -1,8 +1,10 @@
 import inspect
 from typing import get_type_hints
 
+
 def on_click(self, position: tuple[int, int]):
     pass
+
 
 def has_same_signature(obj, func):
     """
@@ -36,6 +38,7 @@ def has_same_signature(obj, func):
                 return False
 
     return True
+
 
 class PopupException(Exception):
     """Exception type used to signal user-facing popup messages."""
@@ -71,11 +74,19 @@ class VisualElem:
         self.position = (0, 0)
         self.visible = True
         self.alpha = 1.0
+        self.z = 0
         self._parent = None
         self._elem_id = VisualElem._vis_elem_id
         if VisualElem._vis_elem_id >= 0:
             VisualElem._vis_elem_id += 1
             VisualElem._registry.append(self)
+
+    def delete(self):
+        """Remove this element from the registry and its parent panel."""
+        if self in VisualElem._registry:
+            VisualElem._registry.remove(self)
+        if self._parent is not None:
+            self._parent.remove(self)
 
     def _get_event_handlers(self):
         handlers = []
@@ -104,6 +115,7 @@ class VisualElem:
             "position": [row, col],
             "visible": getattr(self, 'visible', True),
             "alpha": alpha,
+            "z": int(getattr(self, 'z', 0)),
             "_elem_id": self._elem_id,
         }
 
@@ -262,6 +274,7 @@ def _serialize_elem(elem, vb_id):
     if getattr(elem, '_parent', None) is not None and hasattr(elem._parent, '_vb_id'):
         out["panelId"] = elem._parent._vb_id
     return out
+
 
 def _handle_click(elem_id, row, col):
     """Call on_click on the element with the given id.

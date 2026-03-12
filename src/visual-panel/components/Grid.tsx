@@ -213,7 +213,10 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
       });
     }
 
-    objects.sort((a, b) => (a.cellData.zOrder ?? 0) - (b.cellData.zOrder ?? 0));
+    objects.sort((a, b) =>
+      (b.cellData.userZ ?? 0) - (a.cellData.userZ ?? 0) ||
+      (a.cellData.zOrder ?? 0) - (b.cellData.zOrder ?? 0)
+    );
     return objects;
   }, [cells, overlayCells]);
 

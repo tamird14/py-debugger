@@ -67,6 +67,8 @@ export interface RenderableObjectData {
   invalidReason?: string;
   // Render/drag order (higher = on top)
   zOrder?: number;
+  // User-specified depth layer (lower = closer = rendered on top)
+  userZ?: number;
   // Set when the Python element has an on_click handler
   clickData?: { elemId: number; position: [number, number] };
 }
