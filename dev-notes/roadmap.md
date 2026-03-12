@@ -27,6 +27,7 @@ Project management file — not linked from dev-notes.md.
 5. python - defend against infinite loops in the builder code. Don't let the program freeze.
 6. Flow - Consider combining handleEnterInteractive and handleBackToInteractive. Either by giving it a parameter, or by setting the setDebugCallSuffix in another place (check why it is on the handleBackToInteractive at all, and not just in handleDebugCall and in handleEdit).
 7. See if we can pass the goToStep, getStepLine and breakpoints from App.tsx directly to the TimelineControls component, and then implement goToNextBreakpoint and goToPrevBreakpoint there.
+8. Consider unifying `userZ` and `zOrder` in `RenderableObjectData` into a single `depth: [number, number]` tuple — they always travel and sort together in Grid.tsx, so a tuple makes the total order explicit. (They stay separate in `GridObject` and `OccupantInfo` where `zOrder` travels alone.)
 
 ---
 
