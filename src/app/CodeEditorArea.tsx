@@ -17,7 +17,7 @@ interface CodeEditorAreaProps {
   onAnalyze: () => void;
   onEdit: () => void;
   isAnalyzing: boolean;
-  analyzeStatus?: 'idle' | 'success' | 'error' | 'dirty';
+  analyzeStatus?: 'idle' | 'success' | 'error';
   error?: string;
   highlightedLines?: HighlightedLines;
   currentVariables?: Record<string, VariableValue>;
@@ -139,10 +139,8 @@ export function CodeEditorArea({
               className={`min-w-[90px] px-4 py-1 text-sm font-medium rounded transition-colors ${
                 isAnalyzing
                   ? 'bg-gray-500 text-gray-200 cursor-not-allowed'
-                  : analyzeStatus === 'error'
-                    ? 'bg-red-600 text-white hover:bg-red-500'
-                    : analyzeStatus === 'dirty'
-                      ? 'bg-amber-500 text-white hover:bg-amber-400'
+                    : analyzeStatus === 'error'
+                      ? 'bg-red-600 text-white hover:bg-red-500'
                       : 'bg-emerald-600 text-white hover:bg-emerald-500'
               }`}
             >

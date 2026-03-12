@@ -45,7 +45,7 @@ function App() {
   const [debuggerCode, setDebuggerCode] = useState(SAMPLE_DEBUGGER);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | undefined>();
-  const [analyzeStatus, setAnalyzeStatus] = useState<'idle' | 'success' | 'error' | 'dirty'>('idle');
+  const [analyzeStatus, setAnalyzeStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const everAnalyzedRef = useRef(false);
   const [pyodideLoading, setPyodideLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(false);
@@ -66,7 +66,7 @@ function App() {
 
   // Mark dirty whenever code changes after a completed analysis
   useEffect(() => {
-    if (everAnalyzedRef.current) setAnalyzeStatus('dirty');
+    if (everAnalyzedRef.current) setAnalyzeStatus('idle');
   }, [visualBuilderCode, debuggerCode]);
 
   // Preload Pyodide on mount
@@ -143,7 +143,7 @@ function App() {
 
   const handleEdit = useCallback(() => {
     setDebugCallSuffix(null);
-    setAnalyzeStatus('dirty');
+    setAnalyzeStatus('idle');
     setAppMode('idle');
   }, []);
 
