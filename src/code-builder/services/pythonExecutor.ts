@@ -50,6 +50,15 @@ export function isPyodideLoaded(): boolean {
 // Execution helpers
 // ---------------------------------------------------------------------------
 
+// Builder import files: bundled at build time, written to Pyodide VFS so they
+// are importable via standard `import` syntax in builder code.
+// TODO: future enhancement — allow uploading import files directly in the app;
+// at that point they will also be persisted in the JSON save/load format.
+const BUILDER_IMPORT_FILES = import.meta.glob(
+  '../../builder-imports/*.py',
+  { eager: true, as: 'raw' },
+) as Record<string, string>;
+
 const PYTHON_FILES = [
   { source: VISUAL_BUILDER_PYTHON },
   { source: VISUAL_BUILDER_SHAPES_PYTHON },
@@ -68,6 +77,13 @@ function escapeForTripleQuote(code: string): string {
 
 async function loadPythonRuntime(): Promise<any> {
   const py = await loadPyodide();
+
+  // Write builder import files to Pyodide VFS so they are importable in builder code
+  for (const [path, content] of Object.entries(BUILDER_IMPORT_FILES)) {
+    const filename = path.split('/').pop()!;
+    py.FS.writeFile(`/home/pyodide/${filename}`, content);
+  }
+
   for (const { source } of PYTHON_FILES) {
     await py.runPythonAsync(source);
   }
