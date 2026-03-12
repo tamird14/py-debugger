@@ -161,7 +161,7 @@ export function CodeEditorArea({
                 <DebuggerCodeEditor
                   code={debuggerCode}
                   onChange={onDebuggerCodeChange}
-                  highlightedLines={highlightedLines}
+                  highlightedLines={appMode === 'trace' || appMode === 'debug_in_event' ? highlightedLines : undefined}
                   breakpoints={breakpoints}
                   onBreakpointsChange={onBreakpointsChange}
                   readOnly={readOnly}
