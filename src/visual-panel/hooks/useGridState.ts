@@ -119,8 +119,13 @@ export function useGridState() {
     }
 
     const setOrOverlay = (key: string, cellData: RenderableObjectData) => {
-      if (cellMap.has(key)) overlayMap.set(key, cellData);
-      else cellMap.set(key, cellData);
+      if (!cellMap.has(key)) {
+        cellMap.set(key, cellData);
+      } else {
+        let n = 0;
+        while (overlayMap.has(`${key},${n}`)) n++;
+        overlayMap.set(`${key},${n}`, cellData);
+      }
     };
 
     // Unified pass: all non-panel objects

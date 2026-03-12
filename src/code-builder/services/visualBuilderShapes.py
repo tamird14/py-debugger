@@ -72,7 +72,14 @@ class Line(VisualElem):
         self.end_offset = end_offset
         self.start_cap = start_cap
         self.end_cap = end_cap
-        self.position = start  # grid placement at start cell
+
+    @property
+    def position(self):
+        return self.start
+
+    @position.setter
+    def position(self, value):
+        self.start = value
 
     def _serialize(self):
         out = self._serialize_base()
