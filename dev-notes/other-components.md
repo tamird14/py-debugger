@@ -28,6 +28,13 @@ A text box is a resizable, draggable, editable overlay positioned in grid-cell c
 
 Coordinates: `left = col * CELL_SIZE` px, `top = row * CELL_SIZE` px (where `CELL_SIZE = 40`).
 
+### Interaction Model
+
+Text boxes follow standard design-tool behavior (Figma/Canva style):
+- **Single click** — selects the text box (move mode: drag to reposition, resize via corners)
+- **Double click** — enters edit mode (text cursor active)
+- **Escape** — exits edit mode back to move mode
+
 ### Drawing Mode
 
 Activated by the T+ button in GridArea:

@@ -31,7 +31,7 @@ Python runs entirely in-browser via **Pyodide** (WebAssembly). There is no serve
 │  └────────────────────────┘  │  API Reference (toggle button)       │
 │  Output Terminal (bottom)    │                                      │
 └──────────────────────────────┴──────────────────────────────────────┘
-       App header: TimelineControls · Analyze/Edit · mode badge · dark mode
+       App header: TimelineControls · Analyze/Edit · mode badge · Animated/Jump toggle · dark mode
 ```
 
 **Named components:**
@@ -134,7 +134,7 @@ src/
 │   └── services/
 │       ├── pythonExecutor.ts       # TypeScript ↔ Pyodide bridge (all Pyodide calls)
 │       ├── visualBuilder.py        # VisualElem base class, Panel, DebugCall, _handle_click, serialization
-│       └── visualBuilderShapes.py  # Shape subclasses: Rect, Circle, Arrow, Label, Array, Array2D
+│       └── visualBuilderShapes.py  # Shape subclasses: Rect, Circle, Arrow, Line, Label, Array, Array2D
 │
 ├── debugger-panel/
 │   ├── pythonTracer.py             # sys.settrace tracing, _exec_context, V(), timelines
@@ -174,6 +174,8 @@ src/
 │   ├── OutputTerminal.tsx          # Print output display with builder/debugger/combined tabs
 │   └── terminalState.ts            # Output capture and segmentation state
 │
+├── animation/
+│   └── animationContext.tsx         # AnimationContext (boolean); Animated/Jump toggle state
 ├── contexts/ThemeContext.tsx        # Dark/light mode context
 ├── samples/                        # Bundled sample JSON files (bubble-sort.json, etc.)
 ├── pages/PlanPage.tsx              # About/info page (/about route)

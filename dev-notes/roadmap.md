@@ -26,6 +26,7 @@ Project management file — not linked from dev-notes.md.
 4. python - Improve error viewing to be relative to the code itself, and not to the python engine. Also, jump automatically to the editor tab with the error.
 5. python - defend against infinite loops in the builder code. Don't let the program freeze.
 6. Flow - Consider combining handleEnterInteractive and handleBackToInteractive. Either by giving it a parameter, or by setting the setDebugCallSuffix in another place (check why it is on the handleBackToInteractive at all, and not just in handleDebugCall and in handleEdit).
+7. See if we can pass the goToStep, getStepLine and breakpoints from App.tsx directly to the TimelineControls component, and then implement goToNextBreakpoint and goToPrevBreakpoint there.
 
 ---
 

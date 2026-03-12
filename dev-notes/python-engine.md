@@ -67,6 +67,7 @@ class VisualElem:
     "position": [row, col],   # Panel-relative if element has a panelId
     "visible": bool,
     "alpha": float,
+    "z": int,                 # Depth layer; lower z = closer = rendered on top (default 0)
     "_elem_id": int,
     "panelId": str or None,   # Parent panel's _vb_id (assigned just before this call)
 }
@@ -76,28 +77,41 @@ class VisualElem:
 
 ### Shape Classes (`visualBuilderShapes.py`)
 
+All shape constructors accept `z=0` as a keyword argument (see z-depth ordering below).
+
 | Class | Key constructor args | Clickable |
 |-------|---------------------|-----------|
 | `Rect` | `panel, row, col, width, height, color` | Yes (extends BasicShape in TS) |
 | `Circle` | `panel, row, col, radius, color` | Yes |
 | `Arrow` | `panel, start_row, start_col, end_row, end_col` | Yes |
+| `Line` | `start, end, color, stroke_weight, start_offset, end_offset, start_cap, end_cap` | No (implements `VisualBuilderElementBase` directly in TS) |
 | `Label` | `panel, row, col, text` | No (TS does not set `_elemId`) |
 | `Array` | `panel, row, col, values` | No |
 | `Array2D` | `panel, row, col, values` | No |
+
+`Line` has no `panel` argument — it specifies absolute start/end grid cells. `start_offset` and `end_offset` are `(row_frac, col_frac)` fractions within the cell (0.0–1.0). `start_cap`/`end_cap` can be `'none'` or `'arrow'`.
 
 ### `Panel`
 
 Container element. Children store positions relative to the panel's top-left corner in Python serialization. TypeScript resolves them to absolute grid coordinates in `loadVisualBuilderObjects()`. See [visual-elements.md](./visual-elements.md).
 
-### `DebugCall` Sentinel
+### `DebugCall` and `RunCall` Sentinels
 
 ```python
 class DebugCall:
     def __init__(self, expression: str):
         self.expression = expression
+
+class RunCall:
+    def __init__(self, expression: str):
+        self.expression = expression
 ```
 
-If `on_click` returns a `DebugCall` instance, `_handle_click` extracts its `.expression` string and returns it to TypeScript. TypeScript then initiates a debug sub-run. Returning anything else (or `None`) is a simple handler — no sub-run.
+If `on_click` returns a **`DebugCall`** instance, the expression is wrapped into a function and traced as a sub-run. TypeScript enters `debug_in_event` mode with a full navigable timeline.
+
+If `on_click` returns a **`RunCall`** instance, `_execute_run_call(expression)` is called: the expression is `exec()`-d silently in `_exec_context` (no tracing), and the resulting visual snapshot is returned for an immediate visual refresh. No mode change, no timeline — cheaper than `DebugCall` when you just want to mutate state and redraw.
+
+Returning anything else (or `None`) is a simple handler — Python updates element state, the snapshot is re-serialized, and the grid re-renders.
 
 ### `PopupException`
 
@@ -114,7 +128,11 @@ A user-facing error. Raised when `MAX_TRACE_STEPS` is exceeded or for other user
 
 **`_serialize_handlers_json() → str`** — returns `json.dumps(...)` of the same dict. Used by TypeScript direct calls (`executeClickHandler`). **Never embed this inside another `json.dumps`** — it would double-encode. See [sharp-edges.md](./sharp-edges.md).
 
-**`_handle_click(elemId, row, col)`** — finds the element with matching `_elem_id`, calls its `on_click(row, col)`, returns `DebugCall.expression` string or `None`.
+**`_handle_click(elemId, row, col)`** — finds the element with matching `_elem_id`, calls its `on_click(row, col)`, returns `('debug', expression)`, `('run', expression)`, or `('none', None)`.
+
+**`_handle_click_with_output(elemId, row, col)`** — wrapper that captures stdout during the handler. Returns JSON `{ debugCall, runCall, output }`. Called by TypeScript's `executeClickHandler`.
+
+**`_execute_run_call(expression)`** — executes expression silently in `_exec_context`, re-serializes visual state, returns JSON `{ snapshot, handlers, output }`.
 
 ---
 
@@ -278,7 +296,7 @@ All calls go through `src/code-builder/services/pythonExecutor.ts`.
 | TypeScript function | Python call | Returns |
 |--------------------|-------------|---------|
 | `executePythonCode(vbCode, dbgCode)` | `exec(vbCode)` then `_visual_code_trace(dbgCode)` | `{ code_timeline, visual_timeline, handlers }` JSON |
-| `executeClickHandler(elemId, row, col)` | `_handle_click` + `_serialize_visual_builder` + `_serialize_handlers_json` | `{ snapshot, debugCall?: string }` |
+| `executeClickHandler(elemId, row, col)` | `_handle_click_with_output` → if `runCall`: `_execute_run_call`; else `_serialize_visual_builder` + `_serialize_handlers_json` | `{ snapshot, debugCall?: string }` |
 | `executeDebugCall(expression, lineOffset)` | `_prepare_and_trace_debug_call(expr, offset)` | Same shape as `executePythonCode` |
 
 ### Output Capture

@@ -29,7 +29,7 @@ At each traced line, `_serialize_visual_builder()` produces a JSON snapshot of t
 TypeScript has a class hierarchy mirroring the Python shapes:
 - **`BasicShape`** (`src/visual-panel/render-objects/BasicShape.ts`) — base for all clickable shapes. Its constructor copies `el._elem_id` → `this._elemId` (the only snake→camelCase bridge).
 - `Rect`, `Circle`, `Arrow` extend `BasicShape` → they get `_elemId` → they can be clickable.
-- `Label`, `Array1D`, `Array2D` extend `VisualBuilderElementBase` directly → they do **not** get `_elemId` → they are never clickable, even if `on_click` is defined in Python.
+- `Line`, `Label`, `Array1D`, `Array2D` implement `VisualBuilderElementBase` directly → they do **not** get `_elemId` → they are never clickable, even if `on_click` is defined in Python.
 
 ### Registration
 
@@ -209,14 +209,40 @@ JSON object keys are always strings; `setHandlers` converts them to numbers to m
 
 ---
 
+### z-Depth Ordering
+
+Every element serializes a `z` integer (default `0`). Lower z = closer = rendered on top.
+
+- Set via constructor: `Rect(..., z=5)` or post-construction: `r.z = 5` (before Analyze).
+- `loadVisualBuilderObjects()` passes `z` through to `RenderableObjectData`.
+- `Grid.tsx` sorts rendered objects by `z` descending before rendering, so lower-z objects are drawn last (on top).
+
+---
+
+### Animation
+
+Smooth animations are enabled by an **`AnimationContext`** (`src/animation/animationContext.tsx`) boolean. A toggle button in the app header switches between **Animated** and **Jump** modes.
+
+**React key stability:** Elements with a `_elemId` use `vb-elem-{id}` as their React key (instead of a sequential counter). This means React keeps the same DOM node across timeline steps and click-handler updates — a prerequisite for CSS transitions.
+
+**What animates:**
+- Position and size: `transition-all duration-300 ease-out` on `GridSingleObject` (the positioned wrapper div)
+- Color and alpha: CSS transitions on SVG `fill`, `fill-opacity`, `stroke`, and `opacity` inside each shape renderer (`RectView`, `CircleView`, `ArrowView`, `LineView`, `LabelView`)
+- Fade in/out: elements fade in on first mount (opacity 0 → 1) and fade out when `visible=false` (opacity transitions to 0 while staying in the DOM). Invisible elements get `pointerEvents: none`.
+
+In Jump mode (animation off), all transitions are disabled for instant updates.
+
+---
+
 ### Key Invariants
 
 1. `_elem_id` (Python `int`) === `_elemId` (TypeScript `number`) — the only stable identity
 2. `_vb_id` is ephemeral — never use it across serialization calls
-3. `BasicShape` subclasses are clickable; `Label`/`Array` subclasses are not
+3. `BasicShape` subclasses (`Rect`, `Circle`, `Arrow`) are clickable; `Line`, `Label`, `Array` are not
 4. `_serialize_handlers()` → dict (embed in outer json.dumps); `_serialize_handlers_json()` → string (for TS calls)
 5. Handlers are re-fetched after every click to support dynamically created elements
 6. Panel children have panel-relative positions in Python JSON; absolute positions in TypeScript instances
+7. Lower `z` = closer to viewer = rendered on top
 
 ---
 
@@ -224,10 +250,13 @@ JSON object keys are always strings; `setHandlers` converts them to numbers to m
 
 | File | Purpose |
 |------|---------|
-| `src/code-builder/services/visualBuilder.py` | Python serialization, handler registry, `_handle_click` |
+| `src/code-builder/services/visualBuilder.py` | Python serialization, handler registry, `_handle_click_with_output`, `_execute_run_call` |
+| `src/code-builder/services/visualBuilderShapes.py` | `Rect`, `Circle`, `Arrow`, `Line`, `Label`, `Array`, `Array2D` shape classes |
 | `src/visual-panel/render-objects/BasicShape.ts` | `_elemId` bridge; clickable base class |
+| `src/visual-panel/render-objects/line/Line.ts` | `Line` TypeScript class (implements `VisualBuilderElementBase`, not `BasicShape`) |
 | `src/visual-panel/types/elementRegistry.ts` | Constructor registry by type string |
 | `src/timeline/timelineState.ts` | `hydrateTimelineFromArray` / `hydrateTimelineFromJson` |
-| `src/visual-panel/hooks/useGridState.ts` | `loadVisualBuilderObjects`; two-pass algorithm; click data |
+| `src/visual-panel/hooks/useGridState.ts` | `loadVisualBuilderObjects`; two-pass algorithm; click data; z-sort |
 | `src/visual-panel/handlersState.ts` | `setHandlers`; `hasHandler` |
 | `src/app/GridArea.tsx` | Click dispatch; snapshot re-hydration |
+| `src/animation/animationContext.tsx` | `AnimationContext` boolean; Animated/Jump toggle |
