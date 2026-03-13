@@ -12,11 +12,20 @@ import { setCurrentStepOutputs, setBuilderStepOutputs, setBuilderOutput, appendC
 // Pyodide runtime
 // ---------------------------------------------------------------------------
 
-let pyodide: any = null;
-let isLoading = false;
-let loadPromise: Promise<any> | null = null;
+interface PyodideRuntime {
+  runPythonAsync: (code: string) => Promise<string>;
+  FS: { writeFile: (path: string, content: string) => void };
+}
 
-export async function loadPyodide(): Promise<any> {
+interface WindowWithPyodide extends Window {
+  loadPyodide?: (options: { indexURL: string }) => Promise<PyodideRuntime>;
+}
+
+let pyodide: PyodideRuntime | null = null;
+let isLoading = false;
+let loadPromise: Promise<PyodideRuntime> | null = null;
+
+export async function loadPyodide(): Promise<PyodideRuntime> {
   if (pyodide) return pyodide;
   if (isLoading && loadPromise) return loadPromise;
 
@@ -25,7 +34,7 @@ export async function loadPyodide(): Promise<any> {
     const PYODIDE_VERSION = '0.26.4';
     const cdnUrl = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
 
-    if (!(window as any).loadPyodide) {
+    if (!(window as WindowWithPyodide).loadPyodide) {
       await new Promise<void>((resolve, reject) => {
         const script = document.createElement('script');
         script.src = `${cdnUrl}pyodide.js`;
@@ -35,7 +44,7 @@ export async function loadPyodide(): Promise<any> {
       });
     }
 
-    pyodide = await (window as any).loadPyodide({ indexURL: cdnUrl });
+    pyodide = await (window as WindowWithPyodide).loadPyodide!({ indexURL: cdnUrl });
     isLoading = false;
     return pyodide;
   })();
@@ -87,7 +96,7 @@ function escapeForTripleQuote(code: string): string {
     .replace(/'''/g, "\\'\\'\\'");
 }
 
-async function loadPythonRuntime(): Promise<any> {
+async function loadPythonRuntime(): Promise<PyodideRuntime> {
   const py = await loadPyodide();
 
   // Write builder and debugger import files to Pyodide VFS so they are importable
@@ -175,8 +184,7 @@ export interface DebuggerExecuteResult {
   error?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function initializeBuilderCode(py: any, visualBuilderCode: string): Promise<void> {
+async function initializeBuilderCode(py: PyodideRuntime, visualBuilderCode: string): Promise<void> {
   await py.runPythonAsync('VisualElem._clear_registry()');
   const escapedVB = escapeForTripleQuote(visualBuilderCode);
   const builderOutput: string = await py.runPythonAsync(`_exec_builder_code('''${escapedVB}''')`);
