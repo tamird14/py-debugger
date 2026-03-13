@@ -110,6 +110,7 @@ function App() {
     setDebugCallSuffix(null);
     setAnalyzeStatus('idle');
     setAppMode('idle');
+    clearTerminal();
   }, []);
 
   const isCodeEmpty = (code: string) =>
