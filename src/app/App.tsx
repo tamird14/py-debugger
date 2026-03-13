@@ -167,17 +167,16 @@ function App() {
     const indented = expression.split('\n').map(l => '    ' + l).join('\n');
     const suffix = `\n\ndef debug_call():\n${indented}`;
     setDebugCallSuffix(suffix);
-    const lineOffset = debuggerCode.split('\n').length + 2;
     appendMarker(`----- debug call: ${expression} -----`);
-    const result = await executeDebugCall(expression, lineOffset);
-    if (result?.error) {
+    const result = await executeDebugCall(expression);
+    if (result.error) {
       setAnalyzeError(result.error);
       setAnalyzeStatus('error');
       setDebugCallSuffix(null);
       setAppMode('interactive');
       return;
     }
-    if (result?.success && getMaxTime() >= 0) {
+    if (result.success && getMaxTime() >= 0) {
       setStepCount(getMaxTime() + 1);
       setCurrentStep(0);
       const state = getStateAt(0);
@@ -186,7 +185,7 @@ function App() {
       setDebugCallSuffix(null);
       setAppMode('interactive');
     }
-  }, [debuggerCode]);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Editor state (variables, highlighted lines)

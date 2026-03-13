@@ -207,6 +207,7 @@ def _trace_function(
     return _trace_function
 
 _exec_context: dict = {}
+_last_code_line_count: int = 0
 
 def _run_with_trace(code_str: str, persistent: bool = False) -> Dict[str, Any]:
     """Run code with tracing enabled.
@@ -300,6 +301,9 @@ def function_exit(function_name: str, value: Any) -> None:
     pass
 
 def _visual_code_trace(code: str, persistent: bool = False) -> str:
+    global _last_code_line_count
+    if not persistent:
+        _last_code_line_count = len(code.splitlines())
 
     # We separate the trace first for the debugger code, and then the builder code.
     # This way we can copy the value of variables to previous steps even before
@@ -364,7 +368,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
         'handlers': _serialize_handlers(),
     })
 
-def _prepare_and_trace_debug_call(expression: str, line_offset: int) -> str:
+def _prepare_and_trace_debug_call(expression: str) -> str:
     """
     Define `debug_call()` in _exec_context with line numbers shifted to match
     the position of the injected function in the displayed combined code, then
@@ -373,6 +377,6 @@ def _prepare_and_trace_debug_call(expression: str, line_offset: int) -> str:
     import ast as _ast
     func_source = f"def debug_call():\n    {expression}"
     tree = _ast.parse(func_source)
-    _ast.increment_lineno(tree, line_offset)
+    _ast.increment_lineno(tree, _last_code_line_count + 2)
     exec(compile(tree, '<exec>', 'exec'), _exec_context)
     return _visual_code_trace('debug_call()', True)

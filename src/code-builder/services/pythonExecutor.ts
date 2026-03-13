@@ -179,10 +179,6 @@ function applyTimeline(parsed: TraceResult): void {
 // Python executors
 // ---------------------------------------------------------------------------
 
-export interface DebuggerExecuteResult {
-  success: boolean;
-  error?: string;
-}
 
 async function initializeBuilderCode(py: PyodideRuntime, visualBuilderCode: string): Promise<void> {
   await py.runPythonAsync('VisualElem._clear_registry()');
@@ -196,6 +192,11 @@ function validateTimeline(parsed: TraceResult): string | null {
     return `Timeline length mismatch: code=${parsed.code_timeline.length} visual=${parsed.visual_timeline.length}`;
   }
   return null;
+}
+
+export interface DebuggerExecuteResult {
+  success: boolean;
+  error?: string;
 }
 
 export async function executePythonCode(
@@ -225,17 +226,15 @@ export async function executePythonCode(
   }
 }
 
-export type DebugCallResult = {
-  success: boolean;
-  error?: string;
-} | null;
-
-export async function executeDebugCall(expression: string, lineOffset: number): Promise<DebugCallResult> {
-  if (!pyodide) return null;
+export async function executeDebugCall(expression: string): Promise<DebuggerExecuteResult> {
+  if (!pyodide) {
+    console.error('executeDebugCall called before Pyodide was initialized');
+    return { success: false, error: 'Something went wrong. Try refreshing the page.' };
+  }
   try {
     const escapedExpr = escapeForTripleQuote(expression);
     const resultJson: string = await pyodide.runPythonAsync(
-      `_prepare_and_trace_debug_call('''${escapedExpr}''', ${lineOffset})`,
+      `_prepare_and_trace_debug_call('''${escapedExpr}''')`,
     );
 
     const parsed = JSON.parse(resultJson) as TraceResult;
