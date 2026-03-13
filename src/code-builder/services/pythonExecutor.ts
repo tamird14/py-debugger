@@ -1,5 +1,6 @@
 import type { VisualBuilderElementBase } from '../../api/visualBuilder';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
+import EVENT_HANDLING_PYTHON from './event_handling.py?raw';
 import VISUAL_BUILDER_SHAPES_PYTHON from './visualBuilderShapes.py?raw';
 import PYTHON_TRACER from '../../debugger-panel/pythonTracer.py?raw';
 import { hydrateTimelineFromArray } from '../../timeline/timelineState';
@@ -70,6 +71,7 @@ const DEBUGGER_IMPORT_FILES = import.meta.glob(
 ) as Record<string, string>;
 
 const PYTHON_FILES = [
+  { source: EVENT_HANDLING_PYTHON },
   { source: VISUAL_BUILDER_PYTHON },
   { source: VISUAL_BUILDER_SHAPES_PYTHON },
   { source: PYTHON_TRACER },
