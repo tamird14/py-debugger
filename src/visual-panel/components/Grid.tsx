@@ -24,6 +24,9 @@ interface GridProps {
   darkMode?: boolean;
   mouseEnabled?: boolean;
   onElementClick?: (elemId: number, position: [number, number]) => void;
+  onElementDragStart?: (elemId: number, position: [number, number]) => void;
+  onElementDrag?: (elemId: number, position: [number, number]) => Promise<void> | void;
+  onElementDragEnd?: (elemId: number, position: [number, number]) => void;
   // Text box props
   textBoxes?: TextBox[];
   selectedTextBoxId?: string | null;
@@ -65,10 +68,12 @@ const GridSingleObject = memo(function GridSingleObject({
   obj,
   mouseEnabled,
   onElementClick,
+  onElementDragStart,
 }: {
   obj: RenderableObject;
   mouseEnabled: boolean;
   onElementClick?: (elemId: number, position: [number, number]) => void;
+  onElementDragStart?: (elemId: number, position: [number, number]) => void;
 }) {
   const { widthCells, heightCells } = obj;
   const [flashing, setFlashing] = useState(false);
@@ -85,8 +90,9 @@ const GridSingleObject = memo(function GridSingleObject({
 
   const elemVisible = obj.cellData.elementInfo?.visible !== false;
 
-  const { clickData } = obj.cellData;
+  const { clickData, dragData } = obj.cellData;
   const isClickable = mouseEnabled && !!clickData && !!onElementClick;
+  const isDraggable = mouseEnabled && !!dragData && !!onElementDragStart;
 
   const handleClick = isClickable
     ? (e: React.MouseEvent<HTMLDivElement>) => {
@@ -103,9 +109,24 @@ const GridSingleObject = memo(function GridSingleObject({
       }
     : undefined;
 
+  const handleMouseDown = isDraggable
+    ? (e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const colOffset = Math.floor(e.nativeEvent.offsetX / CELL_SIZE);
+        const rowOffset = Math.floor(e.nativeEvent.offsetY / CELL_SIZE);
+        const pos: [number, number] = [
+          dragData!.position[0] + rowOffset,
+          dragData!.position[1] + colOffset,
+        ];
+        onElementDragStart!(dragData!.elemId, pos);
+      }
+    : undefined;
+
+  const cursorClass = isDraggable ? ' cursor-grab pointer-events-auto' : isClickable ? ' cursor-pointer pointer-events-auto' : '';
+
   return (
     <div
-      className={`absolute${animationsEnabled ? ' transition-all duration-300 ease-out' : ''}${isClickable ? ' cursor-pointer pointer-events-auto' : ''}`}
+      className={`absolute${animationsEnabled ? ' transition-all duration-300 ease-out' : ''}${cursorClass}`}
       style={{
         left: obj.col * CELL_SIZE,
         top: obj.row * CELL_SIZE,
@@ -116,6 +137,7 @@ const GridSingleObject = memo(function GridSingleObject({
         pointerEvents: elemVisible ? undefined : 'none',
       }}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
     >
       <GridCell
         row={obj.row}
@@ -144,6 +166,9 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   darkMode = false,
   mouseEnabled = false,
   onElementClick,
+  onElementDragStart,
+  onElementDrag,
+  onElementDragEnd,
   textBoxes = [],
   selectedTextBoxId = null,
   addingTextBox = false,
@@ -154,6 +179,61 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
 }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridContentRef = useRef<HTMLDivElement>(null);
+
+  // ── Drag state ──────────────────────────────────────────────────────────
+  const dragStateRef = useRef<{ elemId: number; lastRow: number; lastCol: number } | null>(null);
+  const dragCallInFlightRef = useRef(false);
+
+  // Stable refs to avoid stale closures in window-level event listeners
+  const onElementDragRef = useRef(onElementDrag);
+  const onElementDragEndRef = useRef(onElementDragEnd);
+  useEffect(() => {
+    onElementDragRef.current = onElementDrag;
+    onElementDragEndRef.current = onElementDragEnd;
+  });
+
+  // Window-level mouseup so drag end fires even if mouse leaves the grid
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (!dragStateRef.current) return;
+      const { elemId, lastRow, lastCol } = dragStateRef.current;
+      dragStateRef.current = null;
+      dragCallInFlightRef.current = false;
+      onElementDragEndRef.current?.(elemId, [lastRow, lastCol]);
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
+
+  const getCellFromMouseEvent = useCallback((e: React.MouseEvent): [number, number] => {
+    const container = containerRef.current;
+    if (!container) return [0, 0];
+    const rect = container.getBoundingClientRect();
+    const x = (e.clientX - rect.left + container.scrollLeft) / zoom / CELL_SIZE;
+    const y = (e.clientY - rect.top + container.scrollTop) / zoom / CELL_SIZE;
+    return [Math.max(0, Math.floor(y)), Math.max(0, Math.floor(x))];
+  }, [zoom]);
+
+  const handleDragStart = useCallback((elemId: number, position: [number, number]) => {
+    dragStateRef.current = { elemId, lastRow: position[0], lastCol: position[1] };
+    onElementDragStart?.(elemId, position);
+  }, [onElementDragStart]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragStateRef.current || dragCallInFlightRef.current) return;
+    const [row, col] = getCellFromMouseEvent(e);
+    const { elemId, lastRow, lastCol } = dragStateRef.current;
+    if (row === lastRow && col === lastCol) return;
+    dragStateRef.current.lastRow = row;
+    dragStateRef.current.lastCol = col;
+    dragCallInFlightRef.current = true;
+    // Wrap in Promise.resolve so the in-flight flag clears whether the handler
+    // returns a Promise (async) or void (sync / not defined).
+    Promise.resolve(onElementDragRef.current?.(elemId, [row, col]))
+      .finally(() => { dragCallInFlightRef.current = false; });
+  }, [getCellFromMouseEvent]);
+
+  // ── Grid setup ──────────────────────────────────────────────────────────
 
   useImperativeHandle(ref, () => ({
     alignGrid: () => {
@@ -222,9 +302,15 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
 
   const renderedObjects = useMemo(() => {
     return objectsToRender.map((obj) => (
-      <GridSingleObject key={obj.key} obj={obj} mouseEnabled={mouseEnabled} onElementClick={onElementClick} />
+      <GridSingleObject
+        key={obj.key}
+        obj={obj}
+        mouseEnabled={mouseEnabled}
+        onElementClick={onElementClick}
+        onElementDragStart={handleDragStart}
+      />
     ));
-  }, [objectsToRender, mouseEnabled, onElementClick]);
+  }, [objectsToRender, mouseEnabled, onElementClick, handleDragStart]);
 
   const getPanelClasses = (panel: PanelInfo): string => {
     const base = 'absolute transition-all duration-300 ease-out';
@@ -278,6 +364,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
       className="w-full h-full overflow-auto bg-gray-100 dark:bg-gray-900"
       onWheel={handleWheel}
       onMouseDown={() => { if (selectedTextBoxId) onSelectTextBox?.(null); }}
+      onMouseMove={handleMouseMove}
     >
       <div
         ref={gridContentRef}

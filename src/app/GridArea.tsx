@@ -3,7 +3,7 @@ import { toPng } from 'html-to-image';
 import { Grid, type GridHandle } from '../visual-panel/components/Grid';
 import { useGridState } from '../visual-panel/hooks/useGridState';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
-import { executeClickHandler, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
+import { executeClickHandler, executeEventHandler, type ClickHandlerResult } from '../code-builder/services/pythonExecutor';
 import { appendError } from '../output-terminal/terminalState';
 import { getConstructor } from '../visual-panel/types/elementRegistry';
 import type { TextBox } from '../text-boxes/types';
@@ -82,6 +82,31 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
         onDebugCall?.(result.debugCall);
       }
     }, [loadVisualBuilderObjects, onDebugCall]);
+
+    const applyEventResult = useCallback((result: ClickHandlerResult) => {
+      if (!result || result.error) {
+        if (result?.error) appendError(result.error);
+        return;
+      }
+      const hydrated = result.snapshot.map((el) => {
+        const ctor = getConstructor(el.type);
+        return ctor ? new ctor(el) : el;
+      });
+      loadVisualBuilderObjects(hydrated);
+      if (result.debugCall) onDebugCall?.(result.debugCall);
+    }, [loadVisualBuilderObjects, onDebugCall]);
+
+    const handleElementDragStart = useCallback(async (elemId: number, position: [number, number]) => {
+      applyEventResult(await executeEventHandler('on_drag_start', elemId, position[0], position[1]));
+    }, [applyEventResult]);
+
+    const handleElementDrag = useCallback(async (elemId: number, position: [number, number]) => {
+      applyEventResult(await executeEventHandler('on_drag', elemId, position[0], position[1]));
+    }, [applyEventResult]);
+
+    const handleElementDragEnd = useCallback(async (elemId: number, position: [number, number]) => {
+      applyEventResult(await executeEventHandler('on_drag_end', elemId, position[0], position[1]));
+    }, [applyEventResult]);
 
     const handleTextBoxAdded = useCallback((box: TextBox) => {
       onTextBoxesChange([...textBoxes, box]);
@@ -199,6 +224,9 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
             darkMode={darkMode}
             mouseEnabled={mouseEnabled}
             onElementClick={handleElementClick}
+            onElementDragStart={handleElementDragStart}
+            onElementDrag={handleElementDrag}
+            onElementDragEnd={handleElementDragEnd}
             textBoxes={textBoxes}
             selectedTextBoxId={selectedTextBoxId}
             addingTextBox={addingTextBox}
