@@ -1,4 +1,4 @@
-import inspect
+
 from typing import get_type_hints
 
 
@@ -16,10 +16,6 @@ class VisualElem:
         VisualElem._registry.clear()
         VisualElem._vis_elem_id = 0
 
-    @staticmethod
-    def _stop_registry():
-        VisualElem._vis_elem_id = -1
-
     def __init__(self):
         self.position = (0, 0)
         self.visible = True
@@ -27,9 +23,8 @@ class VisualElem:
         self.z = 0
         self._parent = None
         self._elem_id = VisualElem._vis_elem_id
-        if VisualElem._vis_elem_id >= 0:
-            VisualElem._vis_elem_id += 1
-            VisualElem._registry.append(self)
+        VisualElem._vis_elem_id += 1
+        VisualElem._registry.append(self)
 
     def delete(self):
         """Remove this element from the registry and its parent panel."""
@@ -61,13 +56,16 @@ class VisualElem:
             alpha = 1.0
 
 
-        return {
+        out = {
             "position": [row, col],
             "visible": getattr(self, 'visible', True),
             "alpha": alpha,
             "z": int(getattr(self, 'z', 0)),
             "_elem_id": self._elem_id,
         }
+        if self._parent is not None:
+            out["panelId"] = str(self._parent._elem_id)
+        return out
 
     def _serialize(self):
         """Override in subclasses to provide type-specific serialization."""
@@ -95,6 +93,9 @@ class Panel(VisualElem):
         self._children = []
 
     def add(self, elem):
+        if elem._parent is not None:
+            elem._parent.remove(elem)
+
         if elem not in self._children:
             self._children.append(elem)
             elem._parent = self
@@ -114,12 +115,10 @@ class Panel(VisualElem):
 
 
 
-def _serialize_elem(elem, vb_id):
-    """Serialize one visual element to a dict for JSON."""
-    out = elem._serialize()
-    if getattr(elem, '_parent', None) is not None and hasattr(elem._parent, '_vb_id'):
-        out["panelId"] = elem._parent._vb_id
-    return out
+def _serialize_visual_builder():
+    """Walk VisualElem._registry and return list of serialized elements."""
+    import json
+    return json.dumps([elem._serialize() for elem in VisualElem._registry])
 
 
 
@@ -172,31 +171,3 @@ def _execute_run_call(expression: str) -> str:
         'handlers': handlers,
         'output': _capture.getvalue(),
     })
-
-
-def _serialize_visual_builder():
-    """Walk VisualElem._registry and return list of serialized elements."""
-    import json
-    panel_counter = [0]
-    elem_counter = [0]
-
-    def next_panel_id():
-        panel_counter[0] += 1
-        return "panel-" + str(panel_counter[0])
-
-    def next_elem_id():
-        elem_counter[0] += 1
-        return "elem-" + str(elem_counter[0])
-
-    for i, elem in enumerate(VisualElem._registry):
-        if isinstance(elem, Panel):
-            elem._vb_id = next_panel_id()
-        else:
-            elem._vb_id = next_elem_id()
-
-    panels_first = sorted(VisualElem._registry, key=lambda e: (0 if isinstance(e, Panel) else 1, type(e).__name__))
-    result = []
-    for elem in panels_first:
-        result.append(_serialize_elem(elem, elem._vb_id))
-
-    return json.dumps(result)

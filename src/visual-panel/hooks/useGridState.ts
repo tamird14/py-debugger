@@ -279,7 +279,8 @@ export function useGridState() {
       let panelIndex = 0;
       for (const el of elements) {
         if (el.type === 'panel') {
-          serializedPanelIdToGridId.set(`panel-${panelIndex + 1}`, `${VB_PREFIX}panel-${panelIndex}`);
+          const elemId = (el as any)._elem_id;
+          if (elemId != null) serializedPanelIdToGridId.set(String(elemId), `${VB_PREFIX}panel-${panelIndex}`);
           panelIndex++;
         }
       }

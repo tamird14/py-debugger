@@ -1,3 +1,4 @@
+import inspect
 
 def on_click(self, position: tuple[int, int]):
     pass
