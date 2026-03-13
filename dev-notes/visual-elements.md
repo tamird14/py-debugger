@@ -37,7 +37,9 @@ Each TypeScript shape class registers itself by type string: `registerVisualElem
 
 ### Mouse Events
 
-Click data is assembled during grid hydration: for each element with a valid `_elemId` that has a registered `on_click` handler, a `clickData` object is attached to the grid cell. The Grid renders those cells with pointer cursor and a click listener. Clicking dispatches through GridArea → pythonExecutor → Python `_handle_click()`.
+**Click:** For each element with a valid `_elemId` that has a registered `on_click` handler, a `clickData` object is attached to the grid cell. The Grid renders those cells with pointer cursor and a click listener.
+
+**Drag:** For each element that has any of `on_drag_start`, `on_drag`, or `on_drag_end` registered, a `dragData` object is attached. The Grid shows `cursor-grab` on those cells and tracks drag state (see Drag Dispatch Chain below).
 
 ---
 
@@ -64,14 +66,22 @@ Click data is assembled during grid hydration: for each element with a valid `_e
 
 Children store positions **relative to their parent panel's top-left corner**. TypeScript resolves these to absolute grid coordinates.
 
+#### `_handle_event_with_output(event_name, elem_id, row, col)`
+
+**File:** `src/code-builder/services/event_handling.py`
+
+Single unified dispatcher for all interactive events. Looks up the element by `_elem_id`, calls `getattr(elem, event_name)`, captures stdout, and returns `JSON {debugCall, runCall, output}`. Handles `on_click`, `on_drag_start`, `on_drag`, `on_drag_end`.
+
+`_handle_click_with_output(elem_id, row, col)` is a thin wrapper kept for backward compatibility (TypeScript still calls it by that name for clicks).
+
 #### `_serialize_handlers()` vs `_serialize_handlers_json()`
 
 ```python
-_serialize_handlers()      → Python dict { int: ["on_click"] }
+_serialize_handlers()      → Python dict { int: ["on_click", "on_drag_start", ...] }
                              Used ONLY inside _visual_code_trace (embedded in outer json.dumps)
 
 _serialize_handlers_json() → JSON string of the same dict
-                             Used by TypeScript direct calls (executeClickHandler)
+                             Used by TypeScript direct calls (executeEventHandler)
 ```
 
 **Never swap them** — embedding the JSON string version inside `json.dumps` double-encodes it.
@@ -153,45 +163,94 @@ For each non-Panel element:
 
 Note: `element.position` in a hydrated TypeScript instance is the **absolute position** after `BasicShape` construction — but for children of panels, the raw JSON position was relative; TypeScript adds the panel offset here.
 
-#### Click Data Assembly
+#### Interaction Data Assembly
+
+Both `clickData` and `dragData` use the shared `InteractionData` type (`src/visual-panel/types/grid.ts`):
+
+```typescript
+export interface InteractionData {
+  elemId: number;
+  position: [number, number];  // top-left cell of the element (absolute)
+}
+```
 
 ```typescript
 const elemId = (el as any)._elemId as number | undefined;
-const clickData = elemId != null && hasHandler(elemId, 'on_click')
+
+const clickData: InteractionData | undefined = elemId != null && hasHandler(elemId, 'on_click')
     ? { elemId, position: el.position as [number, number] }
+    : undefined;
+
+const hasDrag = elemId != null && (
+    hasHandler(elemId, 'on_drag_start') || hasHandler(elemId, 'on_drag') || hasHandler(elemId, 'on_drag_end')
+);
+const dragData: InteractionData | undefined = hasDrag
+    ? { elemId: elemId!, position: el.position as [number, number] }
     : undefined;
 ```
 
-Cells with `clickData` get pointer cursor and click listener in `Grid.tsx`. Cells without it are purely visual.
+Cells with `clickData` get `cursor-pointer`; cells with `dragData` get `cursor-grab`. A cell can have both.
 
 ---
 
 ### Click Dispatch Chain
 
-**Files:** `Grid.tsx` → `GridArea.tsx` → `pythonExecutor.ts` → `visualBuilder.py`
+**Files:** `Grid.tsx` → `GridArea.tsx` → `pythonExecutor.ts` → `event_handling.py`
 
 ```
-Grid.tsx:
-  onElementClick(clickData.elemId, [row, col])
+Grid.tsx (GridSingleObject):
+  onClick → onElementClick(clickData.elemId, [row, col])
 
-GridArea.tsx (handleElementClick):
-  result = await executeClickHandler(elemId, row, col)
-  if result.snapshot:
-    hydrate snapshot → loadVisualBuilderObjects(hydrated)
-  if result.debugCall:
-    onDebugCall?.(result.debugCall)
+GridArea.tsx (handleElementClick → applyEventResult):
+  result = await executeClickHandler(elemId, row, col)   // thin wrapper
+  hydrate snapshot → loadVisualBuilderObjects(hydrated)
+  if result.debugCall: onDebugCall?.(result.debugCall)
 
-pythonExecutor.ts (executeClickHandler):
-  1. _handle_click(elemId, row, col)      → null or "expression string"
+pythonExecutor.ts (executeEventHandler 'on_click'):
+  1. _handle_event_with_output('on_click', elemId, row, col)
   2. _serialize_visual_builder()          → snapshot JSON
   3. _serialize_handlers_json()           → handlers JSON (always re-fetched)
-  setHandlers(JSON.parse(handlersJson))
   return { snapshot, debugCall?: string }
 ```
 
 **Why snapshot hydration happens in GridArea, not the executor:** The executor returns raw JSON (plain objects). GridArea calls `getConstructor` to instantiate proper TypeScript class instances before passing to `loadVisualBuilderObjects`. This is the same hydration as `hydrateTimelineFromArray` but for a single snapshot.
 
-**Why handlers are re-fetched on every click:** Elements created inside `on_click` handlers accumulate in `_registry` and may have their own `on_click`. Re-fetching ensures they are immediately clickable without a full re-analyze. Cost: one extra Pyodide call per click. See [sharp-edges.md](./sharp-edges.md).
+**Why handlers are re-fetched on every event:** Elements created inside handlers accumulate in `_registry` and may have their own handlers. Re-fetching ensures they are immediately interactive without a full re-analyze. Cost: one extra Pyodide call per event. See [sharp-edges.md](./sharp-edges.md).
+
+---
+
+### Drag Dispatch Chain
+
+**Files:** `Grid.tsx` → `GridArea.tsx` → `pythonExecutor.ts` → `event_handling.py`
+
+```
+Grid.tsx (GridSingleObject):
+  onMouseDown → onElementDragStart(dragData.elemId, [row, col])
+
+Grid.tsx (container onMouseMove):
+  if dragStateRef set and cell changed and no call in flight:
+    onElementDrag(elemId, [row, col])   ← fires on each new cell
+    dragCallInFlightRef = true until Promise resolves
+
+window mouseup listener (Grid useEffect):
+  onElementDragEnd(elemId, [lastRow, lastCol])
+  clear dragStateRef
+
+GridArea.tsx (handleElementDrag{Start,/,End} → applyEventResult):
+  result = await executeEventHandler('on_drag_{start|/|end}', elemId, row, col)
+  hydrate snapshot → loadVisualBuilderObjects(hydrated)
+
+pythonExecutor.ts (executeEventHandler):
+  1. _handle_event_with_output(eventName, elemId, row, col)
+  2. _serialize_visual_builder()
+  3. _serialize_handlers_json()
+```
+
+**`position` semantics:** All three drag handlers receive the **absolute grid cell `(row, col)`** under the mouse — the same type as `on_click`. It is not relative to the element's origin.
+
+**In-flight guard:** `dragCallInFlightRef` prevents queuing multiple simultaneous Pyodide calls during fast drags. If the mouse moves through several cells before the previous `on_drag` call returns, intermediate cells are skipped. The final position is always captured by `on_drag_end`.
+
+**Window-level mouseup:** The `mouseup` listener is attached to `window` (not the grid container) so drag-end fires even if the mouse is released outside the grid.
 
 ---
 
@@ -238,11 +297,12 @@ In Jump mode (animation off), all transitions are disabled for instant updates.
 
 1. `_elem_id` (Python `int`) === `_elemId` (TypeScript `number`) — the only stable identity
 2. `_vb_id` is ephemeral — never use it across serialization calls
-3. `BasicShape` subclasses (`Rect`, `Circle`, `Arrow`) are clickable; `Line`, `Label`, `Array` are not
+3. `BasicShape` subclasses (`Rect`, `Circle`, `Arrow`) are clickable/draggable; `Line`, `Label`, `Array` are not
 4. `_serialize_handlers()` → dict (embed in outer json.dumps); `_serialize_handlers_json()` → string (for TS calls)
-5. Handlers are re-fetched after every click to support dynamically created elements
+5. Handlers are re-fetched after every event to support dynamically created elements
 6. Panel children have panel-relative positions in Python JSON; absolute positions in TypeScript instances
 7. Lower `z` = closer to viewer = rendered on top
+8. All event handlers (`on_click`, `on_drag_*`) receive absolute grid `(row, col)` — same type, same coordinate space
 
 ---
 
@@ -250,13 +310,14 @@ In Jump mode (animation off), all transitions are disabled for instant updates.
 
 | File | Purpose |
 |------|---------|
-| `src/code-builder/services/visualBuilder.py` | Python serialization, handler registry, `_handle_click_with_output`, `_execute_run_call` |
+| `src/code-builder/services/event_handling.py` | `_handle_event_with_output` (unified dispatcher); `_handle_click_with_output` (thin wrapper); `_serialize_handlers`/`_serialize_handlers_json` |
+| `src/code-builder/services/visualBuilder.py` | Python serialization, `_get_event_handlers`, `_execute_run_call` |
 | `src/code-builder/services/visualBuilderShapes.py` | `Rect`, `Circle`, `Arrow`, `Line`, `Label`, `Array`, `Array2D` shape classes |
 | `src/visual-panel/render-objects/BasicShape.ts` | `_elemId` bridge; clickable base class |
 | `src/visual-panel/render-objects/line/Line.ts` | `Line` TypeScript class (implements `VisualBuilderElementBase`, not `BasicShape`) |
 | `src/visual-panel/types/elementRegistry.ts` | Constructor registry by type string |
 | `src/timeline/timelineState.ts` | `hydrateTimelineFromArray` / `hydrateTimelineFromJson` |
-| `src/visual-panel/hooks/useGridState.ts` | `loadVisualBuilderObjects`; two-pass algorithm; click data; z-sort |
+| `src/visual-panel/hooks/useGridState.ts` | `loadVisualBuilderObjects`; two-pass algorithm; `clickData`/`dragData` assembly; z-sort |
 | `src/visual-panel/handlersState.ts` | `setHandlers`; `hasHandler` |
-| `src/app/GridArea.tsx` | Click dispatch; snapshot re-hydration |
+| `src/app/GridArea.tsx` | Click + drag dispatch; `applyEventResult` snapshot re-hydration helper |
 | `src/animation/animationContext.tsx` | `AnimationContext` boolean; Animated/Jump toggle |
