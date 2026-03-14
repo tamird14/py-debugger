@@ -13,6 +13,8 @@ import { getStateAt, getMaxTime, getTimeline } from '../timeline/timelineState';
 import { getCodeStepAt } from '../debugger-panel/codeTimelineState';
 import type { TextBox } from '../text-boxes/types';
 
+const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
 const SAMPLE_MODULES = import.meta.glob('../samples/*.json', { eager: true }) as Record<
   string,
   { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }
@@ -30,6 +32,9 @@ const buttonBase =
 const buttonNeutral =
   `${buttonBase} bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600`;
 
+const buttonLocal =
+  `${buttonBase} bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 text-amber-800 dark:text-amber-300`;
+
 
 function App() {
   const { darkMode, toggleDarkMode } = useTheme();
@@ -37,6 +42,7 @@ function App() {
   const gridAreaRef = useRef<GridAreaHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [samplesOpen, setSamplesOpen] = useState(false);
+  const [projectName, setProjectName] = useState('untitled');
 
   // Visual builder state
   const [visualBuilderCode, setVisualBuilderCode] = useState('');
@@ -212,29 +218,42 @@ function App() {
   // Load \ Save
   // ---------------------------------------------------------------------------
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    const name = projectName.trim() || 'untitled';
     const data = {
       builderCode: visualBuilderCode,
       debuggerCode,
       breakpoints: [...breakpoints],
       textBoxes,
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const content = JSON.stringify(data, null, 2);
+
+    if (IS_LOCAL) {
+      await fetch('/api/save-sample', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, content }),
+      });
+      return;
+    }
+
+    const blob = new Blob([content], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'visual-debugger.json';
+    link.download = `${name}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [visualBuilderCode, debuggerCode, breakpoints]);
+  }, [visualBuilderCode, debuggerCode, breakpoints, textBoxes, projectName]);
 
-  const handleLoad = useCallback(async (data: { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }) => {
+  const handleLoad = useCallback(async (data: { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }, name: string) => {
     if (!data.builderCode) {
       setAnalyzeError('Invalid file: missing builderCode field');
       return;
     }
+    setProjectName(name);
     const dbgCode = data.debuggerCode ?? '';
     setVisualBuilderCode(data.builderCode);
     setDebuggerCode(dbgCode);
@@ -247,17 +266,18 @@ function App() {
   useEffect(() => {
     if (!pyodideReady || autoLoadedRef.current || SAMPLES.length === 0) return;
     autoLoadedRef.current = true;
-    handleLoad(SAMPLES[0].data).then(handleEdit);
+    handleLoad(SAMPLES[0].data, SAMPLES[0].name).then(handleEdit);
   }, [pyodideReady, handleLoad, handleEdit]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const name = file.name.replace(/\.json$/, '');
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string);
-        handleLoad(data);
+        handleLoad(data, name);
       } catch {
         console.error('Failed to parse JSON file');
       }
@@ -282,9 +302,17 @@ function App() {
             About
           </Link>
 
+          {/* Project name */}
+          <input
+            type="text"
+            value={projectName}
+            onChange={e => setProjectName(e.target.value)}
+            className="text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent focus:outline-none focus:border-indigo-500 text-gray-700 dark:text-gray-200 w-36"
+          />
+
           {/* Save / Load / Samples */}
-          <button type="button" onClick={handleSave} className={buttonNeutral}>Save</button>
-          <button type="button" onClick={() => fileInputRef.current?.click()} className={buttonNeutral}>Load</button>
+          <button type="button" onClick={handleSave} className={IS_LOCAL ? buttonLocal : buttonNeutral}>Save</button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className={IS_LOCAL ? buttonLocal : buttonNeutral}>Load</button>
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
           <div className="relative">
             <button type="button" onClick={() => setSamplesOpen((o) => !o)} className={buttonNeutral}>
@@ -299,7 +327,7 @@ function App() {
                       key={name}
                       type="button"
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      onClick={() => { handleLoad(data); setSamplesOpen(false); }}
+                      onClick={() => { handleLoad(data, name); setSamplesOpen(false); }}
                     >
                       {name}
                     </button>
