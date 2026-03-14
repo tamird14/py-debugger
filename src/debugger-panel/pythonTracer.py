@@ -32,15 +32,22 @@ def _is_traceable_func(name: str) -> bool:
 
 def _capture_variables(
     frame: FrameType,
-    exclude_vars: Optional[Set[str]] = None
+    exclude_vars: Optional[Set[str]] = None,
+    memo: Optional[dict] = None,
 ) -> Dict[str, Any]:
     """Capture variables from a frame as raw Python values.
 
     Returns {name: raw_python_value}. Type conversion for the TypeScript
     boundary happens later in _serialize_variables_for_ts().
+
+    memo: if provided, shared across all deepcopy calls so the same original
+    object always maps to the same copy within a step. The caller can inspect
+    memo afterwards to build an identity registry (see R class).
     """
     if exclude_vars is None:
         exclude_vars = set()
+    if memo is None:
+        memo = {}
 
     result: Dict[str, Any] = {}
     local_vars = frame.f_locals.copy()
@@ -66,7 +73,7 @@ def _capture_variables(
             continue
         if callable(value) or isinstance(value, type):
             continue
-        result[name] = copy.deepcopy(value)
+        result[name] = copy.deepcopy(value, memo)
 
     return result
 
@@ -198,11 +205,88 @@ class V:
         except Exception:
             return self.expr
 
+class R:
+    """Tracks a debugger object across trace steps by its original identity.
+
+    The builder stores an R obtained from params; at each step the R re-resolves
+    to the current step's copy of that object via R.registry.
+
+    Builder code never constructs R directly — it receives R objects transparently
+    when accessing params (a TrackedDict) or traversing attributes of an R.
+
+    Analogous to V("expr") but for object identity rather than expression evaluation.
+    """
+    registry: dict = {}      # {id(original_obj): current_step_copy}  — set per step
+    inv_registry: dict = {}  # {id(current_step_copy): id(original_obj)} — set per step
+
+    def __init__(self, orig_id: int):
+        object.__setattr__(self, '_orig_id', orig_id)
+
+    @classmethod
+    def _wrap(cls, obj: Any) -> Any:
+        """Return obj wrapped in R if it has a tracked identity, otherwise return raw."""
+        if isinstance(obj, (int, float, str, bool, type(None))):
+            return obj
+        orig_id = cls.inv_registry.get(id(obj))
+        return cls(orig_id) if orig_id is not None else obj
+
+    def resolve(self) -> Any:
+        """Return the current step's copy of the tracked object, or None if gone."""
+        return R.registry.get(object.__getattribute__(self, '_orig_id'))
+
+    def __getattr__(self, name: str) -> Any:
+        obj = self.resolve()
+        if obj is None:
+            raise AttributeError(f"Tracked object no longer exists in the current step")
+        return R._wrap(getattr(obj, name))
+
+    def __getitem__(self, key: Any) -> Any:
+        obj = self.resolve()
+        return R._wrap(obj[key])
+
+    def __repr__(self) -> str:
+        obj = self.resolve()
+        return repr(obj)
+
+    def __len__(self) -> int:
+        return len(self.resolve())
+
+    def __iter__(self):
+        obj = self.resolve()
+        return (R._wrap(item) for item in obj)
+
+
+class TrackedDict:
+    """Wraps a variables dict so attribute access returns R-tracked objects.
+
+    Passed as 'params' to the builder's update() hook so the builder can hold
+    references that automatically re-resolve to the correct copy each step.
+    """
+    def __init__(self, raw: Dict[str, Any]):
+        self._raw = raw
+
+    def __getitem__(self, key: str) -> Any:
+        return R._wrap(self._raw[key])
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._raw
+
+    def keys(self):
+        return self._raw.keys()
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key not in self._raw:
+            return default
+        return R._wrap(self._raw[key])
+
+
 def get_v_attr(self, name):
     value = object.__getattribute__(self, name)
 
     if isinstance(value, V):
         return value.eval()
+    if isinstance(value, R):
+        return value.resolve()
     return value
 
 VisualElem.__getattribute__ = get_v_attr
@@ -287,16 +371,21 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
             return trace_fn
 
         # Preparing variables and scope
-        variables = _capture_variables(frame, {'__builtins__', '__name__', '__doc__'})
+        _step_memo: dict = {}
+        variables = _capture_variables(frame, {'__builtins__', '__name__', '__doc__'}, _step_memo)
         scope = _capture_scope(frame)
 
         cur_pos = debugger_output_buf.tell()
         output_slice = debugger_output_buf.getvalue()[last_output_pos:cur_pos]
         last_output_pos = cur_pos
 
+        # Update R identity registries for this step so R wrappers resolve correctly.
+        R.registry = _step_memo
+        R.inv_registry = {id(v): k for k, v in _step_memo.items()}
+
         V.params = variables
         V.scope = scope
-        accumulated_builder_output.append(_call_builder(update, variables, scope))
+        accumulated_builder_output.append(_call_builder(update, TrackedDict(variables), scope))
 
         snapshot = json.loads(_serialize_visual_builder())
 
