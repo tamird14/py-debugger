@@ -1,9 +1,10 @@
 import sys
 import json
 import copy
+import ast as _ast
 from io import StringIO
 from types import FrameType
-from typing import Any, Dict, List, Tuple, Optional, Set, TypedDict, Literal, TextIO
+from typing import Any, Dict, List, Tuple, Optional, Set, TypedDict
 
 
 class VariableValue(TypedDict):
@@ -19,10 +20,6 @@ class TraceStep(TypedDict):
 
 MAX_TRACE_STEPS = 1000  # TODO: make this user-configurable
 
-_trace_steps: List[TraceStep] = []
-_step_stdout_positions: List[int] = []
-_function_events: List[Tuple] = []   # (step_index, 'call'|'return', func_name, data)
-_output_capture = StringIO()
 _original_stdout = sys.stdout
 
 
@@ -31,6 +28,7 @@ def _is_traceable_func(name: str) -> bool:
     if name.startswith('__') and name.endswith('__'):
         return True
     return not name.startswith('_')
+
 
 def _capture_variables(
     frame: FrameType,
@@ -71,6 +69,23 @@ def _capture_variables(
         result[name] = copy.deepcopy(value)
 
     return result
+
+
+def _capture_scope(frame: FrameType) -> List[Tuple[str, int]]:
+    """Capture the current scope as a list of (function_name, line_number) tuples,
+    innermost scope last. The top-level module scope is represented as ('_main_', line).
+    """
+    scope = []
+    f = frame
+    while f is not None and f.f_code.co_filename in ('<exec>', '<string>'):
+        name = f.f_code.co_name
+        if name == '<module>':
+            name = '_main_'
+        is_priv = name.startswith('_') and not (name.startswith('__') and name.endswith('__'))
+        if not is_priv:
+            scope.insert(0, (name, f.f_lineno))
+        f = f.f_back
+    return scope
 
 
 def _json_leaf(value: Any) -> Any:
@@ -137,115 +152,18 @@ def _serialize_variables_for_ts(raw_vars: Dict[str, Any]) -> Dict[str, VariableV
             pass
     return result
 
-TraceEvent = Literal["call", "line", "return", "exception", "opcode"]
-
-def _trace_function(
-    frame: FrameType,
-    event: TraceEvent,
-    arg: Any
-):
-    """Trace function called for each line of code."""
-    global _trace_steps, _step_stdout_positions, _function_events
-
-    code = frame.f_code
-
-    if code.co_filename not in ('<exec>', '<string>'):
-        return _trace_function
-
-    if event == 'call':
-        if not _is_traceable_func(code.co_name):
-            return _trace_function
-        kwargs = {
-            name: copy.deepcopy(frame.f_locals[name])
-            for name in code.co_varnames[:code.co_argcount]
-            if name != 'self' and name in frame.f_locals
-        }
-        _function_events.append((len(_trace_steps), 'call', code.co_name, kwargs))
-        return _trace_function
-
-    if event == 'return':
-        if not _is_traceable_func(code.co_name):
-            return _trace_function
-        if code.co_name == '__init__':
-            value = frame.f_locals.get('self')
-        else:
-            value = copy.deepcopy(arg)
-        _function_events.append((len(_trace_steps), 'return', code.co_name, value))
-        return _trace_function
-
-    if event != 'line':
-        return _trace_function
-
-    if code.co_name.startswith('_'):
-        return _trace_function
-
-    _step_stdout_positions.append(_output_capture.tell())
-
-    variables = _capture_variables(frame, {'__builtins__', '__name__', '__doc__'})
-
-    scope = []
-    f = frame
-    while f is not None and f.f_code.co_filename in ('<exec>', '<string>'):
-        name = f.f_code.co_name
-        if name.startswith('_'):
-            f = f.f_back
-            continue
-        scope.insert(0, (name if name != '<module>' else '_main_', f.f_lineno))
-        f = f.f_back
-
-    _trace_steps.append({
-        'variables': variables,
-        'scope': scope
-    })
-
-    if len(_trace_steps) >= MAX_TRACE_STEPS:
-        raise PopupException(
-            f"Trace exceeded {MAX_TRACE_STEPS} steps — possible infinite loop. "
-            "(This limit will be user-configurable in a future update.)"
-        )
-
-    return _trace_function
 
 _exec_context: dict = {}
 _last_code_line_count: int = 0
 
-def _run_with_trace(code_str: str, persistent: bool = False) -> Dict[str, Any]:
-    """Run code with tracing enabled.
-
-    When persistent=False (initial trace) a fresh exec_globals dict is created
-    and saved into _exec_context so variables accumulate in-place.
-    When persistent=True the saved dict is reused, giving the sub-run access to
-    all variables and functions defined during the initial trace.
-    """
-    global _trace_steps, _step_stdout_positions, _function_events, _output_capture, _exec_context
-    _trace_steps = []
-    _step_stdout_positions = []
-    _function_events = []
-    _output_capture = StringIO()
-
-    if not persistent:
-        _exec_context = {'__builtins__': __builtins__}
-
-    sys.stdout = _output_capture
-
+def _extract_names(expr: str) -> set:
+    """Return all variable names referenced in an expression string."""
     try:
-        compiled = compile(code_str, '<exec>', 'exec')
-        sys.settrace(_trace_function)
-        exec(compiled, _exec_context)
-    finally:
-        sys.settrace(None)
-        sys.stdout = _original_stdout
+        tree = _ast.parse(expr, mode='eval')
+        return {node.id for node in _ast.walk(tree) if isinstance(node, _ast.Name)}
+    except SyntaxError:
+        return set()
 
-    total_output = _output_capture.getvalue()
-    for i, step in enumerate(_trace_steps):
-        start = _step_stdout_positions[i]
-        end = _step_stdout_positions[i + 1] if i + 1 < len(_step_stdout_positions) else len(total_output)
-        step['output'] = total_output[start:end]
-
-    return {
-        'steps': _trace_steps,
-        'output': total_output
-    }
 
 class V:
     params = {}
@@ -261,12 +179,22 @@ class V:
         "sorted": sorted,
     }
 
-    def __init__(self, expr: str):
+    def __init__(self, expr: str, default: Any = None, names=None):
         self.expr = expr
+        self.default = default
+        if names is not None:
+            self._deps = set(names)
+        else:
+            self._deps = _extract_names(expr) - set(V.SAFE_GLOBALS.keys())
 
     def eval(self):
         try:
             return eval(self.expr, {"__builtins__": {}}, {**V.SAFE_GLOBALS, **V.params})
+        except NameError as e:
+            undefined = str(e).split("'")[1] if "'" in str(e) else None
+            if undefined in self._deps:
+                return self.default
+            return self.default  # Fallback for unparseable NameError message
         except Exception:
             return self.expr
 
@@ -301,62 +229,116 @@ def function_exit(function_name: str, value: Any) -> None:
     pass
 
 def _visual_code_trace(code: str, persistent: bool = False) -> str:
-    global _last_code_line_count
+    global _last_code_line_count, _exec_context
     if not persistent:
         _last_code_line_count = len(code.splitlines())
 
-    # We separate the trace first for the debugger code, and then the builder code.
-    # This way we can copy the value of variables to previous steps even before
-    # they exists, so the builder code side will not constantly hit
-    # "variable not found" errors.
-    _run_with_trace(code, persistent)
+    code_trace: List[TraceStep] = []
+    visual_timeline = []
+    debugger_output_buf = StringIO()
+    last_output_pos = 0
+    accumulated_builder_output: List[str] = []  # builder output from function events since last line step
 
-    code_trace: List[TraceStep] = list(_trace_steps)
-    func_events = list(_function_events)
-    timeline = []
-
-    next_params = {}
-    for step in code_trace[::-1]:
-        next_params.update(step['variables'])
-        step['variables'].update({k: copy.deepcopy(v) for k, v in next_params.items()})
-
-    fe_idx = 0
-
-    def _drain_func_events(up_to_step: int) -> None:
-        """Call function_call/function_exit for buffered events before step up_to_step.
-        Writes to whatever sys.stdout is currently set (caller's responsibility)."""
-        nonlocal fe_idx
-        while fe_idx < len(func_events) and func_events[fe_idx][0] == up_to_step:
-            _, evt, fname, data = func_events[fe_idx]
-            if evt == 'call':
-                function_call(fname, **data)
-            else:
-                function_exit(fname, data)
-            fe_idx += 1
-
-    for step_idx, step in enumerate(code_trace):
-        _builder_cap = StringIO()
-        sys.stdout = _builder_cap
+    def _call_builder(fn, *args, **kwargs):
+        """Call a builder hook with tracing disabled and stdout captured."""
+        buf = StringIO()
+        sys.settrace(None)
+        sys.stdout = buf
         try:
-            _drain_func_events(step_idx)
-            update(step['variables'], step['scope'])
+            fn(*args, **kwargs)
         finally:
-            sys.stdout = _original_stdout
-        step['builder_output'] = _builder_cap.getvalue()
-        V.params = step['variables']
-        V.scope = step['scope']
-        snapshot_json = _serialize_visual_builder()
-        snapshot = json.loads(snapshot_json)
-        timeline.append(snapshot)
+            sys.stdout = debugger_output_buf
+            sys.settrace(trace_fn)
+        return buf.getvalue()
 
-    # Drain any function events that occurred after the last line step
-    _drain_func_events(len(code_trace))
+    def trace_fn(frame, event, arg):
+        nonlocal last_output_pos
+        code_obj = frame.f_code
+        if code_obj.co_filename not in ('<exec>', '<string>'):
+            return trace_fn
+
+        if event == 'call':
+            if not _is_traceable_func(code_obj.co_name):
+                return trace_fn
+            kwargs = {
+                name: copy.deepcopy(frame.f_locals[name])
+                for name in code_obj.co_varnames[:code_obj.co_argcount]
+                if name != 'self' and name in frame.f_locals
+            }
+            accumulated_builder_output.append(_call_builder(function_call, code_obj.co_name, **kwargs))
+            return trace_fn
+
+        if event == 'return':
+            if not _is_traceable_func(code_obj.co_name):
+                return trace_fn
+            value = frame.f_locals.get('self') if code_obj.co_name == '__init__' else copy.deepcopy(arg)
+            accumulated_builder_output.append(_call_builder(function_exit, code_obj.co_name, value))
+            return trace_fn
+
+        if event != 'line':
+            return trace_fn
+
+        is_private = code_obj.co_name.startswith('_') and not (
+            code_obj.co_name.startswith('__') and code_obj.co_name.endswith('__')
+        )
+        if is_private:
+            return trace_fn
+
+        # Preparing variables and scope
+        variables = _capture_variables(frame, {'__builtins__', '__name__', '__doc__'})
+        scope = _capture_scope(frame)
+
+        cur_pos = debugger_output_buf.tell()
+        output_slice = debugger_output_buf.getvalue()[last_output_pos:cur_pos]
+        last_output_pos = cur_pos
+
+        V.params = variables
+        V.scope = scope
+        accumulated_builder_output.append(_call_builder(update, variables, scope))
+
+        snapshot = json.loads(_serialize_visual_builder())
+
+        code_trace.append({
+            'variables': variables,
+            'scope': scope,
+            'output': output_slice,
+            'builder_output': ''.join(accumulated_builder_output),
+        })
+        accumulated_builder_output.clear()
+        visual_timeline.append(snapshot)
+
+        if len(code_trace) >= MAX_TRACE_STEPS:
+            raise PopupException(
+                f"Trace exceeded {MAX_TRACE_STEPS} steps — possible infinite loop. "
+                "(This limit will be user-configurable in a future update.)"
+            )
+
+        return trace_fn
+
+    exec_ctx = _exec_context if persistent else {'__builtins__': __builtins__}
+    if not persistent:
+        _exec_context = exec_ctx
+
+    sys.stdout = debugger_output_buf
+    try:
+        compiled = compile(code, '<exec>', 'exec')
+        sys.settrace(trace_fn)
+        exec(compiled, exec_ctx)
+    finally:
+        sys.settrace(None)
+        sys.stdout = _original_stdout
+
+    # Attach any remaining debugger output to the last step
+    if code_trace:
+        remaining = debugger_output_buf.getvalue()[last_output_pos:]
+        if remaining:
+            code_trace[-1]['output'] += remaining
 
     # When code is empty (or has no traceable lines) still return the
     # current visual-builder state as a single step so the panel renders.
-    if not timeline:
+    if not visual_timeline:
         code_trace = [{'variables': {}, 'scope': [], 'output': '', 'builder_output': ''}]
-        timeline = [json.loads(_serialize_visual_builder())]
+        visual_timeline = [json.loads(_serialize_visual_builder())]
 
     # Serialize raw Python values to JSON-safe VariableValue dicts for TypeScript.
     for step in code_trace:
@@ -364,7 +346,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
 
     return json.dumps({
         'code_timeline': code_trace,
-        'visual_timeline': timeline,
+        'visual_timeline': visual_timeline,
         'handlers': _serialize_handlers(),
     })
 
@@ -388,7 +370,6 @@ def _prepare_and_trace_debug_call(expression: str) -> str:
     the position of the injected function in the displayed combined code, then
     trace it persistently.
     """
-    import ast as _ast
     func_source = f"def debug_call():\n    {expression}"
     tree = _ast.parse(func_source)
     _ast.increment_lineno(tree, _last_code_line_count + 2)
