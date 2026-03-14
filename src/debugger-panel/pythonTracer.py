@@ -260,19 +260,21 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
         if event == 'call':
             if not _is_traceable_func(code_obj.co_name):
                 return trace_fn
+            func_name = code_obj.co_qualname
             kwargs = {
                 name: copy.deepcopy(frame.f_locals[name])
                 for name in code_obj.co_varnames[:code_obj.co_argcount]
                 if name != 'self' and name in frame.f_locals
             }
-            accumulated_builder_output.append(_call_builder(function_call, code_obj.co_name, **kwargs))
+            accumulated_builder_output.append(_call_builder(function_call, func_name, **kwargs))
             return trace_fn
 
         if event == 'return':
             if not _is_traceable_func(code_obj.co_name):
                 return trace_fn
+            func_name = code_obj.co_qualname
             value = frame.f_locals.get('self') if code_obj.co_name == '__init__' else copy.deepcopy(arg)
-            accumulated_builder_output.append(_call_builder(function_exit, code_obj.co_name, value))
+            accumulated_builder_output.append(_call_builder(function_exit, func_name, value))
             return trace_fn
 
         if event != 'line':
