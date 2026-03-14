@@ -24,6 +24,7 @@ interface WindowWithPyodide extends Window {
 let pyodide: PyodideRuntime | null = null;
 let isLoading = false;
 let loadPromise: Promise<PyodideRuntime> | null = null;
+let pythonRuntimeReady = false;
 
 export async function loadPyodide(): Promise<PyodideRuntime> {
   if (pyodide) return pyodide;
@@ -99,19 +100,23 @@ function escapeForTripleQuote(code: string): string {
 async function loadPythonRuntime(): Promise<PyodideRuntime> {
   const py = await loadPyodide();
 
-  // Write builder and debugger import files to Pyodide VFS so they are importable
-  for (const [path, content] of Object.entries(BUILDER_IMPORT_FILES)) {
-    const filename = path.split('/').pop()!;
-    py.FS.writeFile(`/home/pyodide/${filename}`, content);
-  }
-  for (const [path, content] of Object.entries(DEBUGGER_IMPORT_FILES)) {
-    const filename = path.split('/').pop()!;
-    py.FS.writeFile(`/home/pyodide/${filename}`, content);
+  if (!pythonRuntimeReady) {
+    // Write builder and debugger import files to Pyodide VFS so they are importable
+    for (const [path, content] of Object.entries(BUILDER_IMPORT_FILES)) {
+      const filename = path.split('/').pop()!;
+      py.FS.writeFile(`/home/pyodide/${filename}`, content);
+    }
+    for (const [path, content] of Object.entries(DEBUGGER_IMPORT_FILES)) {
+      const filename = path.split('/').pop()!;
+      py.FS.writeFile(`/home/pyodide/${filename}`, content);
+    }
+
+    for (const { source } of PYTHON_FILES) {
+      await py.runPythonAsync(source);
+    }
+    pythonRuntimeReady = true;
   }
 
-  for (const { source } of PYTHON_FILES) {
-    await py.runPythonAsync(source);
-  }
   return py;
 }
 
@@ -310,4 +315,10 @@ export async function executeEventHandler(
 /** Thin wrapper kept for call-site compatibility. */
 export function executeClickHandler(elemId: number, row: number, col: number): Promise<ClickHandlerResult> {
   return executeEventHandler('on_click', elemId, row, col);
+}
+
+/** Reset all mutable Python state (exec context + visual registry). Called when entering edit mode. */
+export async function resetPythonState(): Promise<void> {
+  if (!pyodide) return;
+  await pyodide.runPythonAsync('_reset_exec_state()');
 }

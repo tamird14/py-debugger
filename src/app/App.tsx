@@ -4,7 +4,7 @@ import { Group, Panel, Separator } from 'react-resizable-panels';
 import { CodeEditorArea } from './CodeEditorArea';
 import { useTheme } from '../contexts/ThemeContext';
 import { AnimationContext } from '../animation/animationContext';
-import { loadPyodide, isPyodideLoaded, executePythonCode, executeDebugCall } from '../code-builder/services/pythonExecutor';
+import { loadPyodide, isPyodideLoaded, executePythonCode, executeDebugCall, resetPythonState } from '../code-builder/services/pythonExecutor';
 import { clearAll as clearTerminal, commitCurrentSegment, appendMarker } from '../output-terminal/terminalState';
 import { ApiReferencePanel } from '../api/ApiReferencePanel';
 import { TimelineControls } from '../timeline/TimelineControls';
@@ -120,6 +120,7 @@ function App() {
     setAnalyzeStatus('idle');
     setAppMode('idle');
     clearTerminal();
+    resetPythonState();
   }, []);
 
   const isCodeEmpty = (code: string) =>

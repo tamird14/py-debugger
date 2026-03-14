@@ -130,9 +130,38 @@ _MAX_BUILDER_STEPS = 100_000
 class _BuilderLoopError(Exception):
     pass
 
+# Names added to globals() by the most recent builder code run.
+_builder_added_globals: set = set()
+# Default (no-op) implementations of builder hooks, captured once on first use.
+_default_hooks: dict = {}
+# Names of the builder hooks that user builder code may override.
+_HOOK_NAMES = ('update', 'function_call', 'function_exit')
+
+
+def _reset_builder_state() -> None:
+    """Remove all names added by the last builder code run and restore default hooks."""
+    global _builder_added_globals
+    for name in _builder_added_globals:
+        globals().pop(name, None)
+    _builder_added_globals = set()
+    for name, fn in _default_hooks.items():
+        globals()[name] = fn
+
+
 def _exec_builder_code(code):
     """Execute visual builder code with stdout capture and infinite loop protection."""
+    global _builder_added_globals
     import io as _io, sys as _sys
+
+    # Capture default hook implementations the first time (before any builder code runs).
+    if not _default_hooks:
+        for _hook in _HOOK_NAMES:
+            if _hook in globals():
+                _default_hooks[_hook] = globals()[_hook]
+
+    # Clean up everything the previous builder code run added to globals.
+    _reset_builder_state()
+
     _step_count = [0]
 
     def _guard(frame, event, arg):
@@ -144,6 +173,7 @@ def _exec_builder_code(code):
             )
         return _guard
 
+    _before_keys = set(globals().keys())
     _old_stdout = _sys.stdout
     _sys.stdout = _io.StringIO()
     try:
@@ -155,6 +185,8 @@ def _exec_builder_code(code):
     finally:
         _sys.settrace(None)
         _sys.stdout = _old_stdout
+        # Track what this run added so we can remove it next time.
+        _builder_added_globals = set(globals().keys()) - _before_keys
 
 
 def _execute_run_call(expression: str) -> str:

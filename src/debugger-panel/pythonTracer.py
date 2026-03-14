@@ -368,6 +368,20 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
         'handlers': _serialize_handlers(),
     })
 
+def _reset_exec_state() -> None:
+    """Clear all mutable Python state: execution context, visual element registry,
+    and any names added to the global namespace by the previous builder code run.
+
+    Called when the user enters edit mode so the next Analyze starts from a
+    completely clean environment, regardless of what happened in the previous
+    interactive session.
+    """
+    global _exec_context
+    _exec_context = {'__builtins__': __builtins__}
+    VisualElem._clear_registry()
+    _reset_builder_state()
+
+
 def _prepare_and_trace_debug_call(expression: str) -> str:
     """
     Define `debug_call()` in _exec_context with line numbers shifted to match
