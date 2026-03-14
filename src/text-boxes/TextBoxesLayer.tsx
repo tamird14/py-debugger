@@ -31,6 +31,7 @@ export function TextBoxesLayer({
   onTextBoxDelete,
 }: TextBoxesLayerProps) {
   const [drawing, setDrawing] = useState<DrawState | null>(null);
+  const [latestCreatedId, setLatestCreatedId] = useState<string | null>(null);
   const isDrawingRef = useRef(false);
 
   const getCellFromOffset = (offsetX: number, offsetY: number) => ({
@@ -82,8 +83,10 @@ export function TextBoxesLayer({
         widthCells,
         heightCells,
         content: { type: 'doc', content: [{ type: 'paragraph' }] },
+        bgColor: '#ffffff',
       };
 
+      setLatestCreatedId(newBox.id);
       setDrawing(null);
       onTextBoxAdded(newBox);
     },
@@ -120,6 +123,7 @@ export function TextBoxesLayer({
           box={box}
           zoom={zoom}
           selected={selectedId === box.id}
+          autoEdit={box.id === latestCreatedId}
           onSelect={onSelectTextBox}
           onChange={onTextBoxChange}
           onDelete={onTextBoxDelete}

@@ -18,6 +18,7 @@ interface TextBoxItemProps {
   box: TextBox;
   zoom: number;
   selected: boolean;
+  autoEdit?: boolean;
   onSelect: (id: string) => void;
   onChange: (box: TextBox) => void;
   onDelete: (id: string) => void;
@@ -32,9 +33,9 @@ const handlePositions: Record<ResizeHandle, React.CSSProperties> = {
   se: { bottom: -HANDLE_SIZE / 2, right: -HANDLE_SIZE / 2, cursor: 'se-resize' },
 };
 
-export function TextBoxItem({ box, zoom, selected, onSelect, onChange, onDelete }: TextBoxItemProps) {
+export function TextBoxItem({ box, zoom, selected, autoEdit, onSelect, onChange, onDelete }: TextBoxItemProps) {
   const { darkMode } = useTheme();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(() => autoEdit ?? false);
   const prevBoxId = useRef(box.id);
 
   const editor = useEditor({
@@ -74,6 +75,7 @@ export function TextBoxItem({ box, zoom, selected, onSelect, onChange, onDelete 
       onSelect(box.id);
 
       if (editing) return;
+      e.preventDefault(); // prevent text selection during drag
 
       const startClientX = e.clientX;
       const startClientY = e.clientY;
@@ -169,7 +171,8 @@ export function TextBoxItem({ box, zoom, selected, onSelect, onChange, onDelete 
         overflow: 'visible',
         pointerEvents: 'auto',
         cursor: selected && !editing ? 'move' : 'default',
-        color: darkMode ? '#f9fafb' : '#111827',
+        color: darkMode ? 'rgba(249, 250, 251, 0.65)' : 'rgba(17, 24, 39, 0.55)',
+        userSelect: editing ? 'text' : 'none',
       }}
       onMouseDown={handleBodyMouseDown}
       onDoubleClick={() => setEditing(true)}
