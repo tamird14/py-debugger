@@ -16,6 +16,8 @@ import { migrateTextBox } from '../text-boxes/types';
 
 const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
+// TODO: split samples into "public" (shipped in prod) and "dev" (local-only, e.g. rich-text-demo).
+// Dev samples should only appear when import.meta.env.DEV is true.
 const SAMPLE_MODULES = import.meta.glob('../samples/*.json', { eager: true }) as Record<
   string,
   { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }

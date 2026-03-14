@@ -1,0 +1,165 @@
+{
+  "builderCode": "panel = Panel('main')\npanel.position = (1,1)\n\narr = Array(arr=V('arr'))\npanel.add(arr)\narr.position=(1,0)\n\nclass CRect(Rect):\n    def on_click(self, position: tuple[int, int]):\n        self.height = 5\n        return DebugCall('temp()')\n\nrect = CRect()\nrect.position = V('(0,n-i)')\nrect.color = (255,100,100)\nrect.alpha = 0.8\nrect.height = 2\nrect.width = V('i')\npanel.add(rect)\n\nar1 = Arrow()\nar1.orientation = 'down'\nar1.position = V('(0, j)')\nar1.color = (0,0,255)\npanel.add(ar1)\n\nar2 = Arrow()\nar2.orientation = 'down'\nar2.position = V('(0, j+1)')\nar2.color = (0,150,255)\npanel.add(ar2)\n",
+  "debuggerCode": "# Bubble sort - step through this code in the debugger\narr = [5, 3, 8, 1, 9, 2, 7, 4]\nn = len(arr)\n\nfor i in range(n):\n    for j in range(n - i - 1):\n        if arr[j] > arr[j + 1]:\n            arr[j], arr[j + 1] = arr[j + 1], arr[j]\n\ndef temp():    \n    for k in range(10):\n        print(k)\n        arr[0] = k\n",
+  "breakpoints": [7],
+  "textBoxes": [
+    {
+      "id": "text-demo-1",
+      "row": 1,
+      "col": 12,
+      "widthCells": 10,
+      "heightCells": 2,
+      "bgColor": "#1e1b4b",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Bubble Sort",
+                "marks": [
+                  { "type": "bold" },
+                  { "type": "textStyle", "attrs": { "fontSize": "24px", "color": "#e0e7ff" } }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "text-demo-2",
+      "row": 4,
+      "col": 12,
+      "widthCells": 10,
+      "heightCells": 5,
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "How it works:",
+                "marks": [
+                  { "type": "bold" },
+                  { "type": "textStyle", "attrs": { "fontSize": "14px", "color": null } }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "bulletList",
+            "content": [
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Compare adjacent elements" }]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Swap if left > right" }]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "Each pass bubbles the max to the end" }]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": "O(n²) time complexity" }]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "text-demo-3",
+      "row": 10,
+      "col": 12,
+      "widthCells": 10,
+      "heightCells": 3,
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Arrow legend:",
+                "marks": [
+                  { "type": "bold" },
+                  { "type": "underline" },
+                  { "type": "textStyle", "attrs": { "fontSize": "13px", "color": null } }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Blue",
+                "marks": [
+                  { "type": "bold" },
+                  { "type": "textStyle", "attrs": { "fontSize": "13px", "color": "#3b82f6" } }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " = current element (j)",
+                "marks": [
+                  { "type": "textStyle", "attrs": { "fontSize": "13px", "color": null } }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Light blue",
+                "marks": [
+                  { "type": "bold" },
+                  { "type": "textStyle", "attrs": { "fontSize": "13px", "color": "#93c5fd" } }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " = next element (j+1)",
+                "marks": [
+                  { "type": "textStyle", "attrs": { "fontSize": "13px", "color": null } }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
