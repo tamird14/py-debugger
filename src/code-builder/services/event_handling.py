@@ -3,13 +3,7 @@ import inspect
 def on_click(self, position: tuple[int, int]):
     pass
 
-def on_drag_start(self, position: tuple[int, int]):
-    pass
-
-def on_drag(self, position: tuple[int, int]):
-    pass
-
-def on_drag_end(self, position: tuple[int, int]):
+def on_drag(self, position: tuple[int, int], drag_type: str):
     pass
 
 
@@ -59,8 +53,8 @@ class RunCall:
         self.expression = expression
 
 
-def _handle_event_with_output(event_name, elem_id, row, col):
-    """Dispatch any named event handler (on_click, on_drag_*). Returns JSON {debugCall, runCall, output}."""
+def _handle_event_with_output(event_name, elem_id, row, col, *extra_args):
+    """Dispatch any named event handler (on_click, on_drag). Returns JSON {debugCall, runCall, output}."""
     import io as _io, sys as _sys, json as _json
     _old_stdout = _sys.stdout
     _capture = _io.StringIO()
@@ -71,7 +65,7 @@ def _handle_event_with_output(event_name, elem_id, row, col):
             if elem._elem_id == elem_id:
                 handler = getattr(elem, event_name, None)
                 if callable(handler):
-                    result = handler((row, col))
+                    result = handler((row, col), *extra_args)
                 break
     finally:
         _sys.stdout = _old_stdout

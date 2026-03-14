@@ -368,11 +368,7 @@ export function useGridState() {
             const clickData: InteractionData | undefined = elemId != null && hasHandler(elemId, 'on_click')
               ? { elemId, position: el.position as [number, number] }
               : undefined;
-            const hasDrag = elemId != null && (
-              hasHandler(elemId, 'on_drag_start') ||
-              hasHandler(elemId, 'on_drag') ||
-              hasHandler(elemId, 'on_drag_end')
-            );
+            const hasDrag = elemId != null && hasHandler(elemId, 'on_drag');
             const dragData: InteractionData | undefined = hasDrag
               ? { elemId: elemId!, position: el.position as [number, number] }
               : undefined;

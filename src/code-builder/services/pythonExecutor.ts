@@ -257,18 +257,21 @@ export type ClickHandlerResult = {
   error?: string;
 } | null;
 
-export type EventName = 'on_click' | 'on_drag_start' | 'on_drag' | 'on_drag_end';
+export type EventName = 'on_click' | 'on_drag';
+export type DragType = 'start' | 'mid' | 'end';
 
 export async function executeEventHandler(
   eventName: EventName,
   elemId: number,
   row: number,
   col: number,
+  dragType?: DragType,
 ): Promise<ClickHandlerResult> {
   if (!pyodide) return null;
   try {
+    const extraArgs = dragType !== undefined ? `, '${dragType}'` : '';
     const eventResultJson: string = await pyodide.runPythonAsync(
-      `_handle_event_with_output('${eventName}', ${elemId}, ${row}, ${col})`,
+      `_handle_event_with_output('${eventName}', ${elemId}, ${row}, ${col}${extraArgs})`,
     );
     const eventResult = JSON.parse(eventResultJson) as {
       debugCall: string | null;

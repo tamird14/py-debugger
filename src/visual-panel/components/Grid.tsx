@@ -24,9 +24,7 @@ interface GridProps {
   darkMode?: boolean;
   mouseEnabled?: boolean;
   onElementClick?: (elemId: number, position: [number, number]) => void;
-  onElementDragStart?: (elemId: number, position: [number, number]) => void;
-  onElementDrag?: (elemId: number, position: [number, number]) => Promise<void> | void;
-  onElementDragEnd?: (elemId: number, position: [number, number]) => void;
+  onElementDrag?: (elemId: number, position: [number, number], dragType: 'start' | 'mid' | 'end') => Promise<void> | void;
   // Text box props
   textBoxes?: TextBox[];
   selectedTextBoxId?: string | null;
@@ -73,7 +71,7 @@ const GridSingleObject = memo(function GridSingleObject({
   obj: RenderableObject;
   mouseEnabled: boolean;
   onElementClick?: (elemId: number, position: [number, number]) => void;
-  onElementDragStart?: (elemId: number, position: [number, number]) => void;
+  onElementDragStart?: (elemId: number, position: [number, number]) => void; // internal: Grid handles drag type
 }) {
   const { widthCells, heightCells } = obj;
   const [flashing, setFlashing] = useState(false);
@@ -168,9 +166,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   darkMode = false,
   mouseEnabled = false,
   onElementClick,
-  onElementDragStart,
   onElementDrag,
-  onElementDragEnd,
   textBoxes = [],
   selectedTextBoxId = null,
   addingTextBox = false,
@@ -186,12 +182,10 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   const dragStateRef = useRef<{ elemId: number; lastRow: number; lastCol: number } | null>(null);
   const dragCallInFlightRef = useRef(false);
 
-  // Stable refs to avoid stale closures in window-level event listeners
+  // Stable ref to avoid stale closures in window-level event listeners
   const onElementDragRef = useRef(onElementDrag);
-  const onElementDragEndRef = useRef(onElementDragEnd);
   useEffect(() => {
     onElementDragRef.current = onElementDrag;
-    onElementDragEndRef.current = onElementDragEnd;
   });
 
   // Window-level mouseup so drag end fires even if mouse leaves the grid
@@ -201,7 +195,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
       const { elemId, lastRow, lastCol } = dragStateRef.current;
       dragStateRef.current = null;
       dragCallInFlightRef.current = false;
-      onElementDragEndRef.current?.(elemId, [lastRow, lastCol]);
+      onElementDragRef.current?.(elemId, [lastRow, lastCol], 'end');
     };
     window.addEventListener('mouseup', handleMouseUp);
     return () => window.removeEventListener('mouseup', handleMouseUp);
@@ -218,8 +212,9 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
 
   const handleDragStart = useCallback((elemId: number, position: [number, number]) => {
     dragStateRef.current = { elemId, lastRow: position[0], lastCol: position[1] };
-    onElementDragStart?.(elemId, position);
-  }, [onElementDragStart]);
+    Promise.resolve(onElementDragRef.current?.(elemId, position, 'start'))
+      .finally(() => { dragCallInFlightRef.current = false; });
+  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragStateRef.current || dragCallInFlightRef.current) return;
@@ -231,7 +226,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
     dragCallInFlightRef.current = true;
     // Wrap in Promise.resolve so the in-flight flag clears whether the handler
     // returns a Promise (async) or void (sync / not defined).
-    Promise.resolve(onElementDragRef.current?.(elemId, [row, col]))
+    Promise.resolve(onElementDragRef.current?.(elemId, [row, col], 'mid'))
       .finally(() => { dragCallInFlightRef.current = false; });
   }, [getCellFromMouseEvent]);
 
