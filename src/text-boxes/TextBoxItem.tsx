@@ -185,7 +185,7 @@ export function TextBoxItem({ box, zoom, selected, autoEdit, onSelect, onChange,
         overflow: 'visible',
         pointerEvents: 'auto',
         cursor: selected && !editing ? 'move' : 'default',
-        color: darkMode ? 'rgba(249, 250, 251, 0.65)' : 'rgba(17, 24, 39, 0.55)',
+        color: '#e0e7ff',
         userSelect: editing ? 'text' : 'none',
       }}
       onMouseDown={handleBodyMouseDown}

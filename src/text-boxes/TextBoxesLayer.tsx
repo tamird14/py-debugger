@@ -84,7 +84,7 @@ export function TextBoxesLayer({
         widthCells,
         heightCells,
         content: { type: 'doc', content: [{ type: 'paragraph' }] },
-        bgColor: '#ffffff',
+        bgColor: '#1e1b4b',
       };
 
       setLatestCreatedId(newBox.id);
