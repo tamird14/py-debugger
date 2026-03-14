@@ -37,6 +37,11 @@ export function TextBoxItem({ box, zoom, selected, autoEdit, onSelect, onChange,
   const { darkMode } = useTheme();
   const [editing, setEditing] = useState(() => autoEdit ?? false);
   const prevBoxId = useRef(box.id);
+  // Refs keep onUpdate closure fresh without recreating the editor
+  const boxRef = useRef(box);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { boxRef.current = box; });
+  useEffect(() => { onChangeRef.current = onChange; });
 
   const editor = useEditor({
     extensions: [StarterKit, TextStyle, Color, FontSize, Underline],
@@ -44,13 +49,16 @@ export function TextBoxItem({ box, zoom, selected, autoEdit, onSelect, onChange,
     editable: editing,
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
-      onChange({ ...box, content: editor.getJSON() });
+      onChangeRef.current({ ...boxRef.current, content: editor.getJSON() });
     },
   });
 
-  // Sync editable mode with editing state
+  // Sync editable mode with editing state.
+  // Pass false as second arg to suppress the spurious onUpdate that TipTap
+  // emits on setEditable — it normalises list nodes during the transition
+  // which causes a stale-content crash for bullet/ordered list boxes.
   useEffect(() => {
-    if (editor) editor.setEditable(editing);
+    if (editor) editor.setEditable(editing, false);
     if (editing) editor?.commands.focus();
   }, [editor, editing]);
 
