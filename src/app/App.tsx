@@ -222,7 +222,7 @@ function App() {
   // Load \ Save
   // ---------------------------------------------------------------------------
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(() => {
     const name = projectName.trim() || 'untitled';
     const data = {
       builderCode: visualBuilderCode,
@@ -231,16 +231,6 @@ function App() {
       textBoxes,
     };
     const content = JSON.stringify(data, null, 2);
-
-    if (IS_LOCAL) {
-      await fetch('/api/save-sample', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, content }),
-      });
-      return;
-    }
-
     const blob = new Blob([content], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -250,6 +240,22 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }, [visualBuilderCode, debuggerCode, breakpoints, textBoxes, projectName]);
+
+  const handleSaveToSamples = useCallback(async () => {
+    const name = projectName.trim() || 'untitled';
+    const data = {
+      builderCode: visualBuilderCode,
+      debuggerCode,
+      breakpoints: [...breakpoints],
+      textBoxes,
+    };
+    const content = JSON.stringify(data, null, 2);
+    await fetch('/api/save-sample', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, content }),
+    });
   }, [visualBuilderCode, debuggerCode, breakpoints, textBoxes, projectName]);
 
   const handleLoad = useCallback(async (data: { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }, name: string) => {
@@ -315,8 +321,9 @@ function App() {
           />
 
           {/* Save / Load / Samples */}
-          <button type="button" onClick={handleSave} className={IS_LOCAL ? buttonLocal : buttonNeutral}>Save</button>
-          <button type="button" onClick={() => fileInputRef.current?.click()} className={IS_LOCAL ? buttonLocal : buttonNeutral}>Load</button>
+          <button type="button" onClick={handleSave} className={buttonNeutral}>Save</button>
+          <button type="button" onClick={() => fileInputRef.current?.click()} className={buttonNeutral}>Load</button>
+          {IS_LOCAL && <button type="button" onClick={handleSaveToSamples} className={buttonLocal}>Save to Samples</button>}
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" />
           <div className="relative">
             <button type="button" onClick={() => setSamplesOpen((o) => !o)} className={buttonNeutral}>
