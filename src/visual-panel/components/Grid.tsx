@@ -287,7 +287,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
       const baseWidth = cellData.shapeProps?.width ?? 1;
       const baseHeight = cellData.shapeProps?.height ?? 1;
       objects.push({
-        key: 'overlay-' + (cellData.objectId ?? posKey),
+        key: cellData.objectId ?? ('overlay-' + posKey),
         row, col, cellData,
         widthCells: baseWidth,
         heightCells: baseHeight,
