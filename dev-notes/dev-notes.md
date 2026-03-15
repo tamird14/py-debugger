@@ -115,6 +115,7 @@ State accumulates across interactions: the Python execution namespace (`_exec_co
 - [**Visual Elements**](./visual-elements.md) — full pipeline from Python object to clickable grid cell: serialization, TypeScript hydration, element registry, two-pass grid layout, click dispatch chain
 - [**Other Components**](./other-components.md) — text boxes (drawing, drag/resize, formatting), save/load JSON format, output terminal, API reference panel
 - [**Sharp Edges**](./sharp-edges.md) — known issues and architectural quirks to read before touching the Python/TypeScript boundary, serialization, or mode transitions
+- [**Python Tracing Primer**](./python-tracing-primer.md) — how `sys.settrace` works: events, frame attributes, worked example with output
 
 ---
 ---
