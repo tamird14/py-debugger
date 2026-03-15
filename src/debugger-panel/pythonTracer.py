@@ -196,7 +196,7 @@ class V:
 
     def eval(self):
         try:
-            return eval(self.expr, {"__builtins__": {}}, {**V.SAFE_GLOBALS, **V.params})
+            return R._wrap(eval(self.expr, {"__builtins__": {}}, {**V.SAFE_GLOBALS, **V.params}))
         except NameError as e:
             undefined = str(e).split("'")[1] if "'" in str(e) else None
             if undefined in self._deps:
@@ -224,11 +224,24 @@ class R:
 
     @classmethod
     def _wrap(cls, obj: Any) -> Any:
-        """Return obj wrapped in R if it has a tracked identity, otherwise return raw."""
+        """Wrap a copy returned from the registry (keyed by id(copy) in inv_registry)."""
         if isinstance(obj, (int, float, str, bool, type(None))):
             return obj
         orig_id = cls.inv_registry.get(id(obj))
         return cls(orig_id) if orig_id is not None else obj
+
+    @classmethod
+    def _wrap_original(cls, obj: Any) -> Any:
+        """Wrap a live original object (keyed by id(original) in registry).
+
+        Used for function event arguments and return values — these are the same
+        live Python objects as in the outer scope, so their id() is already a key
+        in R.registry from the most recent line step. No copy is needed.
+        Falls back to returning the raw object if not tracked.
+        """
+        if isinstance(obj, (int, float, str, bool, type(None))):
+            return obj
+        return cls(id(obj)) if id(obj) in cls.registry else obj
 
     def resolve(self) -> Any:
         """Return the current step's copy of the tracked object, or None if gone."""
@@ -345,20 +358,30 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
             if not _is_traceable_func(code_obj.co_name):
                 return trace_fn
             func_name = code_obj.co_qualname
-            kwargs = {
-                name: copy.deepcopy(frame.f_locals[name])
-                for name in code_obj.co_varnames[:code_obj.co_argcount]
-                if name != 'self' and name in frame.f_locals
-            }
-            accumulated_builder_output.append(_call_builder(function_call, func_name, **kwargs))
+            # Arguments are the same live objects already in R.registry from the last
+            # line step — no copy needed. _wrap_original looks up id(original) directly.
+            accumulated_builder_output.append(_call_builder(
+                function_call, func_name,
+                **{
+                    name: R._wrap_original(frame.f_locals[name])
+                    for name in code_obj.co_varnames[:code_obj.co_argcount]
+                    if name != 'self' and name in frame.f_locals
+                }
+            ))
             return trace_fn
 
         if event == 'return':
             if not _is_traceable_func(code_obj.co_name):
                 return trace_fn
             func_name = code_obj.co_qualname
-            value = frame.f_locals.get('self') if code_obj.co_name == '__init__' else copy.deepcopy(arg)
-            accumulated_builder_output.append(_call_builder(function_exit, func_name, value))
+            # For __init__, self was traced as a variable inside the function so its
+            # id() is already in R.registry from the last line step within __init__.
+            # For other functions, arg is usually also a tracked variable — fall back
+            # to raw if not found (e.g. a brand-new object never assigned to a variable).
+            value = frame.f_locals.get('self') if code_obj.co_name == '__init__' else arg
+            accumulated_builder_output.append(_call_builder(
+                function_exit, func_name, R._wrap_original(value)
+            ))
             return trace_fn
 
         if event != 'line':

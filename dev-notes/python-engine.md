@@ -321,19 +321,30 @@ def function_exit(function_name, value):   pass   # called on function return
 
 **`function_call(function_name, **kwargs)`** — called just before the first line inside a function executes:
 - `function_name`: the function's `__name__` (e.g. `'__init__'`, `'sort'`)
-- `kwargs`: the function's arguments excluding `self`
+- `kwargs`: each argument value is R-wrapped (or a raw primitive); excluding `self`
 - Dunder methods (`__init__`, `__str__`, etc.) are included; single-underscore helpers are not
 
 **`function_exit(function_name, value)`** — called when a function returns:
-- `value` for `__init__`: the **constructed `self` object** (not `None`)
-- `value` for all other functions: the actual return value
+- `value` for `__init__`: the constructed `self` object, R-wrapped
+- `value` for all other functions: the return value, R-wrapped (or raw primitive)
+
+**R-wrapping in function hooks:** all non-primitive values received in `function_call` kwargs and `function_exit` value are `R` objects, consistent with `update()`'s `TrackedDict`. Attribute access works transparently (`value.val`, `kwargs['node'].next`). The R objects are registered in the live registry so any R stored in a hook will resolve correctly in future `update()` calls.
+
+**`isinstance` does not work on R objects** — use `hasattr` or check `function_name` instead:
+```python
+# Wrong:
+if isinstance(value, Node): ...
+
+# Right:
+if function_name == 'Node.__init__' and hasattr(value, 'val'): ...
+```
 
 **Timing:** both function hooks are called *before* `update()` for the same line step, so any visual elements they create appear in that step's snapshot. `code_timeline` and `visual_timeline` stay parallel — no extra steps are added.
 
 **Typical use — track object creation:**
 ```python
 def function_exit(function_name, value):
-    if function_name == '__init__' and isinstance(value, MyClass):
+    if function_name == 'Node.__init__' and hasattr(value, 'val'):
         r = Rect()
         r.position = (len(created), 0)
         panel.add(r)
