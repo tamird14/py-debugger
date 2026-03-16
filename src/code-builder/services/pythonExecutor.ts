@@ -189,7 +189,7 @@ function applyTimeline(parsed: TraceResult): void {
 
 
 async function initializeBuilderCode(py: PyodideRuntime, visualBuilderCode: string): Promise<void> {
-  await py.runPythonAsync('VisualElem._clear_registry()');
+  await py.runPythonAsync('_engine.VisualElem._clear_registry()');
   const escapedVB = escapeForTripleQuote(visualBuilderCode);
   const builderOutput: string = await py.runPythonAsync(`_exec_builder_code('''${escapedVB}''')`);
   setBuilderOutput(builderOutput);
