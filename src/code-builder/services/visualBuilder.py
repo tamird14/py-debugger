@@ -1,39 +1,5 @@
-
 import _vb_engine as _engine
-
-
-class Panel(_engine.VisualElem):
-    def __init__(self, name="Panel"):
-        super().__init__()
-        self.name = name
-        self.width = 5
-        self.height = 5
-        self.show_border = False
-        self._children = []
-
-    def add(self, *elems):
-        for elem in elems:
-            if elem._parent is not None:
-                elem._parent.remove(elem)
-
-            if elem not in self._children:
-                self._children.append(elem)
-                elem._parent = self
-
-    def remove(self, elem):
-        if elem in self._children:
-            self._children.remove(elem)
-            elem._parent = None
-
-    def _serialize(self):
-        out = self._serialize_base()
-        out["type"] = "panel"
-        out["name"] = getattr(self, 'name', 'Panel')
-        out["width"] = int(getattr(self, 'width', 5))
-        out["height"] = int(getattr(self, 'height', 5))
-        out["show_border"] = bool(getattr(self, 'show_border', False))
-        return out
-
+import user_api as _user_api
 
 
 def _serialize_visual_builder():
@@ -42,43 +8,26 @@ def _serialize_visual_builder():
     return json.dumps([elem._serialize() for elem in _engine.VisualElem._registry])
 
 
-
 _MAX_BUILDER_STEPS = 100_000
 
 class _BuilderLoopError(Exception):
     pass
 
-# Names added to globals() by the most recent builder code run.
-_builder_added_globals: set = set()
-# Default (no-op) implementations of builder hooks, captured once on first use.
-_default_hooks: dict = {}
-# Names of the builder hooks that user builder code may override.
-_HOOK_NAMES = ('update', 'function_call', 'function_exit')
+# Sandbox namespace for user builder code. Populated by _exec_builder_code,
+# read by _visual_code_trace for hook calls.
+_user_code_ns: dict = {}
 
 
-def _reset_builder_state() -> None:
-    """Remove all names added by the last builder code run and restore default hooks."""
-    global _builder_added_globals
-    for name in _builder_added_globals:
-        globals().pop(name, None)
-    _builder_added_globals = set()
-    for name, fn in _default_hooks.items():
-        globals()[name] = fn
+def _exec_builder_code(code: str) -> str:
+    """Execute visual builder code in a sandboxed namespace with stdout capture
+    and infinite loop protection.
 
-
-def _exec_builder_code(code):
-    """Execute visual builder code with stdout capture and infinite loop protection."""
-    global _builder_added_globals
+    The sandbox is seeded from user_api defaults so the user sees Panel, Rect,
+    V, update, etc. but cannot reach engine internals in Pyodide globals.
+    Returns captured stdout from the builder code run.
+    """
+    global _user_code_ns
     import io as _io, sys as _sys
-
-    # Capture default hook implementations the first time (before any builder code runs).
-    if not _default_hooks:
-        for _hook in _HOOK_NAMES:
-            if _hook in globals():
-                _default_hooks[_hook] = globals()[_hook]
-
-    # Clean up everything the previous builder code run added to globals.
-    _reset_builder_state()
 
     _step_count = [0]
 
@@ -91,20 +40,23 @@ def _exec_builder_code(code):
             )
         return _guard
 
-    _before_keys = set(globals().keys())
+    # Build a fresh sandbox from user_api defaults each run.
+    _user_code_ns = {
+        '__builtins__': __builtins__,
+        **vars(_user_api),
+    }
+
     _old_stdout = _sys.stdout
     _sys.stdout = _io.StringIO()
     try:
         _sys.settrace(_guard)
-        exec(code, globals())
+        exec(code, _user_code_ns)
         return _sys.stdout.getvalue()
     except _BuilderLoopError:
         raise
     finally:
         _sys.settrace(None)
         _sys.stdout = _old_stdout
-        # Track what this run added so we can remove it next time.
-        _builder_added_globals = set(globals().keys()) - _before_keys
 
 
 def _execute_run_call(expression: str) -> str:
