@@ -5,6 +5,7 @@ import ast as _ast
 from io import StringIO
 from types import FrameType
 from typing import Any, Dict, List, Tuple, Optional, Set, TypedDict
+import _vb_engine as _engine
 
 
 class VariableValue(TypedDict):
@@ -163,147 +164,6 @@ def _serialize_variables_for_ts(raw_vars: Dict[str, Any]) -> Dict[str, VariableV
 _exec_context: dict = {}
 _last_code_line_count: int = 0
 
-def _extract_names(expr: str) -> set:
-    """Return all variable names referenced in an expression string."""
-    try:
-        tree = _ast.parse(expr, mode='eval')
-        return {node.id for node in _ast.walk(tree) if isinstance(node, _ast.Name)}
-    except SyntaxError:
-        return set()
-
-
-class V:
-    params = {}
-    scope = []
-
-    SAFE_GLOBALS = {
-        "len": len,
-        "sum": sum,
-        "min": min,
-        "max": max,
-        "abs": abs,
-        "round": round,
-        "sorted": sorted,
-    }
-
-    def __init__(self, expr: str, default: Any = None, names=None):
-        self.expr = expr
-        self.default = default
-        if names is not None:
-            self._deps = set(names)
-        else:
-            self._deps = _extract_names(expr) - set(V.SAFE_GLOBALS.keys())
-
-    def eval(self):
-        try:
-            return R._wrap(eval(self.expr, {"__builtins__": {}}, {**V.SAFE_GLOBALS, **V.params}))
-        except NameError as e:
-            undefined = str(e).split("'")[1] if "'" in str(e) else None
-            if undefined in self._deps:
-                return self.default
-            return self.default  # Fallback for unparseable NameError message
-        except Exception:
-            return self.expr
-
-class R:
-    """Tracks a debugger object across trace steps by its original identity.
-
-    The builder stores an R obtained from params; at each step the R re-resolves
-    to the current step's copy of that object via R.registry.
-
-    Builder code never constructs R directly — it receives R objects transparently
-    when accessing params (a TrackedDict) or traversing attributes of an R.
-
-    Analogous to V("expr") but for object identity rather than expression evaluation.
-    """
-    registry: dict = {}      # {id(original_obj): current_step_copy}  — set per step
-    inv_registry: dict = {}  # {id(current_step_copy): id(original_obj)} — set per step
-
-    def __init__(self, orig_id: int):
-        object.__setattr__(self, '_orig_id', orig_id)
-
-    @classmethod
-    def _wrap(cls, obj: Any) -> Any:
-        """Wrap a copy returned from the registry (keyed by id(copy) in inv_registry)."""
-        if isinstance(obj, (int, float, str, bool, type(None))):
-            return obj
-        orig_id = cls.inv_registry.get(id(obj))
-        return cls(orig_id) if orig_id is not None else obj
-
-    @classmethod
-    def _wrap_original(cls, obj: Any) -> Any:
-        """Wrap a live original object (keyed by id(original) in registry).
-
-        Used for function event arguments and return values — these are the same
-        live Python objects as in the outer scope, so their id() is already a key
-        in R.registry from the most recent line step. No copy is needed.
-        Falls back to returning the raw object if not tracked.
-        """
-        if isinstance(obj, (int, float, str, bool, type(None))):
-            return obj
-        return cls(id(obj)) if id(obj) in cls.registry else obj
-
-    def resolve(self) -> Any:
-        """Return the current step's copy of the tracked object, or None if gone."""
-        return R.registry.get(object.__getattribute__(self, '_orig_id'))
-
-    def __getattr__(self, name: str) -> Any:
-        obj = self.resolve()
-        if obj is None:
-            raise AttributeError(f"Tracked object no longer exists in the current step")
-        return R._wrap(getattr(obj, name))
-
-    def __getitem__(self, key: Any) -> Any:
-        obj = self.resolve()
-        return R._wrap(obj[key])
-
-    def __repr__(self) -> str:
-        obj = self.resolve()
-        return repr(obj)
-
-    def __len__(self) -> int:
-        return len(self.resolve())
-
-    def __iter__(self):
-        obj = self.resolve()
-        return (R._wrap(item) for item in obj)
-
-
-class TrackedDict:
-    """Wraps a variables dict so attribute access returns R-tracked objects.
-
-    Passed as 'params' to the builder's update() hook so the builder can hold
-    references that automatically re-resolve to the correct copy each step.
-    """
-    def __init__(self, raw: Dict[str, Any]):
-        self._raw = raw
-
-    def __getitem__(self, key: str) -> Any:
-        return R._wrap(self._raw[key])
-
-    def __contains__(self, key: str) -> bool:
-        return key in self._raw
-
-    def keys(self):
-        return self._raw.keys()
-
-    def get(self, key: str, default: Any = None) -> Any:
-        if key not in self._raw:
-            return default
-        return R._wrap(self._raw[key])
-
-
-def get_v_attr(self, name):
-    value = object.__getattribute__(self, name)
-
-    if isinstance(value, V):
-        return value.eval()
-    if isinstance(value, R):
-        return value.resolve()
-    return value
-
-VisualElem.__getattribute__ = get_v_attr
-    
 
 def update(params: Dict[str, VariableValue], scope: List[Tuple[str, int]]):
     pass
@@ -363,7 +223,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
             accumulated_builder_output.append(_call_builder(
                 function_call, func_name,
                 **{
-                    name: R._wrap_original(frame.f_locals[name])
+                    name: _engine.R._wrap_original(frame.f_locals[name])
                     for name in code_obj.co_varnames[:code_obj.co_argcount]
                     if name != 'self' and name in frame.f_locals
                 }
@@ -380,7 +240,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
             # to raw if not found (e.g. a brand-new object never assigned to a variable).
             value = frame.f_locals.get('self') if code_obj.co_name == '__init__' else arg
             accumulated_builder_output.append(_call_builder(
-                function_exit, func_name, R._wrap_original(value)
+                function_exit, func_name, _engine.R._wrap_original(value)
             ))
             return trace_fn
 
@@ -403,12 +263,12 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
         last_output_pos = cur_pos
 
         # Update R identity registries for this step so R wrappers resolve correctly.
-        R.registry = _step_memo
-        R.inv_registry = {id(v): k for k, v in _step_memo.items()}
+        _engine.R.registry = _step_memo
+        _engine.R.inv_registry = {id(v): k for k, v in _step_memo.items()}
 
-        V.params = variables
-        V.scope = scope
-        accumulated_builder_output.append(_call_builder(update, TrackedDict(variables), scope))
+        _engine.V.params = variables
+        _engine.V.scope = scope
+        accumulated_builder_output.append(_call_builder(update, _engine.TrackedDict(variables), scope))
 
         snapshot = json.loads(_serialize_visual_builder())
 
@@ -422,7 +282,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
         visual_timeline.append(snapshot)
 
         if len(code_trace) >= MAX_TRACE_STEPS:
-            raise PopupException(
+            raise _engine.PopupException(
                 f"Trace exceeded {MAX_TRACE_STEPS} steps — possible infinite loop. "
                 "(This limit will be user-configurable in a future update.)"
             )
@@ -474,7 +334,7 @@ def _reset_exec_state() -> None:
     """
     global _exec_context
     _exec_context = {'__builtins__': __builtins__}
-    VisualElem._clear_registry()
+    _engine.VisualElem._clear_registry()
     _reset_builder_state()
 
 
