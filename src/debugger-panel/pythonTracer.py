@@ -6,6 +6,7 @@ from io import StringIO
 from types import FrameType
 from typing import Any, Dict, List, Tuple, Optional, Set, TypedDict
 import _vb_engine as _engine
+import user_api as _user_api
 
 
 class VariableValue(TypedDict):
@@ -165,26 +166,6 @@ _exec_context: dict = {}
 _last_code_line_count: int = 0
 
 
-def update(params: Dict[str, VariableValue], scope: List[Tuple[str, int]]):
-    pass
-
-def function_call(function_name: str, **kwargs) -> None:
-    """Called when the debugger code enters a function. Override in builder code.
-
-    function_name -- the function's __name__ (e.g. '__init__', 'my_func')
-    kwargs        -- the function's arguments (excluding 'self')
-    """
-    pass
-
-def function_exit(function_name: str, value: Any) -> None:
-    """Called when a function in the debugger code returns. Override in builder code.
-
-    function_name -- the function's __name__
-    value         -- for __init__: the constructed 'self' object;
-                     for other functions: the return value
-    """
-    pass
-
 def _visual_code_trace(code: str, persistent: bool = False) -> str:
     global _last_code_line_count, _exec_context
     if not persistent:
@@ -221,7 +202,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
             # Arguments are the same live objects already in R.registry from the last
             # line step — no copy needed. _wrap_original looks up id(original) directly.
             accumulated_builder_output.append(_call_builder(
-                function_call, func_name,
+                _user_code_ns.get('function_call', _user_api.function_call), func_name,
                 **{
                     name: _engine.R._wrap_original(frame.f_locals[name])
                     for name in code_obj.co_varnames[:code_obj.co_argcount]
@@ -240,7 +221,7 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
             # to raw if not found (e.g. a brand-new object never assigned to a variable).
             value = frame.f_locals.get('self') if code_obj.co_name == '__init__' else arg
             accumulated_builder_output.append(_call_builder(
-                function_exit, func_name, _engine.R._wrap_original(value)
+                _user_code_ns.get('function_exit', _user_api.function_exit), func_name, _engine.R._wrap_original(value)
             ))
             return trace_fn
 
@@ -268,7 +249,8 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
 
         _engine.V.params = variables
         _engine.V.scope = scope
-        accumulated_builder_output.append(_call_builder(update, _engine.TrackedDict(variables), scope))
+        accumulated_builder_output.append(_call_builder(
+            _user_code_ns.get('update', _user_api.update), _engine.TrackedDict(variables), scope))
 
         snapshot = json.loads(_serialize_visual_builder())
 
@@ -335,7 +317,7 @@ def _reset_exec_state() -> None:
     global _exec_context
     _exec_context = {'__builtins__': __builtins__}
     _engine.VisualElem._clear_registry()
-    _reset_builder_state()
+    _user_code_ns.clear()
 
 
 def _prepare_and_trace_debug_call(expression: str) -> str:
