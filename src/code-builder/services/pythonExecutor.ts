@@ -1,8 +1,8 @@
 import type { VisualBuilderElementBase } from '../../api/visualBuilder';
 import VB_ENGINE_PYTHON from './_vb_engine.py?raw';
+import USER_API_PYTHON from './user_api.py?raw';
 import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
 import EVENT_HANDLING_PYTHON from './event_handling.py?raw';
-import VISUAL_BUILDER_SHAPES_PYTHON from './visualBuilderShapes.py?raw';
 import PYTHON_TRACER from '../../debugger-panel/pythonTracer.py?raw';
 import { hydrateTimelineFromArray } from '../../timeline/timelineState';
 import { setCodeTimeline, type TraceStep } from '../../debugger-panel/codeTimelineState';
@@ -84,7 +84,6 @@ const DEBUGGER_IMPORT_FILES = import.meta.glob(
 const PYTHON_FILES = [
   { source: EVENT_HANDLING_PYTHON },
   { source: VISUAL_BUILDER_PYTHON },
-  { source: VISUAL_BUILDER_SHAPES_PYTHON },
   { source: PYTHON_TRACER },
 ];
 
@@ -104,6 +103,7 @@ async function loadPythonRuntime(): Promise<PyodideRuntime> {
   if (!pythonRuntimeReady) {
     // Write builder and debugger import files to Pyodide VFS so they are importable
     py.FS.writeFile('/home/pyodide/_vb_engine.py', VB_ENGINE_PYTHON);
+    py.FS.writeFile('/home/pyodide/user_api.py', USER_API_PYTHON);
 
     for (const [path, content] of Object.entries(BUILDER_IMPORT_FILES)) {
       const filename = path.split('/').pop()!;
