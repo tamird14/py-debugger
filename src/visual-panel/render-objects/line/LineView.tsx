@@ -1,11 +1,13 @@
+import { motion } from 'framer-motion';
 import { registerRenderer } from '../../views/rendererRegistry';
 import type { Line } from './Line';
-import { useAnimationEnabled } from '../../../animation/animationContext';
+import { useAnimationEnabled, useAnimationDuration } from '../../../animation/animationContext';
 
 const CELL = 40; // must match CELL_SIZE in Grid.tsx
 
 function LineView({ line }: { line: Line }) {
   const animate = useAnimationEnabled();
+  const animationDuration = useAnimationDuration();
   const sx = line.startOffset[0] * CELL;
   const sy = line.startOffset[1] * CELL;
   const ex = (line.end[1] - line.start[1] + line.endOffset[0]) * CELL;
@@ -13,10 +15,10 @@ function LineView({ line }: { line: Line }) {
 
   const arrowLen = Math.max(8, line.strokeWeight * 5);
   const arrowHalf = arrowLen / 2;
-  // Use elem_id baked into the Line instance type field + position to get a unique id
   const uid = `${line.start[0]}-${line.start[1]}-${line.end[0]}-${line.end[1]}`;
   const endMarkerId = `le-${uid}`;
   const startMarkerId = `ls-${uid}`;
+  const transition = animate ? { duration: animationDuration / 1000, ease: 'easeOut' as const } : { duration: 0 };
 
   const endMarker = line.endCap === 'arrow' ? (
     <marker
@@ -68,18 +70,13 @@ function LineView({ line }: { line: Line }) {
           {startMarker}
         </defs>
       )}
-      <line
-        x1={sx}
-        y1={sy}
-        x2={ex}
-        y2={ey}
-        stroke={line.hexColor}
+      <motion.line
+        animate={{ x1: sx, y1: sy, x2: ex, y2: ey, stroke: line.hexColor, opacity: line.alpha }}
+        transition={transition}
         strokeWidth={line.strokeWeight}
-        opacity={line.alpha}
         strokeLinecap="round"
         markerEnd={line.endCap === 'arrow' ? `url(#${endMarkerId})` : undefined}
         markerStart={line.startCap === 'arrow' ? `url(#${startMarkerId})` : undefined}
-        style={animate ? { transition: 'stroke 250ms ease, opacity 250ms ease' } : undefined}
       />
     </svg>
   );
