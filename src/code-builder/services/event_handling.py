@@ -1,4 +1,6 @@
 import inspect
+import _vb_engine as _engine
+
 
 def on_click(self, position: tuple[int, int]):
     pass
@@ -61,7 +63,7 @@ def _handle_event_with_output(event_name, elem_id, row, col, *extra_args):
     _sys.stdout = _capture
     result = None
     try:
-        for elem in VisualElem._registry:
+        for elem in _engine.VisualElem._registry:
             if elem._elem_id == elem_id:
                 handler = getattr(elem, event_name, None)
                 if callable(handler):
@@ -90,8 +92,9 @@ def _handle_click_with_output(elem_id, row, col):
 def _serialize_handlers():
     """Return event handlers for all elements as a dict (for embedding in larger JSON)."""
     handlers = {}
-    for elem in VisualElem._registry:
-        elem_handlers = elem._get_event_handlers()
+    for elem in _engine.VisualElem._registry:
+        elem_handlers = [f.__name__ for f in [on_click, on_drag]
+                         if has_same_signature(type(elem), f)]
         if elem_handlers:
             handlers[elem._elem_id] = elem_handlers
     return handlers
