@@ -1,4 +1,5 @@
 import { useRef, useCallback, useMemo, memo, forwardRef, useImperativeHandle, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useAnimationEnabled, useAnimationDuration } from '../../animation/animationContext';
 import { GridCell } from './GridCell';
 import type { RenderableObjectData, PanelStyle } from '../types/grid';
@@ -80,13 +81,6 @@ const GridSingleObject = memo(function GridSingleObject({
   const animationDuration = useAnimationDuration();
   // Per-element animate flag: false overrides the global toggle to force jump mode.
   const animationsEnabled = globalAnimationsEnabled && obj.cellData.animate !== false;
-  // Start invisible so newly-appearing elements can fade in
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    if (!animationsEnabled) { setMounted(true); return; }
-    const raf = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(raf);
-  }, []); // intentionally only on first mount
 
   if (widthCells <= 0 || heightCells <= 0) return null;
 
@@ -98,7 +92,6 @@ const GridSingleObject = memo(function GridSingleObject({
 
   const handleClick = isClickable
     ? (e: React.MouseEvent<HTMLDivElement>) => {
-        // Compute which cell within the element was clicked (zoom-independent via offsetX/Y)
         const colOffset = Math.floor(e.nativeEvent.offsetX / CELL_SIZE);
         const rowOffset = Math.floor(e.nativeEvent.offsetY / CELL_SIZE);
         const pos: [number, number] = [
@@ -125,20 +118,23 @@ const GridSingleObject = memo(function GridSingleObject({
     : undefined;
 
   const cursorClass = isDraggable ? ' cursor-grab pointer-events-auto' : isClickable ? ' cursor-pointer pointer-events-auto' : '';
+  const transition = animationsEnabled
+    ? { duration: animationDuration / 1000, ease: 'easeOut' as const }
+    : { duration: 0 };
 
   return (
-    <div
-      className={`absolute${animationsEnabled ? ' transition-all ease-out' : ''}${cursorClass}`}
-      style={{
+    <motion.div
+      className={`absolute${cursorClass}`}
+      initial={{ opacity: 0 }}
+      animate={{
         left: obj.col * CELL_SIZE,
         top: obj.row * CELL_SIZE,
         width: CELL_SIZE * widthCells,
         height: CELL_SIZE * heightCells,
-        zIndex: 10,
-        opacity: mounted && elemVisible ? 1 : 0,
-        pointerEvents: elemVisible ? undefined : 'none',
-        transitionDuration: animationsEnabled ? `${animationDuration}ms` : undefined,
+        opacity: elemVisible ? 1 : 0,
       }}
+      transition={transition}
+      style={{ zIndex: 10, pointerEvents: elemVisible ? undefined : 'none' }}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
     >
@@ -153,7 +149,7 @@ const GridSingleObject = memo(function GridSingleObject({
       {flashing && (
         <div className="absolute inset-0 bg-white/60 rounded pointer-events-none" />
       )}
-    </div>
+    </motion.div>
   );
 });
 
