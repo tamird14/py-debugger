@@ -1,12 +1,6 @@
 import inspect
 import _vb_engine as _engine
-
-
-def on_click(self, position: tuple[int, int]):
-    pass
-
-def on_drag(self, position: tuple[int, int], drag_type: str):
-    pass
+import user_api as _user_api
 
 
 def has_same_signature(obj, func):
@@ -32,27 +26,13 @@ def has_same_signature(obj, func):
     if len(sig1.parameters) != len(sig2.parameters):
         return False
 
-    # Compare  annotations
+    # Compare annotations
     for ((_, p1), (_, p2)) in zip(sig1.parameters.items(), sig2.parameters.items()):
-
-        # Check annotation if both are annotated
         if p1.annotation != inspect.Parameter.empty and p2.annotation != inspect.Parameter.empty:
             if p1.annotation != p2.annotation:
                 return False
 
     return True
-
-
-class DebugCall:
-    """Return this from an event handler to trigger a debugged sub-run of expression."""
-    def __init__(self, expression: str):
-        self.expression = expression
-
-
-class RunCall:
-    """Return this from an event handler to execute expression silently and refresh visuals."""
-    def __init__(self, expression: str):
-        self.expression = expression
 
 
 def _handle_event_with_output(event_name, elem_id, row, col, *extra_args):
@@ -71,9 +51,9 @@ def _handle_event_with_output(event_name, elem_id, row, col, *extra_args):
                 break
     finally:
         _sys.stdout = _old_stdout
-    if isinstance(result, DebugCall):
+    if isinstance(result, _user_api.DebugCall):
         _kind, _expr = 'debug', result.expression
-    elif isinstance(result, RunCall):
+    elif isinstance(result, _user_api.RunCall):
         _kind, _expr = 'run', result.expression
     else:
         _kind, _expr = None, None
@@ -93,7 +73,7 @@ def _serialize_handlers():
     """Return event handlers for all elements as a dict (for embedding in larger JSON)."""
     handlers = {}
     for elem in _engine.VisualElem._registry:
-        elem_handlers = [f.__name__ for f in [on_click, on_drag]
+        elem_handlers = [f.__name__ for f in [_user_api.on_click, _user_api.on_drag]
                          if has_same_signature(type(elem), f)]
         if elem_handlers:
             handlers[elem._elem_id] = elem_handlers
