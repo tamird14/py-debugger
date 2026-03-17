@@ -19,7 +19,17 @@ Project management file — not linked from dev-notes.md.
 ## Open Assignments / Cleanup
 
 13. **No-copy variable passing (Option A — alternative to R tracking):** Instead of `deepcopy` + `R` wrappers, pass raw live Python objects directly to `update(params)`. Builder is responsible for not mutating params. Should be implementable as a drop-in swap of `_capture_variables` (remove deepcopy) and the `params` construction in `trace_fn` (remove TrackedDict wrapper). If other callsites are affected, document what needs updating. Tradeoff: simpler for builder code that only reads variables, risk of silent state corruption if builder mutates params.
-15. **Auto-generated Python shape serialization from TS schemas:** Each TypeScript element schema (e.g. `ArrayElement`, `RectElement`) should have a corresponding Python shape class with auto-generated `_serialize()` that handles `V` and `R` objects uniformly — resolving `R` to its current value and calling `.eval()` on `V`. Currently serialization is hand-written per class and V/R resolution is ad-hoc (e.g. `Array._serialize` manually resolves `R` for `_cells` but not other fields). A schema-driven approach would make the Python and TypeScript sides stay in sync automatically.
+15. **Schema-driven Python shape serialization (in progress):**
+
+    *Done:*
+    - `_vb_engine.py`: `make_shape_class(schema)` factory generates `__init__` + `_serialize()` from a schema dict; `_serialize_from_fields(schema)` used by classes with extra methods (e.g. Panel). Mutable defaults are deep-copied. `'param'` key supports constructor arg ≠ attr name.
+    - `user_api.py`: Rect, Circle, Arrow, Label, Panel, Array all converted to schema-driven. `Array._cells` renamed `cells` (no reason to be private). `Array.length` field dropped — TS `Array1D.draw()` now derives cell count from `values.length` directly.
+    - `ser` types implemented: `int`, `str`, `bool`, `float`, `color`, `color?`, `list_r` (explicit R-unwrap for list payloads).
+
+    *Remaining:*
+    - **Line schema:** has non-trivial serialization (tuple→list conversions for offsets, cap enum validation). Add `'list_float'` and `'cap'` ser types, or keep hand-written with a schema for documentation only.
+    - **Array2D schema:** similar to Array but 2D; `_num_rows`/`_num_cols` private attrs should be renamed. Also has `set_dims()` method so must stay a hand-written class (like Panel).
+    - **Transfer TS schemas to Python:** TS `RECT_SCHEMA`, `CIRCLE_SCHEMA`, etc. are `ObjDoc` objects used for the API Reference panel. The Python schemas should be the source of truth (or at least kept in sync). Consider generating the TS `ObjDoc` from the Python schema dicts, or writing a validation step that asserts they match.
 
 14. **Namespace isolation between engine code and user code:** Currently all three Python engine files (`visualBuilder.py`, `visualBuilderShapes.py`, `pythonTracer.py`) are `exec()`-d into the same Pyodide globals, so user-written builder code could accidentally shadow or overwrite engine names (e.g. defining a variable called `Panel` or `update`). Investigate running engine code in a separate namespace and exposing only the intended API to user code — either via explicit injection into a sandboxed `exec()` context, or by restructuring so user code is given a curated `globals` dict containing only the builder API.
 
@@ -30,6 +40,8 @@ Project management file — not linked from dev-notes.md.
 9. Use control+s to automatically save.
 10. When the debugger code is open in trace mode, and it doesn't show the whole code, when moving in the time line always jump to see the current executed line.
 12. The trace does not show the last line execution
+13. When animating rects (as in bubble sort) the width property jumps while the 
+rest animates.
 
 ---
 
