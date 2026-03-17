@@ -31,8 +31,8 @@ export const GridCell = memo(function GridCell({
 
   const getCellStyle = (): React.CSSProperties => {
     return {
-      width: width || size,
-      height: height || size,
+      width: width != null ? '100%' : size,
+      height: height != null ? '100%' : size,
     };
   };
 
