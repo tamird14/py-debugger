@@ -204,6 +204,7 @@ export class Array2D implements VisualBuilderElementBase {
   type = 'array2d' as const;
   position: [number, number];
   visible: boolean = true;
+  values: (string | number | null)[][];
   numRows: number;
   numCols: number;
   showIndex: boolean;
@@ -215,8 +216,15 @@ export class Array2D implements VisualBuilderElementBase {
 
   constructor(el: any) {
     this.position = el.position;
-    this.numRows = Math.max(1, Math.min(50, el.numRows ?? 3));
-    this.numCols = Math.max(1, Math.min(50, el.numCols ?? 3));
+    const rawValues: unknown[][] = Array.isArray(el.values) ? el.values : [];
+    this.values = rawValues.map(row =>
+      Array.isArray(row)
+        ? row.map(v => (typeof v === 'number' || typeof v === 'string' ? v : null))
+        : []
+    );
+    this.numRows = Math.max(1, Math.min(50, this.values.length));
+    this.numCols = this.values.length === 0 ? 0
+      : Math.max(1, Math.min(50, Math.max(...this.values.map(r => r.length))));
     this.showIndex = el.showIndex ?? true;
     this.varName = el.varName;
     this.alpha = el.alpha ?? 1;
@@ -239,6 +247,7 @@ export class Array2D implements VisualBuilderElementBase {
 
     for (let r = 0; r < numRows; r++) {
       for (let c = 0; c < numCols; c++) {
+        const rawVal = this.values[r]?.[c];
         const cell = new Array2DCell({
           arrayId: panelId,
           row: r,
@@ -246,6 +255,7 @@ export class Array2D implements VisualBuilderElementBase {
           numRows,
           numCols,
           showIndices,
+          value: rawVal !== null && rawVal !== undefined ? rawVal : undefined,
           style: this.style,
         });
 
@@ -278,8 +288,7 @@ export const ARRAY2D_SCHEMA: ObjDoc = {
   properties: [
     { name: 'var_name', type: 'str', description: 'Name of the 2D array variable.', default: '""' },
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).', default: '(0, 0)' },
-    { name: 'num_rows', type: 'int', description: 'Number of rows.', default: '3' },
-    { name: 'num_cols', type: 'int', description: 'Number of columns.', default: '3' },
+    { name: 'arr', type: 'list[list]', description: '2D list of values (jagged arrays OK).', default: '[]' },
     { name: 'show_index', type: 'bool', description: 'Whether to show [i][j] index labels.', default: 'True' },
     { name: 'visible', type: 'bool', description: 'Show or hide the array.', default: 'True' },
     { name: 'z', type: 'int', description: 'Depth layer. Lower z renders on top of higher z.', default: '0' },
