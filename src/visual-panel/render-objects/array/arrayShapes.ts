@@ -207,6 +207,7 @@ export class Array2D implements VisualBuilderElementBase {
   values: (string | number | null)[][];
   numRows: number;
   numCols: number;
+  rectangular: boolean = true;
   showIndex: boolean;
   varName?: string;
   alpha: number;
@@ -225,6 +226,7 @@ export class Array2D implements VisualBuilderElementBase {
     this.numRows = Math.max(1, Math.min(50, this.values.length));
     this.numCols = this.values.length === 0 ? 0
       : Math.max(1, Math.min(50, Math.max(...this.values.map(r => r.length))));
+    this.rectangular = el.rectangular ?? true;
     this.showIndex = el.showIndex ?? true;
     this.varName = el.varName;
     this.alpha = el.alpha ?? 1;
@@ -247,6 +249,7 @@ export class Array2D implements VisualBuilderElementBase {
 
     for (let r = 0; r < numRows; r++) {
       for (let c = 0; c < numCols; c++) {
+        if (!this.rectangular && c >= (this.values[r]?.length ?? 0)) continue;
         const rawVal = this.values[r]?.[c];
         const cell = new Array2DCell({
           arrayId: panelId,
@@ -289,6 +292,7 @@ export const ARRAY2D_SCHEMA: ObjDoc = {
     { name: 'var_name', type: 'str', description: 'Name of the 2D array variable.', default: '""' },
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).', default: '(0, 0)' },
     { name: 'arr', type: 'list[list]', description: '2D list of values (jagged arrays OK).', default: '[]' },
+    { name: 'rectangular', type: 'bool', description: 'If True, pad short rows with empty cells to fill the bounding rectangle. If False, only draw cells that exist in the data.', default: 'True' },
     { name: 'show_index', type: 'bool', description: 'Whether to show [i][j] index labels.', default: 'True' },
     { name: 'visible', type: 'bool', description: 'Show or hide the array.', default: 'True' },
     { name: 'z', type: 'int', description: 'Depth layer. Lower z renders on top of higher z.', default: '0' },

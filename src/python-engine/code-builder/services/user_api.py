@@ -200,8 +200,9 @@ ARRAY2D_SCHEMA = {
         {'name': 'position',   'type': 'tuple[int,int]',          'default': (0,0),'ser': 'base'},
         {'name': 'show_index', 'type': 'bool',                   'default': True, 'ser': 'bool',     'key': 'showIndex'},
         {'name': 'color',      'type': 'tuple[int,int,int]|None', 'default': None, 'ser': 'color?'},
-        {'name': 'cells',      'type': 'list',                   'default': [],   'ser': 'list2d_r', 'key': 'values', 'param': 'arr'},
-        {'name': 'visible',    'type': 'bool',                   'default': True, 'ser': 'base'},
+        {'name': 'cells',       'type': 'list',  'default': [],   'ser': 'list2d_r', 'key': 'values', 'param': 'arr'},
+        {'name': 'rectangular', 'type': 'bool',  'default': True, 'ser': 'bool'},
+        {'name': 'visible',     'type': 'bool',  'default': True, 'ser': 'base'},
         {'name': 'z',          'type': 'int',                    'default': 0,    'ser': 'base'},
     ],
 }
