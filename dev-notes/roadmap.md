@@ -28,7 +28,6 @@ Project management file — not linked from dev-notes.md.
 - **Last line not traced:** The trace does not show the last line execution.
 - **Rect animation width jump:** When animating rects (e.g. bubble sort), the `width` property jumps while other properties animate smoothly.
 - **Font size button broken:** Can't change font size — button doesn't work.
-
 ---
 
 ## In Progress
@@ -40,9 +39,10 @@ Project management file — not linked from dev-notes.md.
     - `user_api.py`: Rect, Circle, Arrow, Label, Panel, Array, Array2D all converted to schema-driven. `Array.length` field dropped — TS `Array1D.draw()` now derives cell count from `values.length` directly.
     - `ser` types implemented: `int`, `str`, `bool`, `float`, `color`, `color?`, `list_r`, `list2d_r` (R-unwrap each row of a 2D list).
     - `_post_init` hook: called at end of generated `__init__` if set as a class attribute. Used by `Array` and `Array2D` for input validation.
+    - ~~`_ShapeBase` class replaces `make_shape_class` factory. Subclasses declare their schema via `class Rect(_ShapeBase, schema=RECT_SCHEMA): pass` — Python's `__init_subclass__` stores it as a class variable. `__init__(*args, **kwargs)` rejects positional arguments with a named, actionable error message suggesting the correct keyword syntax.~~
 
     *Remaining:*
-    - **Line schema:** has non-trivial serialization (tuple→list conversions for offsets, cap enum validation). Add `'list_float'` and `'cap'` ser types, or keep hand-written with a schema for documentation only.
+    - **Line schema:** `Line` has non-trivial serialization (tuple→list conversions for offsets, cap enum validation). Add `'list_float'` and `'cap'` ser types to `_ShapeBase`, or keep hand-written `_serialize` with a schema for documentation only.
     - **Transfer TS schemas to Python:** TS `RECT_SCHEMA`, `CIRCLE_SCHEMA`, etc. are `ObjDoc` objects for the API Reference panel. Consider generating TS `ObjDoc` from Python schema dicts, or writing a validation step that asserts they match.
 
 ---
