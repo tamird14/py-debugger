@@ -1,5 +1,15 @@
 import type { ObjDoc } from './visualBuilder';
 
+export const DEBUGGER_SCHEMA: ObjDoc[] = [
+  {
+    objName: 'set_debug(value)',
+    docstring: 'Enable or disable trace recording. When False, steps are skipped — no variable capture, no builder hooks called. Defaults to True at the start of each Analyze run. Useful for skipping initialization code so the timeline only begins when the algorithm starts.',
+    properties: [
+      { name: 'value', type: 'bool', description: 'True to record trace steps, False to skip them.' },
+    ],
+  },
+];
+
 export const FUNCTIONS_SCHEMA: ObjDoc[] = [
   {
     objName: 'update(params, scope)',

@@ -11,7 +11,7 @@ Project management file — not linked from dev-notes.md.
 - **Record to GIF:** Add record button to capture a timeline as a GIF. Let user select a region of the grid. Do something similar for static screenshots.
 - **Images in grid:** Similar to text boxes, add image elements to the grid that do not go through the Python engine.
 - **LaTeX in text boxes:** Support LaTeX rendering in text box elements.
-- **setDebug(bool):** Add a `setDebug(bool)` to the debugger side. Lets the user mark when variables are initialized and debugging should begin.
+- ~~**setDebug(bool):** Add a `set_debug(bool)` to the debugger side. Lets the user mark when variables are initialized and debugging should begin.~~
 - **Tutorial section:** Add descriptions to sample files and link to them from a tutorial page.
 - **Redo about page:** Redesign the about page and add links to the homepage.
 
