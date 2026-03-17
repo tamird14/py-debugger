@@ -162,7 +162,6 @@ ARRAY_SCHEMA = {
         {'name': 'var_name',   'type': 'str',                    'default': '',    'ser': 'str',    'key': 'varName'},
         {'name': 'position',   'type': 'tuple[int,int]',          'default': (0,0), 'ser': 'base'},
         {'name': 'direction',  'type': 'str',                    'default': 'right','ser': 'str'},
-        {'name': 'length',     'type': 'int',                    'default': 0,     'ser': 'int'},   # computed @property; always accessible via getattr
         {'name': 'show_index', 'type': 'bool',                   'default': True,  'ser': 'bool',   'key': 'showIndex'},
         {'name': 'color',      'type': 'tuple[int,int,int]|None', 'default': None,  'ser': 'color?'},  # None → CSS default
         {'name': 'cells',      'type': 'list',                   'default': [],    'ser': 'list_r', 'key': 'values', 'param': 'arr'},  # deep-copied per instance by make_shape_class
@@ -172,7 +171,6 @@ ARRAY_SCHEMA = {
 }
 
 Array = _engine.make_shape_class(ARRAY_SCHEMA)
-Array.length = property(lambda self: len(self.cells))
 
 
 class Array2D(_engine.VisualElem):

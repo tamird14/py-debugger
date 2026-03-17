@@ -107,7 +107,6 @@ export class Array1D implements VisualBuilderElementBase {
   type = 'array' as const;
   position: [number, number];
   visible: boolean = true;
-  length: number;
   direction: 'right' | 'left' | 'down' | 'up';
   values: (number | string)[];
   showIndex: boolean;
@@ -119,7 +118,6 @@ export class Array1D implements VisualBuilderElementBase {
 
   constructor(el: any) {
     this.position = el.position;
-    this.length = Math.max(1, Math.min(50, el.length ?? 5));
     this.direction = (['left', 'down', 'up'].includes(el.direction!) ? el.direction! : 'right') as 'right' | 'left' | 'down' | 'up';
     this.values = (el.values ?? []).map((v: unknown) =>
       typeof v === 'number' || typeof v === 'string' ? v : 0
@@ -139,19 +137,20 @@ export class Array1D implements VisualBuilderElementBase {
   draw(idxStart: number = 0, VB_PREFIX: string = 'vb-'): ArrayDrawResult {
     let idx = idxStart;
     const panelId = `${VB_PREFIX}array-panel-${idx++}`;
+    const length = Math.max(1, Math.min(50, this.values.length));
 
     const isHorizontal = this.direction === 'right' || this.direction === 'left';
-    const panelWidth = isHorizontal ? this.length : 1;
-    const panelHeight = isHorizontal ? 1 : this.length;
+    const panelWidth = isHorizontal ? length : 1;
+    const panelHeight = isHorizontal ? 1 : length;
 
     let panelRowOffset = 0;
     let panelColOffset = 0;
-    if (this.direction === 'left') panelColOffset = -(this.length - 1);
-    if (this.direction === 'up') panelRowOffset = -(this.length - 1);
+    if (this.direction === 'left') panelColOffset = -(length - 1);
+    if (this.direction === 'up') panelRowOffset = -(length - 1);
 
     const cells: ArrayDrawResult['cells'] = [];
 
-    for (let i = 0; i < this.length; i++) {
+    for (let i = 0; i < length; i++) {
       const offset = getArrayOffset(this.direction, i);
       const cellRow = offset.rowDelta - panelRowOffset;
       const cellCol = offset.colDelta - panelColOffset;
@@ -193,7 +192,6 @@ export const ARRAY_SCHEMA: ObjDoc = {
     { name: 'var_name', type: 'str', description: 'Name of the array variable (e.g. "arr", "nums").', default: '""' },
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the first cell.', default: '(0, 0)' },
     { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout direction.', default: '"right"' },
-    { name: 'length', type: 'int', description: 'Number of cells (read-only, derived from arr).', default: '5' },
     { name: 'show_index', type: 'bool', description: 'Whether to show [i] index labels.', default: 'True' },
     { name: 'visible', type: 'bool', description: 'Show or hide the array.', default: 'True' },
     { name: 'z', type: 'int', description: 'Depth layer. Lower z renders on top of higher z.', default: '0' },
