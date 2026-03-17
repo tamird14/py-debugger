@@ -34,7 +34,9 @@ see for example this weird looking error:
 - **Shareable links:** Encode the current editor state (JSON) into a URL hash or query param. Lets users share their work and makes it easy to report bugs with a repro link.
 - **Welcome / first-time experience:** A brief dismissible banner or modal for first-time visitors explaining what the app is and pointing to tutorials and samples.
 - **Pyodide loading state:** Show a visible loading indicator while Pyodide initializes so the app doesn't appear broken on first load.
-- **Tool libraries:** Add more library tools like the given `graphs.py` file. For example `charts.py` builder-import library with a `BarChart` component: takes an array of values and renders a labeled bar graph above a matching array element display. Each should come with a scehma describing what it is in general, and what are its functions, and it should appear in the API reference.
+- **Tool libraries:** Add more library tools like the given `graphs.py` file. For example `charts.py` builder-import library with a `BarChart` component: takes an array of values and renders a labeled bar graph above a matching array element display. Each should come with a schema describing what it is in general, and what are its functions, and it should appear in the API reference.
+
+- **Import library discoverability:** The importable utilities (`array_utils`, `graphs`, `list_helpers`) should not appear inline in the main Functions/Debugger tabs — that adds noise for users who don't need them. Consider a dedicated "Libraries" tab in the API reference, or show each library's schema only when the user opts in (e.g. hovering an `import` statement). Currently their schemas are defined in `.schema.ts` sidecar files but not yet surfaced in the UI.
 - **Logo:** App logo/icon.
 
 ---
@@ -56,6 +58,10 @@ available during interactive mode.
 ## Cleanup / Small Tasks
 
 - **setDebugCallSuffix location:** Check if `setDebugCallSuffix` can be handled at `CodeEditorArea` level instead of `App.tsx` (see [sharp-edges.md → debugCallSuffix](./sharp-edges.md)).
+
+- **Unify shape ObjDoc schemas:** All 8 shape schemas (`RECT_SCHEMA`, `CIRCLE_SCHEMA`, etc.) repeat the same `alpha`, `animate`, `visible`, `z`, and `delete()` entries verbatim. Extract a `BASE_SHAPE_PROPERTIES` array and `BASE_SHAPE_METHODS` array and spread them into each schema to eliminate duplication.
+
+- **Python-defined import schemas:** Builder/debugger import files (`array_utils.py`, `graphs.py`, `list_helpers.py`) currently have their ObjDoc schemas hand-written in separate `.schema.ts` files. These should be defined in the Python files themselves (e.g. as a `SCHEMA` dict) and extracted/generated into TypeScript at build time, so the single source of truth for each library lives with its implementation.
 
 - **Unify userZ + zOrder:** Consider merging `userZ` and `zOrder` in `RenderableObjectData` into a single `depth: [number, number]` tuple — they always travel and sort together in `Grid.tsx`.
 - ~~**Keyboard shortcut — advance mode:** Use Ctrl+Enter (or Shift+Enter) to advance to the next mode (edit→analyze, trace→interactive).~~
