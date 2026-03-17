@@ -111,6 +111,10 @@ class VisualElem:
             elif ser == 'color?':
                 if val is not None:
                     out[key] = VisualElem._serialize_color(val, (0, 0, 0))
+            elif ser == 'list_r':
+                if isinstance(val, R):
+                    val = val.resolve() or []
+                out[key] = list(val) if isinstance(val, (list, tuple)) else []
         return out
 
 
@@ -277,6 +281,9 @@ def make_shape_class(schema):
       'float'  — float(val)
       'color'  — _serialize_color(val, default)
       'color?' — same but omitted when val is None
+      'list_r' — list that may be an R-tracked object; resolves R explicitly
+                 before converting (list primitives are not auto-resolved by
+                 __getattribute__, so R must be unwrapped here)
 
     Optional 'key' overrides the output dict key (e.g. 'fontSize' for 'font_size').
     """

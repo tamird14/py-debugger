@@ -145,7 +145,7 @@ LABEL_SCHEMA = {
         {'name': 'width',     'type': 'int',             'default': 1,    'ser': 'int'},
         {'name': 'height',    'type': 'int',             'default': 1,    'ser': 'int'},
         {'name': 'font_size', 'type': 'int',             'default': 14,   'ser': 'int', 'key': 'fontSize'},
-        {'name': 'color',     'type': 'tuple[int,int,int]|None', 'default': None, 'ser': 'color?'},
+        {'name': 'color',     'type': 'tuple[int,int,int]|None', 'default': None, 'ser': 'color?'},  # None → key omitted → TS falls back to CSS default text color
         {'name': 'visible',   'type': 'bool',            'default': True, 'ser': 'base'},
         {'name': 'z',         'type': 'int',             'default': 0,    'ser': 'base'},
     ],
@@ -154,12 +154,30 @@ LABEL_SCHEMA = {
 Label = _engine.make_shape_class(LABEL_SCHEMA)
 
 
+ARRAY_SCHEMA = {
+    'objName': 'Array',
+    'type': 'array',
+    'docstring': 'Display a 1D list variable as a row or column on the grid.',
+    'properties': [
+        {'name': 'var_name',   'type': 'str',                   'default': '',    'ser': 'str',    'key': 'varName'},
+        {'name': 'position',   'type': 'tuple[int,int]',         'default': (0,0), 'ser': 'base'},
+        {'name': 'direction',  'type': 'str',                   'default': 'right','ser': 'str'},
+        {'name': 'length',     'type': 'int',                   'default': 0,     'ser': 'int'},   # computed @property
+        {'name': 'show_index', 'type': 'bool',                  'default': True,  'ser': 'bool',   'key': 'showIndex'},
+        {'name': 'color',      'type': 'tuple[int,int,int]|None','default': None,  'ser': 'color?'},  # None → CSS default
+        {'name': '_cells',     'type': 'list',                  'default': None,  'ser': 'list_r', 'key': 'values'},  # None default avoids mutable schema default; always set by __init__
+        {'name': 'visible',    'type': 'bool',                  'default': True,  'ser': 'base'},
+        {'name': 'z',          'type': 'int',                   'default': 0,     'ser': 'base'},
+    ],
+}
+
+
 class Array(_engine.VisualElem):
+    _schema = ARRAY_SCHEMA
+
     def __init__(self, arr=None, var_name="", position=(0, 0), direction="right", show_index=True, visible=True, z=0):
         super().__init__()
-        if arr is None:
-            arr = []
-        self._cells = arr
+        self._cells = [] if arr is None else arr  # new list each call; never share the default
         self.var_name = var_name
         self.position = position
         self.direction = direction
@@ -174,20 +192,7 @@ class Array(_engine.VisualElem):
         return len(self._cells)
 
     def _serialize(self):
-        out = self._serialize_base()
-        out["type"] = "array"
-        out["varName"] = str(getattr(self, 'var_name', ''))
-        out["direction"] = str(getattr(self, 'direction', 'right'))
-        out["length"] = int(getattr(self, 'length', 5))
-        out["showIndex"] = bool(getattr(self, 'show_index', True))
-        c = getattr(self, 'color', None)
-        if c is not None:
-            out["color"] = self._serialize_color(c, (0, 0, 0))
-        cells = getattr(self, '_cells', [])
-        if isinstance(cells, _engine.R):
-            cells = cells.resolve() or []
-        out["values"] = list(cells) if isinstance(cells, (list, tuple)) else []
-        return out
+        return self._serialize_from_fields(ARRAY_SCHEMA)
 
 
 class Array2D(_engine.VisualElem):
