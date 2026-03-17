@@ -8,11 +8,6 @@ def _serialize_visual_builder():
     return json.dumps([elem._serialize() for elem in _engine.VisualElem._registry])
 
 
-_MAX_BUILDER_STEPS = 100_000
-
-class _BuilderLoopError(Exception):
-    pass
-
 # Sandbox namespace for user builder code. Populated by _exec_builder_code,
 # read by _visual_code_trace for hook calls.
 _user_code_ns: dict = {}
@@ -29,17 +24,6 @@ def _exec_builder_code(code: str) -> str:
     global _user_code_ns
     import io as _io, sys as _sys
 
-    _step_count = [0]
-
-    def _guard(frame, event, arg):
-        _step_count[0] += 1
-        if _step_count[0] > _MAX_BUILDER_STEPS:
-            raise _BuilderLoopError(
-                f"Builder code exceeded {_MAX_BUILDER_STEPS} steps — "
-                "possible infinite loop. Execution stopped."
-            )
-        return _guard
-
     # Build a fresh sandbox from user_api defaults each run.
     _user_code_ns = {
         '__builtins__': __builtins__,
@@ -49,11 +33,9 @@ def _exec_builder_code(code: str) -> str:
     _old_stdout = _sys.stdout
     _sys.stdout = _io.StringIO()
     try:
-        _sys.settrace(_guard)
+        _sys.settrace(_engine.make_step_guard())
         exec(code, _user_code_ns)
         return _sys.stdout.getvalue()
-    except _BuilderLoopError:
-        raise
     finally:
         _sys.settrace(None)
         _sys.stdout = _old_stdout
@@ -66,8 +48,10 @@ def _execute_run_call(expression: str) -> str:
     _capture = _io.StringIO()
     _sys.stdout = _capture
     try:
+        _sys.settrace(_engine.make_step_guard())
         exec(expression, _exec_context)
     finally:
+        _sys.settrace(None)
         _sys.stdout = _old_stdout
     snapshot = _json.loads(_serialize_visual_builder())
     handlers = _serialize_handlers()

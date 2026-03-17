@@ -188,9 +188,9 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
     accumulated_builder_output: List[str] = []  # builder output from function events since last line step
 
     def _call_builder(fn, *args, **kwargs):
-        """Call a builder hook with tracing disabled and stdout captured."""
+        """Call a builder hook with a step-limit guard and stdout captured."""
         buf = StringIO()
-        sys.settrace(None)
+        sys.settrace(_engine.make_step_guard())
         sys.stdout = buf
         try:
             fn(*args, **kwargs)

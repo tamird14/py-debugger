@@ -17,6 +17,24 @@ class PopupException(Exception):
     pass
 
 
+MAX_EXEC_STEPS = 100_000
+
+
+def make_step_guard(limit=MAX_EXEC_STEPS):
+    """Return a sys.settrace-compatible function that raises PopupException after `limit` steps."""
+    import sys as _sys
+    count = [0]
+    def _guard(frame, event, arg):
+        count[0] += 1
+        if count[0] > limit:
+            _sys.settrace(None)
+            raise PopupException(
+                f"Code exceeded {limit} steps — possible infinite loop. Execution stopped."
+            )
+        return _guard
+    return _guard
+
+
 class VisualElem:
     _registry = []
     _vis_elem_id = 0

@@ -43,6 +43,7 @@ def _handle_event_with_output(event_name, elem_id, row, col, *extra_args):
     _sys.stdout = _capture
     result = None
     try:
+        _sys.settrace(_engine.make_step_guard())
         for elem in _engine.VisualElem._registry:
             if elem._elem_id == elem_id:
                 handler = getattr(elem, event_name, None)
@@ -50,6 +51,7 @@ def _handle_event_with_output(event_name, elem_id, row, col, *extra_args):
                     result = handler((row, col), *extra_args)
                 break
     finally:
+        _sys.settrace(None)
         _sys.stdout = _old_stdout
     if isinstance(result, _user_api.DebugCall):
         _kind, _expr = 'debug', result.expression
