@@ -1,0 +1,6 @@
+{
+  "builderCode": "# 1D arrays in all four directions\nLabel(label='right', position=(1,1))\nright = Array(arr=[10, 20, 30, 40, 50], position=(2, 1), direction='right')\nLabel(label='left', position=(3,5))\nleft  = Array(arr=[10, 20, 30, 40, 50], position=(4, 5), direction='left')\nLabel(label='down', position=(6,1))\ndown  = Array(arr=[10, 20, 30], position=(6, 2), direction='down')\nLabel(label='up', position=(8,4))\nup    = Array(arr=[10, 20, 30], position=(8, 5), direction='up')\n\n# 2D uniform grid\ngrid = Array2D(\n    arr=[[1, 2, 3],\n         [4, 5, 6],\n         [7, 8, 9]],\n    position=(1, 7),\n    var_name='grid'\n)\n\n# 2D jagged — rectangular=True (default): pad short rows with empty cells\njagged_rect = Array2D(\n    arr=[[1, 2, 3],\n         [4, 5],\n         [6]],\n    position=(6, 7),\n    var_name='jagged (rect)',\n    color=(100, 180, 100)\n)\n\n# 2D jagged — rectangular=False: only draw cells that exist in the data\njagged_clip = Array2D(\n    arr=[[1, 2, 3],\n         [4, 5],\n         [6]],\n    position=(6, 11),\n    var_name='jagged (clip)',\n    rectangular=False,\n    color=(100, 150, 220)\n)\n",
+  "debuggerCode": "",
+  "breakpoints": [],
+  "textBoxes": []
+}

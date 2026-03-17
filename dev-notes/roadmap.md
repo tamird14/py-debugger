@@ -9,7 +9,7 @@ Project management file — not linked from dev-notes.md.
 ### Critical
 
 - **API reference completeness:** Audit all classes and functions in `user_api.py`, `pythonTracer.py`, and builder imports (e.g. `graphs.py`). Every public symbol should appear in `ApiReferencePanel.tsx` (`visualBuilder.ts` / `functionsSchema.ts`) with accurate types, defaults, and descriptions.
-- **Examples overhaul:** Split existing samples into two categories: *Algorithm examples* (bubble sort, tree rotation, linked list, etc.) and *Feature examples* (one sample per major API feature: arrays, rich text, drag, R-tracking, etc.). Add missing feature examples so the full API surface has coverage.
+- **Examples overhaul:** ~~Split existing samples into two categories~~ ✓ — samples are now grouped as *Algorithms* / *Features* in the dropdown (prefix-based: `feature-*.json`). Remaining: add missing feature examples so the full API surface has coverage.
 - **About page redesign:** Rewrite `src/pages/PlanPage.tsx` to be user-facing (not dev notes). Add link to `https://prove-me-wrong.com`.
 - **Feedback widget:** Floating button visible in the editor. Opens a modal with a text area for feedback and a checkbox to include the current code (debugger + builder JSON). Submits to a placeholder endpoint — backend wiring deferred; UI ships first.
 - **Tutorial pages:** In-app React Router pages (like the current About page), one per major feature area (arrays, interactive mode, text boxes, libraries, etc.). Interactive walkthrough layer can be added later.

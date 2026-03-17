@@ -1,6 +1,0 @@
-{
-  "builderCode": "# 1D arrays in all four directions\nright = Array(arr=[10, 20, 30, 40, 50], position=(1, 1), direction='right')\ndown  = Array(arr=[10, 20, 30], position=(1, 8), direction='down')\nleft  = Array(arr=[10, 20, 30, 40, 50], position=(5, 8), direction='left')\nup    = Array(arr=[10, 20, 30], position=(6, 12), direction='up')\n\n# 2D uniform grid\ngrid = Array2D(\n    arr=[[1, 2, 3],\n         [4, 5, 6],\n         [7, 8, 9]],\n    position=(1, 15),\n    var_name='grid'\n)\n\n# 2D jagged — rectangular=True (default): pad short rows with empty cells\njagged_rect = Array2D(\n    arr=[[1, 2, 3],\n         [4, 5],\n         [6]],\n    position=(6, 15),\n    var_name='jagged (rect)',\n    color=(100, 180, 100)\n)\n\n# 2D jagged — rectangular=False: only draw cells that exist in the data\njagged_clip = Array2D(\n    arr=[[1, 2, 3],\n         [4, 5],\n         [6]],\n    position=(6, 19),\n    var_name='jagged (clip)',\n    rectangular=False,\n    color=(100, 150, 220)\n)\n",
-  "debuggerCode": "",
-  "breakpoints": [],
-  "textBoxes": []
-}

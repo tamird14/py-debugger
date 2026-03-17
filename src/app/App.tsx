@@ -24,7 +24,14 @@ const SAMPLE_MODULES = import.meta.glob('../samples/*.json', { eager: true }) as
 >;
 const SAMPLES = Object.entries(SAMPLE_MODULES).map(([path, data]) => {
   const filename = path.split('/').pop() ?? path;
-  return { name: filename.replace(/\.json$/, ''), data };
+  const rawName = filename.replace(/\.json$/, '');
+  const isFeature = rawName.startsWith('feature-');
+  return {
+    displayName: isFeature ? rawName.slice('feature-'.length) : rawName,
+    rawName,
+    data,
+    category: isFeature ? ('feature' as const) : ('algorithm' as const),
+  };
 });
 
 /* ---------- Shared Tailwind class groups ---------- */
@@ -279,7 +286,7 @@ function App() {
   useEffect(() => {
     if (!pyodideReady || autoLoadedRef.current || SAMPLES.length === 0) return;
     autoLoadedRef.current = true;
-    handleLoad(SAMPLES[0].data, SAMPLES[0].name);
+    handleLoad(SAMPLES[0].data, SAMPLES[0].rawName);
   }, [pyodideReady, handleLoad]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -367,15 +374,28 @@ function App() {
             {samplesOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setSamplesOpen(false)} />
-                <div className="absolute left-0 top-full mt-1 z-50 min-w-[160px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg">
-                  {SAMPLES.map(({ name, data }) => (
+                <div className="absolute left-0 top-full mt-1 z-50 min-w-[180px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg py-1">
+                  <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Algorithms</div>
+                  {SAMPLES.filter(s => s.category === 'algorithm').map(({ displayName, rawName, data }) => (
                     <button
-                      key={name}
+                      key={rawName}
                       type="button"
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      onClick={() => { handleLoad(data, name); setSamplesOpen(false); }}
+                      onClick={() => { handleLoad(data, rawName); setSamplesOpen(false); }}
                     >
-                      {name}
+                      {displayName}
+                    </button>
+                  ))}
+                  <div className="my-1 border-t border-gray-200 dark:border-gray-600" />
+                  <div className="px-3 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Features</div>
+                  {SAMPLES.filter(s => s.category === 'feature').map(({ displayName, rawName, data }) => (
+                    <button
+                      key={rawName}
+                      type="button"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      onClick={() => { handleLoad(data, rawName); setSamplesOpen(false); }}
+                    >
+                      {displayName}
                     </button>
                   ))}
                 </div>
