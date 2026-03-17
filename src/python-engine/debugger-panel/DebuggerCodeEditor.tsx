@@ -70,6 +70,14 @@ export function DebuggerCodeEditor({
     editorRef.current?.updateOptions({ readOnly });
   }, [readOnly]);
 
+  // Scroll to the highlighted line whenever it changes
+  useEffect(() => {
+    const line = highlightedLines?.next;
+    if (line != null && editorRef.current) {
+      editorRef.current.revealLineInCenterIfOutsideViewport(line);
+    }
+  }, [highlightedLines?.next]);
+
   // Re-apply all decorations whenever highlights, breakpoints, or the editor change
   useEffect(() => {
     const ed = editorRef.current;
