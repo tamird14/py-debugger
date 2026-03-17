@@ -299,6 +299,27 @@ function App() {
     e.target.value = '';
   }, [handleLoad]);
 
+  // ---------------------------------------------------------------------------
+  // Keyboard shortcuts
+  // ---------------------------------------------------------------------------
+
+  // Capture phase so shortcuts fire even when Monaco editor has focus
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === 'Enter') {
+        if (appMode === 'idle' && !isAnalyzing) {
+          e.preventDefault();
+          handleAnalyze();
+        } else if (appMode === 'trace') {
+          e.preventDefault();
+          handleEnterInteractive();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [appMode, isAnalyzing, handleAnalyze, handleEnterInteractive]);
 
   return (
     <AnimationContext.Provider value={{ enabled: animationsEnabled, duration: animationDuration }}>
