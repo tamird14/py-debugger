@@ -25,6 +25,7 @@ export interface ArrayPanelInfo {
   height: number;
   title?: string;
   panelStyle: PanelStyle;
+  showBackground?: boolean;  // false → skip background rect (cells still positioned correctly)
 }
 
 export interface ArrayDrawResult {
@@ -277,6 +278,7 @@ export class Array2D implements VisualBuilderElementBase {
         height: numRows,
         title: varName,
         panelStyle: PANEL_STYLE_2D,
+        showBackground: this.rectangular,
       },
       panelOffset: { row: 0, col: 0 },
       cells,

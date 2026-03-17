@@ -335,6 +335,7 @@ export function useGridState() {
                   height: panelInfo.height,
                   title: panelInfo.title,
                   panelStyle: panelInfo.panelStyle,
+                  showBorder: panelInfo.showBackground !== false,
                 },
                 shapeProps: { width: panelInfo.width, height: panelInfo.height },
                 panelId: parentPanelId,
