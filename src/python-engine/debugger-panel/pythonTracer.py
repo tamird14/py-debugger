@@ -176,7 +176,10 @@ def _visual_code_trace(code: str, persistent: bool = False) -> str:
     global _last_code_line_count, _exec_context, _debug_enabled
     if not persistent:
         _last_code_line_count = len(code.splitlines())
-        _debug_enabled = True
+        # If the user's code calls set_debug, default to False so initialization
+        # lines before set_debug(True) never trigger builder hooks. Without any
+        # set_debug calls, default True preserves backwards-compatible behaviour.
+        _debug_enabled = 'set_debug(' not in code
 
     code_trace: List[TraceStep] = []
     visual_timeline = []
