@@ -59,7 +59,7 @@ RECT_SCHEMA = {
     ],
 }
 
-Rect = _engine.make_shape_class(RECT_SCHEMA)
+class Rect(_engine._ShapeBase, schema=RECT_SCHEMA): pass
 
 
 CIRCLE_SCHEMA = {
@@ -76,7 +76,7 @@ CIRCLE_SCHEMA = {
     ],
 }
 
-Circle = _engine.make_shape_class(CIRCLE_SCHEMA)
+class Circle(_engine._ShapeBase, schema=CIRCLE_SCHEMA): pass
 
 
 ARROW_SCHEMA = {
@@ -95,7 +95,7 @@ ARROW_SCHEMA = {
     ],
 }
 
-Arrow = _engine.make_shape_class(ARROW_SCHEMA)
+class Arrow(_engine._ShapeBase, schema=ARROW_SCHEMA): pass
 
 
 class Line(_engine.VisualElem):
@@ -151,7 +151,7 @@ LABEL_SCHEMA = {
     ],
 }
 
-Label = _engine.make_shape_class(LABEL_SCHEMA)
+class Label(_engine._ShapeBase, schema=LABEL_SCHEMA): pass
 
 
 ARRAY_SCHEMA = {
@@ -164,13 +164,13 @@ ARRAY_SCHEMA = {
         {'name': 'direction',  'type': 'str',                    'default': 'right','ser': 'str'},
         {'name': 'show_index', 'type': 'bool',                   'default': True,  'ser': 'bool',   'key': 'showIndex'},
         {'name': 'color',      'type': 'tuple[int,int,int]|None', 'default': None,  'ser': 'color?'},  # None → CSS default
-        {'name': 'cells',      'type': 'list',                   'default': [],    'ser': 'list_r', 'key': 'values', 'param': 'arr'},  # deep-copied per instance by make_shape_class
+        {'name': 'cells',      'type': 'list',                   'default': [],    'ser': 'list_r', 'key': 'values', 'param': 'arr'},  # deep-copied per instance by _ShapeBase.__init__
         {'name': 'visible',    'type': 'bool',                   'default': True,  'ser': 'base'},
         {'name': 'z',          'type': 'int',                    'default': 0,     'ser': 'base'},
     ],
 }
 
-Array = _engine.make_shape_class(ARRAY_SCHEMA)
+class Array(_engine._ShapeBase, schema=ARRAY_SCHEMA): pass
 
 
 def _array1d_post_init(self):
@@ -207,7 +207,7 @@ ARRAY2D_SCHEMA = {
     ],
 }
 
-Array2D = _engine.make_shape_class(ARRAY2D_SCHEMA)
+class Array2D(_engine._ShapeBase, schema=ARRAY2D_SCHEMA): pass
 
 
 def _array2d_post_init(self):

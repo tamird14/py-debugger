@@ -269,14 +269,21 @@ def _get_v_attr(self, name):
 VisualElem.__getattribute__ = _get_v_attr
 
 
-def make_shape_class(schema):
-    """Generate a VisualElem subclass from a schema dict.
+class _ShapeBase(VisualElem):
+    """Base class for schema-driven visual element types.
+
+    Subclasses declare their schema via the class keyword argument:
+
+        class Rect(_ShapeBase, schema=RECT_SCHEMA): pass
+
+    __init_subclass__ stores the schema as a class variable so __init__ always
+    uses the correct subclass schema. Positional arguments are rejected with a
+    named, actionable error message.
 
     Schema format:
       {
         'objName': 'Rect',
         'type': 'rect',
-        'docstring': '...',
         'properties': [
           {'name': 'width', 'type': 'int', 'default': 1, 'ser': 'int'},
           ...
@@ -299,11 +306,25 @@ def make_shape_class(schema):
     Optional 'param' overrides the __init__ kwarg name (e.g. 'arr' for '_cells').
     Mutable defaults (lists, dicts) are deep-copied per instance.
     """
-    all_props = schema['properties']
+    _schema: dict = {}
 
-    def __init__(self, **kwargs):
+    def __init_subclass__(cls, schema=None, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if schema is not None:
+            cls._schema = schema
+
+    def __init__(self, *args, **kwargs):
+        if args:
+            name = type(self).__name__
+            props = [p for p in self._schema.get('properties', []) if p.get('ser') != 'base']
+            params = [p.get('param', p['name']) for p in props]
+            example = ', '.join(f'{p}=...' for p in params)
+            raise TypeError(
+                f"{name}() does not accept positional arguments.\n"
+                f"Use keyword arguments instead, e.g.: {name}({example})"
+            )
         VisualElem.__init__(self)
-        for p in all_props:
+        for p in self._schema.get('properties', []):
             param = p.get('param', p['name'])  # constructor kwarg name (may differ from attr name)
             val = kwargs.get(param, _copy.deepcopy(p['default']))
             object.__setattr__(self, p['name'], val)
@@ -312,10 +333,4 @@ def make_shape_class(schema):
             _post_init(self)
 
     def _serialize(self):
-        return self._serialize_from_fields(schema)
-
-    return type(schema['objName'], (VisualElem,), {
-        '__init__': __init__,
-        '_serialize': _serialize,
-        '_schema': schema,
-    })
+        return self._serialize_from_fields(self._schema)
