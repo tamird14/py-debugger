@@ -68,7 +68,7 @@ export function isPyodideLoaded(): boolean {
 // at that point they will also be persisted in the JSON save/load format.
 const BUILDER_IMPORT_FILES = import.meta.glob(
   '../../builder-imports/*.py',
-  { eager: true, as: 'raw' },
+  { eager: true, query: '?raw', import: 'default' },
 ) as Record<string, string>;
 
 // Debugger import files: same mechanism as builder imports but for debugger/algorithm code.
@@ -78,7 +78,7 @@ const BUILDER_IMPORT_FILES = import.meta.glob(
 // TODO: future enhancement — same online upload as builder imports.
 const DEBUGGER_IMPORT_FILES = import.meta.glob(
   '../../debugger-imports/*.py',
-  { eager: true, as: 'raw' },
+  { eager: true, query: '?raw', import: 'default' },
 ) as Record<string, string>;
 
 const PYTHON_FILES = [
