@@ -286,13 +286,17 @@ def make_shape_class(schema):
                  __getattribute__, so R must be unwrapped here)
 
     Optional 'key' overrides the output dict key (e.g. 'fontSize' for 'font_size').
+    Optional 'param' overrides the __init__ kwarg name (e.g. 'arr' for '_cells').
+    Mutable defaults (lists, dicts) are deep-copied per instance.
     """
     all_props = schema['properties']
 
     def __init__(self, **kwargs):
         VisualElem.__init__(self)
         for p in all_props:
-            object.__setattr__(self, p['name'], kwargs.get(p['name'], p['default']))
+            param = p.get('param', p['name'])  # constructor kwarg name (may differ from attr name)
+            val = kwargs.get(param, _copy.deepcopy(p['default']))
+            object.__setattr__(self, p['name'], val)
 
     def _serialize(self):
         return self._serialize_from_fields(schema)
