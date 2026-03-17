@@ -198,11 +198,23 @@ class R:
     Builder code never constructs R directly — it receives R objects transparently
     when accessing params (a TrackedDict) or traversing attributes of an R.
     """
-    registry: dict = {}      # {id(original_obj): current_step_copy}  — set per step
-    inv_registry: dict = {}  # {id(current_step_copy): id(original_obj)} — set per step
+    registry: dict = {}        # {id(original_obj): current_step_copy}  — set per step
+    inv_registry: dict = {}    # {id(current_step_copy): id(original_obj)} — set per step
+    _instance_cache: dict = {} # {orig_id: R instance} — stable across steps so R objects are usable as dict keys
+
+    def __new__(cls, orig_id: int):
+        cached = cls._instance_cache.get(orig_id)
+        if cached is None:
+            cached = object.__new__(cls)
+            cls._instance_cache[orig_id] = cached
+        return cached
 
     def __init__(self, orig_id: int):
         object.__setattr__(self, '_orig_id', orig_id)
+
+    @classmethod
+    def _clear_instance_cache(cls):
+        cls._instance_cache.clear()
 
     @classmethod
     def _wrap(cls, obj: Any) -> Any:

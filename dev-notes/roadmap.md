@@ -10,6 +10,7 @@ Project management file — not linked from dev-notes.md.
 
 - **API reference completeness:** Audit all classes and functions in `user_api.py`, `pythonTracer.py`, and builder imports (e.g. `graphs.py`). Every public symbol should appear in `ApiReferencePanel.tsx` (`visualBuilder.ts` / `functionsSchema.ts`) with accurate types, defaults, and descriptions.
 - **Examples overhaul:** ~~Split existing samples into two categories~~ ✓ — samples are now grouped as *Algorithms* / *Features* in the dropdown (prefix-based: `feature-*.json`). Remaining: add missing feature examples so the full API surface has coverage.
+   - Simple debug: has a simple code - find maximum in an array. In the builder side h
 - **About page redesign:** Rewrite `src/pages/PlanPage.tsx` to be user-facing (not dev notes). Add link to `https://prove-me-wrong.com`.
 - **Feedback widget:** Floating button visible in the editor. Opens a modal with a text area for feedback and a checkbox to include the current code (debugger + builder JSON). Submits to a placeholder endpoint — backend wiring deferred; UI ships first.
 - **Tutorial pages:** In-app React Router pages (like the current About page), one per major feature area (arrays, interactive mode, text boxes, libraries, etc.). Interactive walkthrough layer can be added later.
@@ -52,10 +53,15 @@ see for example this weird looking error:
 - **input component:** a renderable object where the user can input a text, which is an event
 available during interactive mode.
 - **keyboard events:** for interactive mode
+- **drag screen:** use mouse to drag the whole grid (only when not already dragging a visual element).
 
 ---
 
 ## Cleanup / Small Tasks
+
+- ~~**R instance caching:** `R.__new__` now returns a cached instance per `orig_id` via `R._instance_cache`, so the same original object always maps to the same `R` Python object across steps. Builder code can use `R` objects as dict keys. Cache is cleared in `_reset_exec_state()`. Dev notes (`python-engine.md`) should be updated to document this guarantee.~~
+
+
 
 - **setDebugCallSuffix location:** Check if `setDebugCallSuffix` can be handled at `CodeEditorArea` level instead of `App.tsx` (see [sharp-edges.md → debugCallSuffix](./sharp-edges.md)).
 
@@ -64,6 +70,10 @@ available during interactive mode.
 - **Python-defined import schemas:** Builder/debugger import files (`array_utils.py`, `graphs.py`, `list_helpers.py`) currently have their ObjDoc schemas hand-written in separate `.schema.ts` files. These should be defined in the Python files themselves (e.g. as a `SCHEMA` dict) and extracted/generated into TypeScript at build time, so the single source of truth for each library lives with its implementation.
 
 - **Unify userZ + zOrder:** Consider merging `userZ` and `zOrder` in `RenderableObjectData` into a single `depth: [number, number]` tuple — they always travel and sort together in `Grid.tsx`.
+
+- **Arrow orientation and rotation:** Should only have one of those. At most have a single property `rotation` and allow setting `up`,`down`,`left`,`right` there which automatically transform to the angle.
+- **Clear editors button**
+- **break points:** - pressing enter in a line with a break points doubles it for some reason. when pressing enter not on a break line, it goes down until we add another break line then everything jumps back.
 - ~~**Keyboard shortcut — advance mode:** Use Ctrl+Enter (or Shift+Enter) to advance to the next mode (edit→analyze, trace→interactive).~~
 - ~~**Keyboard shortcut — save:** Use Ctrl+S to auto-save.~~
 - ~~**Trace mode scroll:** When the debugger code editor is open in trace mode and the current line is off-screen, auto-scroll to it when stepping through the timeline.~~

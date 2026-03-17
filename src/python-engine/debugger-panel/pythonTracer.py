@@ -330,6 +330,7 @@ def _reset_exec_state() -> None:
     global _exec_context
     _exec_context = {'__builtins__': __builtins__}
     _engine.VisualElem._clear_registry()
+    _engine.R._clear_instance_cache()
     _user_code_ns.clear()
 
 
