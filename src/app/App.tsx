@@ -307,7 +307,10 @@ function App() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
-      if (e.key === 'Enter') {
+      if (e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      } else if (e.key === 'Enter') {
         if (appMode === 'idle' && !isAnalyzing) {
           e.preventDefault();
           handleAnalyze();
@@ -319,7 +322,7 @@ function App() {
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [appMode, isAnalyzing, handleAnalyze, handleEnterInteractive]);
+  }, [appMode, isAnalyzing, handleAnalyze, handleEnterInteractive, handleSave]);
 
   return (
     <AnimationContext.Provider value={{ enabled: animationsEnabled, duration: animationDuration }}>
