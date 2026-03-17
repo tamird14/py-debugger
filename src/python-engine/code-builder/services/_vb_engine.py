@@ -115,6 +115,16 @@ class VisualElem:
                 if isinstance(val, R):
                     val = val.resolve() or []
                 out[key] = list(val) if isinstance(val, (list, tuple)) else []
+            elif ser == 'list2d_r':
+                if isinstance(val, R):
+                    val = val.resolve() or []
+                if isinstance(val, (list, tuple)):
+                    out[key] = [
+                        list(row) if isinstance(row, (list, tuple)) else []
+                        for row in val
+                    ]
+                else:
+                    out[key] = []
         return out
 
 
@@ -297,6 +307,9 @@ def make_shape_class(schema):
             param = p.get('param', p['name'])  # constructor kwarg name (may differ from attr name)
             val = kwargs.get(param, _copy.deepcopy(p['default']))
             object.__setattr__(self, p['name'], val)
+        _post_init = type(self).__dict__.get('_post_init')
+        if _post_init is not None:
+            _post_init(self)
 
     def _serialize(self):
         return self._serialize_from_fields(schema)
