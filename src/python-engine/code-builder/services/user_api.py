@@ -173,37 +173,63 @@ ARRAY_SCHEMA = {
 Array = _engine.make_shape_class(ARRAY_SCHEMA)
 
 
-class Array2D(_engine.VisualElem):
-    """Display a 2D list variable as a matrix on the grid."""
-    def __init__(self, var_name="", position=(0, 0), num_rows=3, num_cols=3, show_index=True, visible=True, z=0):
-        super().__init__()
-        self.var_name = var_name
-        self.position = position
-        self._num_rows = num_rows
-        self._num_cols = num_cols
-        self._dims_manually_set = False
-        self.show_index = show_index
-        self.visible = visible
-        self.z = z
-        self.color = None
-        self.font_size = None
+def _array1d_post_init(self):
+    raw = object.__getattribute__(self, 'cells')
+    if isinstance(raw, (_engine.V, _engine.R)):
+        return
+    if not isinstance(raw, (list, tuple)):
+        raise _engine.PopupException(
+            f"Array: 'arr' must be a list, got {type(raw).__name__}"
+        )
+    for i, item in enumerate(raw):
+        if not isinstance(item, (int, float, str, bool, type(None))):
+            raise _engine.PopupException(
+                f"Array: element [{i}] must be a primitive "
+                f"(int, float, str, bool, or None), got {type(item).__name__}"
+            )
 
-    def set_dims(self, rows, cols):
-        self._num_rows = rows
-        self._num_cols = cols
-        self._dims_manually_set = True
+Array._post_init = _array1d_post_init
 
-    def _serialize(self):
-        out = self._serialize_base()
-        out["type"] = "array2d"
-        out["varName"] = str(getattr(self, 'var_name', ''))
-        out["numRows"] = int(getattr(self, '_num_rows', 3))
-        out["numCols"] = int(getattr(self, '_num_cols', 3))
-        out["showIndex"] = bool(getattr(self, 'show_index', True))
-        c = getattr(self, 'color', None)
-        if c is not None:
-            out["color"] = self._serialize_color(c, (0, 0, 0))
-        return out
+
+ARRAY2D_SCHEMA = {
+    'objName': 'Array2D',
+    'type': 'array2d',
+    'docstring': 'Display a 2D list variable as a matrix on the grid.',
+    'properties': [
+        {'name': 'var_name',   'type': 'str',                    'default': '',   'ser': 'str',      'key': 'varName'},
+        {'name': 'position',   'type': 'tuple[int,int]',          'default': (0,0),'ser': 'base'},
+        {'name': 'show_index', 'type': 'bool',                   'default': True, 'ser': 'bool',     'key': 'showIndex'},
+        {'name': 'color',      'type': 'tuple[int,int,int]|None', 'default': None, 'ser': 'color?'},
+        {'name': 'cells',      'type': 'list',                   'default': [],   'ser': 'list2d_r', 'key': 'values', 'param': 'arr'},
+        {'name': 'visible',    'type': 'bool',                   'default': True, 'ser': 'base'},
+        {'name': 'z',          'type': 'int',                    'default': 0,    'ser': 'base'},
+    ],
+}
+
+Array2D = _engine.make_shape_class(ARRAY2D_SCHEMA)
+
+
+def _array2d_post_init(self):
+    raw = object.__getattribute__(self, 'cells')
+    if isinstance(raw, (_engine.V, _engine.R)):
+        return
+    if not isinstance(raw, (list, tuple)):
+        raise _engine.PopupException(
+            f"Array2D: 'arr' must be a 2D list, got {type(raw).__name__}"
+        )
+    for i, row in enumerate(raw):
+        if not isinstance(row, (list, tuple)):
+            raise _engine.PopupException(
+                f"Array2D: row {i} must be a list, got {type(row).__name__}"
+            )
+        for j, item in enumerate(row):
+            if not isinstance(item, (int, float, str, bool, type(None))):
+                raise _engine.PopupException(
+                    f"Array2D: element [{i}][{j}] must be a primitive "
+                    f"(int, float, str, bool, or None), got {type(item).__name__}"
+                )
+
+Array2D._post_init = _array2d_post_init
 
 
 # ── Shorthand ────────────────────────────────────────────────────────────────
