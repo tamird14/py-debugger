@@ -27,6 +27,9 @@ class Panel(_engine.VisualElem):
         self.show_border = False
         self._children = []
 
+    def __len__(self):
+        return len(self._children)
+    
     def add(self, *elems):
         for elem in elems:
             if elem._parent is not None:
@@ -40,6 +43,12 @@ class Panel(_engine.VisualElem):
         if elem in self._children:
             self._children.remove(elem)
             elem._parent = None
+
+    def delete(self):
+        """Remove this element from the registry and its parent panel."""
+        while len(self._children) > 0:
+            self._children[-1].delete()
+        super().delete()
 
     def _serialize(self):
         return self._serialize_from_fields(PANEL_SCHEMA)

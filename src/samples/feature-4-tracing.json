@@ -1,0 +1,269 @@
+{
+  "builderCode": "panel = Panel()\npanel.position = (1,1)\n\n# We want to visualize finding a maximum, so we bind\n# the visual objects into the variables from the run.\n# There are two ways of doing it:\n#  1. update(params, scope) is called after each traced line (see below)\n#  2. Use V(expr) which evaluates the expression at each line and use it. Can only be used by setting directly into a property. Namely \n#       rect.width=V('i')    # fine\n#       rect.width=1+V('i')  # fails\n# instead use \n#       rect.width=V('1+i')\n\nvisual_array = Array(arr=V('arr'), position=(1,0))\npanel.add(visual_array)\n\n# i is not defined when the trace starts, so we add a default value. To simplify such default, you can add initialization 'i=0' before the 'set_debug(True)'\narrow = Arrow(\n    position=V(\"(0,i)\", default=(0,0)),\n    color=(230,70,80),\n    orientation='down')\npanel.add(arrow)\n\nrect = Rect(position=V(\"(1,max_index)\"))\nrect.alpha = 0.3\npanel.add(rect)\n\nmax_label = Label(label='current max', position=(2,2), width=4)\npanel.add(max_label)\n\n# params: dict of all traced variables at the current line\n# scope: current execution position {'file': ..., 'line': ..., 'function': ...}\ndef update(params, scope):\n    max_value = params['max_value']\n    max_label.label = f'current max = {max_value}'\n    print(scope)",
+  "debuggerCode": "arr = [1,5,4,7,9,3,5,2]\nmax_value = -1\nmax_index = -1\n# Only start tracing after this line.\n# If you do not use it, start tracing from the start.\nset_debug(True) \n\ndef print_result():\n    print(f'max value is arr[{max_index}]={max_value}')\n\nfor i in range(len(arr)):\n    if max_value < arr[i]:\n        # you can set break points and jump to them \n        # in the timeline controls\n        max_value = arr[i]\n        max_index = i\n\nprint_result()\n",
+  "breakpoints": [
+    16,
+    19,
+    10
+  ],
+  "textBoxes": [
+    {
+      "id": "text-f4-title",
+      "row": 1,
+      "col": 10,
+      "widthCells": 9,
+      "heightCells": 5,
+      "bgColor": "#1e1b4b",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#c8cfe8",
+                      "fontSize": "22px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "Find Array Maximum"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "",
+                      "fontSize": "14px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "How it works:"
+              }
+            ]
+          },
+          {
+            "type": "bulletList",
+            "content": [
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Scan each element once (O(n))"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Keep track of the largest value seen so far"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Record its index to highlight it visually"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "set_debug(True) starts tracing from that line — initialization is hidden"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph"
+          }
+        ]
+      }
+    },
+    {
+      "id": "text-f4-legend",
+      "row": 6,
+      "col": 10,
+      "widthCells": 9,
+      "heightCells": 3,
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Visual legend:",
+                "marks": [
+                  {
+                    "type": "bold"
+                  },
+                  {
+                    "type": "underline"
+                  },
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Red arrow",
+                "marks": [
+                  {
+                    "type": "bold"
+                  },
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": "#b84040"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " = current index i  (via V)",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Transparent rect",
+                "marks": [
+                  {
+                    "type": "bold"
+                  },
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " = current max position  (via V)",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Label",
+                "marks": [
+                  {
+                    "type": "bold"
+                  },
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " = current max value  (via update)",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "bgColor": "#1e2d0f"
+    }
+  ]
+}

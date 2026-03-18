@@ -1,0 +1,274 @@
+{
+  "builderCode": "current_n = -1\nx = 0\n\nblocks = []\n\nmain_panel = Panel()\nmain_panel.position = (1,1)\n\nbackground = Rect(width=V('size'), height=2)\nmain_panel.add(background)\n\n# function_call is a special hook called whenever a traced function is entered.\n# kwargs contains the arguments passed to the function.\ndef function_call(function_name, **kwargs):\n    if function_name != 'fib':\n        return\n        \n    global x\n    # diff: how much smaller is the new n compared to the caller's n.\n    # diff=1 means fib(n-1) was called, diff=2 means fib(n-2) was called.\n    diff = current_n - kwargs['n']\n    print(f'The function {function_name} was called with {kwargs}, and {diff=}')\n\n    if diff == 1:\n        block = Circle(width=1, height=2, position=(0, x)) \n        x += 1\n        blocks.append(block)\n        main_panel.add(block)\n\n    if diff == 2:\n        block = Panel()\n        block.add(\n            Circle(width=2, height=1, position=(0,x)),\n            Circle(width=2, height=1, position=(1,x)),\n        )\n        x += 2\n        blocks.append(block)\n        main_panel.add(block)\n\n# function_exit is called whenever a traced function returns.\ndef function_exit(function_name, ret_value):\n    if function_name != 'fib' or len(blocks) == 0:\n        return\n\n    global x\n    print(f'Existing {function_name}')\n    block = blocks.pop()\n    x -= 2 if isinstance(block, Panel) else 1\n    block.delete()\n\n# update is called after each traced line to keep current_n in sync\ndef update(params, scope):\n    global current_n\n    current_n = params['n']",
+  "debuggerCode": "size = 5\nn = size\nset_debug(True)\n\ndef fib(n: int) -> int:\n    if n <= 0:\n        print('Full Board!')\n        return 0\n    if n == 1:\n        a = fib(0)  # always stop at n=0 for visuals\n        return 1 + a\n\n    # either remove 1 and compute the rest:\n    a = fib(n-1)\n    # or remove 2 and compute the rest:\n    b = fib(n-2)\n    # The computation was split into two lines istead of just \n    #       return fib(n-1) + fib(n-2)\n    # so that n is restored to this call's scope before fib(n-2) runs,\n    # giving function_call a chance to see the correct diff=2 step.\n    return a + b\n\nfib(n)",
+  "breakpoints": [],
+  "textBoxes": [
+    {
+      "id": "text-f5-title",
+      "row": 1,
+      "col": 7,
+      "widthCells": 10,
+      "heightCells": 7,
+      "bgColor": "#1e1b4b",
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#c8cfe8",
+                      "fontSize": "22px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "Fibonacci Recursion"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#b84030",
+                      "fontSize": "14px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "The problem"
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "",
+                      "fontSize": "14px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": ":"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "How many ways are there to fill a board of size 2xn with domino bricks of size 1x2 and 2x1 ?"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#4e7a28",
+                      "fontSize": "14px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "The solution"
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "",
+                      "fontSize": "14px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": ":"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Denote by f(n) the number of ways. Either we start with a 2x1 vertical block and we need to fill a 2x(n-1) board or we start with two 1x2 blocks and we need to fill a 2x(n-2) board."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "All together, we have"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "        f(n) = f(n-1) + f(n-2)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "text-f5-encoding",
+      "row": 8,
+      "col": 7,
+      "widthCells": 10,
+      "heightCells": 3,
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Visual encoding:",
+                "marks": [
+                  {
+                    "type": "bold"
+                  },
+                  {
+                    "type": "underline"
+                  },
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Single circle",
+                "marks": [
+                  {
+                    "type": "bold"
+                  },
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " = fib(n-1) call  (removes 1 slot)",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Double circle",
+                "marks": [
+                  {
+                    "type": "bold"
+                  },
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "text": " = fib(n-2) call  (removes 2 slots)",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Circles disappear on return, revealing how the board is filled.",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "fontSize": "13px",
+                      "color": null
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "bgColor": "#1e2d0f"
+    }
+  ]
+}
