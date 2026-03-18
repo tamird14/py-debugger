@@ -76,7 +76,7 @@ available during interactive mode.
 - **Arrow orientation and rotation:** Should only have one of those. At most have a single property `rotation` and allow setting `up`,`down`,`left`,`right` there which automatically transform to the angle.
 - **Unify event-handler position relativity:** `on_click` position is relative to the shape's containing panel (or the grid if top-level), but `on_drag` position is the absolute grid cell. Decide whether to unify them (both panel-relative is the more consistent choice).
 - **Clear editors button**
-- **break points:** - pressing enter in a line with a break points doubles it for some reason. when pressing enter not on a break line, it goes down until we add another break line then everything jumps back.
+- ~~**break points:** main bugs fixed (stale state, doubling, jumps-back). Minor: Monaco's default stickiness doesn't move a decoration when Enter is pressed at col 1 — worked around via manual edit-event tracking, but could revisit if Monaco exposes a cleaner stickiness option.~~
 - ~~**Keyboard shortcut — advance mode:** Use Ctrl+Enter (or Shift+Enter) to advance to the next mode (edit→analyze, trace→interactive).~~
 - ~~**Keyboard shortcut — save:** Use Ctrl+S to auto-save.~~
 - ~~**Trace mode scroll:** When the debugger code editor is open in trace mode and the current line is off-screen, auto-scroll to it when stepping through the timeline.~~

@@ -32,11 +32,16 @@ export function DebuggerCodeEditor({
   const decorationsRef = useRef<MonacoTypes.editor.IEditorDecorationsCollection | null>(null);
   // Tracks the latest breakpoints inside the mouse-down closure without re-registering it
   const breakpointsRef = useRef<Set<number>>(new Set());
+  const onBreakpointsChangeRef = useRef(onBreakpointsChange);
   const [editorReady, setEditorReady] = useState(false);
 
   useEffect(() => {
     breakpointsRef.current = breakpoints ?? new Set();
   }, [breakpoints]);
+
+  useEffect(() => {
+    onBreakpointsChangeRef.current = onBreakpointsChange;
+  }, [onBreakpointsChange]);
 
   // Sync external code changes to the editor without using the controlled `value`
   // prop (which calls setValue on every render and can reset cursor/selection).
@@ -63,6 +68,57 @@ export function DebuggerCodeEditor({
     });
 
     decorationsRef.current = ed.createDecorationsCollection([]);
+
+    // When lines are inserted or deleted, recalculate breakpoint line numbers from
+    // the raw edit events rather than reading Monaco's decoration positions.
+    // Monaco's default stickiness leaves a decoration on the (now-empty) line N when
+    // a newline is inserted at col 1, whereas the code—and the breakpoint—should
+    // follow the content to line N+1.
+    ed.onDidChangeModelContent((event) => {
+      const initialBps = breakpointsRef.current;
+      if (initialBps.size === 0) return;
+
+      // Process changes from bottom to top so earlier shifts don't affect later ones.
+      const changes = [...event.changes].sort((a, b) => b.rangeOffset - a.rangeOffset);
+
+      let bps: Set<number> = initialBps;
+      for (const change of changes) {
+        const { range, text } = change;
+        const startLine = range.startLineNumber;
+        const endLine = range.endLineNumber;
+        const startCol = range.startColumn;
+        const linesAdded = (text.match(/\n/g) || []).length;
+        const linesRemoved = endLine - startLine;
+        const lineDelta = linesAdded - linesRemoved;
+
+        if (lineDelta === 0) continue; // Same-line edit, no position shifts needed.
+
+        const updated = new Set<number>();
+        for (const bp of bps) {
+          if (bp < startLine) {
+            updated.add(bp); // Before the edit — unaffected.
+          } else if (bp > endLine) {
+            updated.add(bp + lineDelta); // After the edit — shift by net line delta.
+          } else if (bp === startLine && startCol > 1) {
+            updated.add(bp); // Edit starts mid-line; content before col stays on this line.
+          } else if (bp === startLine && startCol === 1 && linesRemoved === 0) {
+            // Pure insertion at col 1: the existing content (and the breakpoint) moves
+            // down by the number of inserted lines.
+            updated.add(bp + linesAdded);
+          } else {
+            // Breakpoint is within a replaced range; keep it at the start line.
+            updated.add(startLine);
+          }
+        }
+        bps = updated;
+      }
+
+      if (bps === initialBps) return;
+      const changed =
+        bps.size !== initialBps.size || [...bps].some((l) => !initialBps.has(l));
+      if (changed) onBreakpointsChangeRef.current?.(bps);
+    });
+
     setEditorReady(true);
   };
 
