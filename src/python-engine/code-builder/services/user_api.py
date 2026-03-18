@@ -19,12 +19,12 @@ PANEL_SCHEMA = {
 class Panel(_engine.VisualElem):
     _schema = PANEL_SCHEMA
 
-    def __init__(self, name=""):
-        super().__init__()
-        self.name = name
-        self.width = 1
-        self.height = 1
-        self.show_border = False
+    def __init__(self, **kwargs):
+        super().__init__(**{k:v for k,v in kwargs.items() if k not in ('name', 'width', 'height', 'show_border')})
+        self.name = kwargs.get('name', '')
+        self.width = kwargs.get('width', 1)
+        self.height = kwargs.get('height', 1)
+        self.show_border = kwargs.get('show_border', False)
         self._children = []
 
     def __len__(self):
@@ -187,7 +187,7 @@ ARRAY_SCHEMA = {
         {'name': 'direction',  'type': 'str',                    'default': 'right','ser': 'str'},
         {'name': 'show_index', 'type': 'bool',                   'default': True,  'ser': 'bool',   'key': 'showIndex'},
         {'name': 'color',      'type': 'tuple[int,int,int]|None', 'default': None,  'ser': 'color?'},  # None → CSS default
-        {'name': 'cells',      'type': 'list',                   'default': [],    'ser': 'list_r', 'key': 'values', 'param': 'arr'},  # deep-copied per instance by _ShapeBase.__init__
+        {'name': 'cells',      'type': 'list',                   'default': [],    'ser': 'list_r', 'key': 'values'},  # deep-copied per instance by _ShapeBase.__init__
         {'name': 'visible',    'type': 'bool',                   'default': True,  'ser': 'base'},
         {'name': 'z',          'type': 'int',                    'default': 0,     'ser': 'base'},
     ],
@@ -202,7 +202,7 @@ def _array1d_post_init(self):
         return
     if not isinstance(raw, (list, tuple)):
         raise _engine.PopupException(
-            f"Array: 'arr' must be a list, got {type(raw).__name__}"
+            f"Array: 'cells' must be a list, got {type(raw).__name__}"
         )
     for i, item in enumerate(raw):
         if not isinstance(item, (int, float, str, bool, type(None))):
@@ -223,7 +223,7 @@ ARRAY2D_SCHEMA = {
         {'name': 'position',   'type': 'tuple[int,int]',          'default': (0,0),'ser': 'base'},
         {'name': 'show_index', 'type': 'bool',                   'default': True, 'ser': 'bool',     'key': 'showIndex'},
         {'name': 'color',      'type': 'tuple[int,int,int]|None', 'default': None, 'ser': 'color?'},
-        {'name': 'cells',       'type': 'list',  'default': [],   'ser': 'list2d_r', 'key': 'values', 'param': 'arr'},
+        {'name': 'cells',       'type': 'list',  'default': [],   'ser': 'list2d_r', 'key': 'values'},
         {'name': 'rectangular', 'type': 'bool',  'default': True, 'ser': 'bool'},
         {'name': 'visible',     'type': 'bool',  'default': True, 'ser': 'base'},
         {'name': 'z',          'type': 'int',                    'default': 0,    'ser': 'base'},
@@ -239,7 +239,7 @@ def _array2d_post_init(self):
         return
     if not isinstance(raw, (list, tuple)):
         raise _engine.PopupException(
-            f"Array2D: 'arr' must be a 2D list, got {type(raw).__name__}"
+            f"Array2D: 'cells' must be a 2D list, got {type(raw).__name__}"
         )
     for i, row in enumerate(raw):
         if not isinstance(row, (list, tuple)):

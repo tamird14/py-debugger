@@ -135,9 +135,10 @@ export class Array1D implements VisualBuilderElementBase {
     }
   }
 
-  draw(idxStart: number = 0, VB_PREFIX: string = 'vb-'): ArrayDrawResult {
+  draw(idxStart: number = 0, VB_PREFIX: string = 'vb-', elemId?: number): ArrayDrawResult {
     let idx = idxStart;
-    const panelId = `${VB_PREFIX}array-panel-${idx++}`;
+    const panelId = elemId != null ? `${VB_PREFIX}array-panel-e${elemId}` : `${VB_PREFIX}array-panel-${idx}`;
+    idx++;
     const length = Math.max(1, Math.min(50, this.values.length));
 
     const isHorizontal = this.direction === 'right' || this.direction === 'left';
@@ -165,10 +166,11 @@ export class Array1D implements VisualBuilderElementBase {
       });
 
       cells.push({
-        cellId: `${VB_PREFIX}${idx++}`,
+        cellId: elemId != null ? `${VB_PREFIX}array-cell-e${elemId}-${i}` : `${VB_PREFIX}${idx}`,
         data: cell.draw(),
         position: [cellRow, cellCol],
       });
+      idx++;
     }
 
     return {
@@ -191,7 +193,7 @@ export const ARRAY_SCHEMA: ObjDoc = {
   docstring: 'Displays an array of values as square cells on the grid.',
   properties: [
     { name: 'name', type: 'str', description: 'Label shown above the array on the grid. Omit to show no label.', default: '""' },
-    { name: 'arr', type: 'list', description: 'Initial array values. Elements must be primitives (int, float, str, bool, or None).', default: '[]' },
+    { name: 'cells', type: 'list', description: 'Initial array values. Elements must be primitives (int, float, str, bool, or None).', default: '[]' },
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col) of the first cell.', default: '(0, 0)' },
     { name: 'direction', type: 'str', description: '"right", "left", "down", or "up" — layout direction.', default: '"right"' },
     { name: 'color', type: 'tuple[int, int, int] | None', description: 'RGB fill color for all cells. None uses the default theme color.', default: 'None' },
@@ -247,10 +249,11 @@ export class Array2D implements VisualBuilderElementBase {
     }
   }
 
-  draw(idxStart: number = 0, VB_PREFIX: string = 'vb-'): ArrayDrawResult {
+  draw(idxStart: number = 0, VB_PREFIX: string = 'vb-', elemId?: number): ArrayDrawResult {
     let idx = idxStart;
     const { numRows, numCols, name } = this;
-    const panelId = `${VB_PREFIX}array2d-panel-${idx++}`;
+    const panelId = elemId != null ? `${VB_PREFIX}array2d-panel-e${elemId}` : `${VB_PREFIX}array2d-panel-${idx}`;
+    idx++;
     const showIndices = this.showIndex ?? true;
 
     const cells: ArrayDrawResult['cells'] = [];
@@ -271,10 +274,11 @@ export class Array2D implements VisualBuilderElementBase {
         });
 
         cells.push({
-          cellId: `${VB_PREFIX}${idx++}`,
+          cellId: elemId != null ? `${VB_PREFIX}array2d-cell-e${elemId}-${r}-${c}` : `${VB_PREFIX}${idx}`,
           data: cell.draw(),
           position: [r, c],
         });
+        idx++;
       }
     }
 
@@ -300,7 +304,7 @@ export const ARRAY2D_SCHEMA: ObjDoc = {
   properties: [
     { name: 'name', type: 'str', description: 'Label shown above the array on the grid. Omit to show no label.', default: '""' },
     { name: 'position', type: 'tuple[int, int]', description: 'Top-left corner (row, col).', default: '(0, 0)' },
-    { name: 'arr', type: 'list[list]', description: '2D list of values (jagged arrays OK). Elements must be primitives (int, float, str, bool, or None).', default: '[]' },
+    { name: 'cells', type: 'list[list]', description: '2D list of values (jagged arrays OK). Elements must be primitives (int, float, str, bool, or None).', default: '[]' },
     { name: 'rectangular', type: 'bool', description: 'If True, pad short rows with empty cells to fill the bounding rectangle. If False, only draw cells that exist in the data.', default: 'True' },
     { name: 'color', type: 'tuple[int, int, int] | None', description: 'RGB fill color for all cells. None uses the default theme color.', default: 'None' },
     { name: 'show_index', type: 'bool', description: 'Whether to show [i][j] index labels.', default: 'True' },

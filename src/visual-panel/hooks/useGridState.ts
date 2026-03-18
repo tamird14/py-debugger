@@ -374,7 +374,8 @@ export function useGridState() {
         const targetPosition = parentPanelId ? { row: el.position[0], col: el.position[1] } : pos;
 
         if ('draw' in el && typeof (el as Record<string, unknown>).draw === 'function') {
-          const drawResult = (el as Record<string, unknown> & { draw: (i: number, prefix: string) => Record<string, unknown> }).draw(idx, VB_PREFIX);
+          const drawElemId = (el as any)._elemId as number | undefined;
+          const drawResult = (el as Record<string, unknown> & { draw: (i: number, prefix: string, elemId?: number) => Record<string, unknown> }).draw(idx, VB_PREFIX, drawElemId);
 
           if ('panel' in drawResult && 'cells' in drawResult) {
             // Array panel draw result: { panel, panelOffset, cells, nextIdx }

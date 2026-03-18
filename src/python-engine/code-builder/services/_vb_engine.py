@@ -44,12 +44,12 @@ class VisualElem:
         VisualElem._registry.clear()
         VisualElem._vis_elem_id = 0
 
-    def __init__(self):
-        self.position = (0, 0)
-        self.visible = True
-        self.alpha = 1.0
-        self.z = 0
-        self.animate = True
+    def __init__(self, position=(0, 0), visible=True, alpha=1.0, z=0, animate=True):
+        self.position = position
+        self.visible = visible
+        self.alpha = alpha
+        self.z = z
+        self.animate = animate
         self._parent = None
         self._elem_id = VisualElem._vis_elem_id
         VisualElem._vis_elem_id += 1
@@ -333,7 +333,7 @@ class _ShapeBase(VisualElem):
                  __getattribute__, so R must be unwrapped here)
 
     Optional 'key' overrides the output dict key (e.g. 'fontSize' for 'font_size').
-    Optional 'param' overrides the __init__ kwarg name (e.g. 'arr' for '_cells').
+    Optional 'param' overrides the __init__ kwarg name.
     Mutable defaults (lists, dicts) are deep-copied per instance.
     """
     _schema: dict = {}
@@ -353,7 +353,9 @@ class _ShapeBase(VisualElem):
                 f"{name}() does not accept positional arguments.\n"
                 f"Use keyword arguments instead, e.g.: {name}({example})"
             )
-        VisualElem.__init__(self)
+        prop_names = [p['name'] for p in self._schema.get('properties', [])]
+        VisualElem.__init__(self, **{k: v for k, v in kwargs.items() if k not in prop_names})
+        # VisualElem.__init__(self)
         for p in self._schema.get('properties', []):
             param = p.get('param', p['name'])  # constructor kwarg name (may differ from attr name)
             val = kwargs.get(param, _copy.deepcopy(p['default']))
