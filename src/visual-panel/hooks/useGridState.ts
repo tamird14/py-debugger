@@ -259,6 +259,17 @@ export function useGridState() {
       let idx = 0;
       let z = zOrderCounter.current++;
 
+      // Build elem_id → grid ID map before the first pass so nested panels can resolve their parent
+      const serializedPanelIdToGridId = new Map<string, string>();
+      let panelIndex = 0;
+      for (const el of elements) {
+        if (el.type === 'panel') {
+          const elemId = (el as any)._elem_id;
+          if (elemId != null) serializedPanelIdToGridId.set(String(elemId), `${VB_PREFIX}panel-${panelIndex}`);
+          panelIndex++;
+        }
+      }
+
       // First pass: add regular panels and record their positions
       for (const el of elements) {
         if (el.type !== 'panel') continue;
@@ -272,7 +283,16 @@ export function useGridState() {
         const width = elAny.width ?? 5;
         const height = elAny.height ?? 5;
         const gridId = `${VB_PREFIX}panel-${idx++}`;
-        panelIdMap.set(gridId, { gridId, origin: { row, col } });
+
+        // Resolve parent panel for nested panels
+        let parentGridId: string | undefined;
+        if (el.panelId) {
+          const resolved = serializedPanelIdToGridId.get(el.panelId) ?? el.panelId;
+          if (panelIdMap.has(resolved)) parentGridId = resolved;
+        }
+        const parentOrigin = parentGridId ? panelIdMap.get(parentGridId)!.origin : { row: 0, col: 0 };
+        panelIdMap.set(gridId, { gridId, origin: { row: row + parentOrigin.row, col: col + parentOrigin.col } });
+
         const panelCell = new PanelCell({ id: gridId, title: elAny.name, showBorder: elAny.show_border ?? false });
         next.set(gridId, {
           id: gridId,
@@ -282,20 +302,11 @@ export function useGridState() {
             panel: { id: gridId, width, height, title: elAny.name, showBorder: elAny.show_border ?? false },
             shapeProps: { width, height },
             zOrder: z,
+            ...(parentGridId ? { panelId: parentGridId } : {}),
           },
           position: { row, col },
           zOrder: z++,
         });
-      }
-
-      const serializedPanelIdToGridId = new Map<string, string>();
-      let panelIndex = 0;
-      for (const el of elements) {
-        if (el.type === 'panel') {
-          const elemId = (el as any)._elem_id;
-          if (elemId != null) serializedPanelIdToGridId.set(String(elemId), `${VB_PREFIX}panel-${panelIndex}`);
-          panelIndex++;
-        }
       }
 
       // Second pass: add non-panel elements
