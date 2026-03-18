@@ -1,0 +1,12 @@
+{
+  "builderCode": "class LabeledArrow(Panel):\n    \"label with arrow pointing down\"\n    def __init__(self, label: str, color: tuple[int,int,int], **kwargs):\n        super().__init__(**kwargs)\n        self.add(\n            Label(\n                position=(0,0), label=label, color=color,  \n            ),\n            Arrow(\n                position=(1,0), angle=Arrow.DOWN, color=color\n            )\n        )\n\npanel = Panel()\npanel.add(\n    Array(cells=V('arr')),\n    LabeledArrow(label='min_idx', color=(200,25,120), position=V('(-2,min_index)')),\n    LabeledArrow(label='j',       color=(40,120,140), position=V('(-2,j)')),\n    Rect(width=V('i'), alpha=0.3)\n)\n\npanel.position = (2,2)\n",
+  "debuggerCode": "arr = [64, 25, 12, 22, 11, 37, 5]\nn = len(arr)\ni = 0\nj = 0\nmin_index = 0\nset_debug(True) \n\nfor i in range(n):\n    # Assume the minimum is the first element\n    min_index = i\n    \n    # Find the index of the minimum element\n    for j in range(i + 1, n):\n        if arr[j] < arr[min_index]:\n            min_index = j\n    \n    # Swap the found minimum element with the first element\n    arr[i], arr[min_index] = arr[min_index], arr[i]\n",
+  "breakpoints": [
+    13,
+    15,
+    18,
+    10,
+    8
+  ],
+  "textBoxes": []
+}

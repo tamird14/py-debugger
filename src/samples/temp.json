@@ -1,6 +1,0 @@
-{
-  "builderCode": "\nclass Button(Rect):\n    def on_click(self, position):\n        global state\n        state = 1-state\n        if state == 0:\n            b1.position = (8,10)\n            b2.position = (7,8)\n        else:\n            b2.position = (8,12)\n            b1.position = (7,8)\n\n\nl1 = Line(start=(7,8), end=(7,8))\nb1 = Button(position=(7,8))\nb2 = Button(position=(8,10))\nstate = 0\n\n\n",
-  "debuggerCode": "",
-  "breakpoints": [],
-  "textBoxes": []
-}

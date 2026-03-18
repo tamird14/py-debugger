@@ -1,0 +1,16 @@
+{
+  "builderCode": "class LabeledArrow(Panel):\n    \"label with arrow pointing down\"\n    def __init__(self, label: str, color: tuple[int,int,int], **kwargs):\n        super().__init__(**kwargs)\n        self.add(\n            Label(\n                position=(0,0), label=label, color=color, width=2  \n            ),\n            Arrow(\n                position=(1,0), angle=Arrow.DOWN, color=color, width=2\n            )\n        )\n\nclass StackWindow(Panel):\n    def __init__(self, partition_index:int, **kwargs):\n        super().__init__(**kwargs)\n        self.add(Rect(position=(0,partition_index), color=(50,220,100)))\n        self._windows = []\n\n    def add_window(self, window):\n        self.add(window)\n        if len(self._windows) > 0:\n            self._windows[-1].color = (50, 100, 230)\n        self._windows.append(window)\n\n\npanel = Panel(position=(2,2))\npanel.add(\n    Array(cells=V('arr')), \n    LabeledArrow(label='low', color=(230,70,100), position=V('(-2,low-1)')), \n    LabeledArrow(label='high', color=(100,70,230), position=V('(-2,high)'))\n)\n\nwindow_stack = []\ndef reposition_windows():\n    for i, window in enumerate(window_stack[::-1]):\n        window.position = (1+i, 0)\n\ndef in_place(index: int):\n    panel.add(\n        Rect(position = (0, index), color=(50,60,200), alpha=0.5)\n    )\n\nstack_dir = [0]\n\ndef function_call(function_name, **kwargs):\n    if function_name == 'quick_sort.<locals>.quick_sort_rec':\n        low, high = kwargs['low'], kwargs['high']\n        if stack_dir[0] != 0:\n            red_window = Rect(color=(230,50,100), position=(0,low), width=high-low+1)\n            window_stack[-1].add_window(red_window)\n\n        if low == high:\n            in_place(low)\n        stack_dir[0] = 1\n\ndef function_exit(function_name, ret_value):\n    if function_name == 'quick_sort.<locals>.partition':\n        in_place(ret_value)\n        window = StackWindow(partition_index = ret_value)\n        panel.add(window)\n        window_stack.append(window)\n        reposition_windows()\n    if function_name == 'quick_sort.<locals>.quick_sort_rec':\n        if stack_dir[0] == -1:\n            window_stack.pop().delete()\n            reposition_windows()\n        stack_dir[0] = -1\n\n\n",
+  "debuggerCode": "def quick_sort(arr):\n    def partition(low, high):\n        pivot = arr[high]  # choose last element as pivot\n        i = low - 1        # place for swapping\n        \n        for j in range(low, high):\n            if arr[j] <= pivot:\n                i += 1\n                arr[i], arr[j] = arr[j], arr[i]\n        \n        # place pivot in correct position\n        arr[i + 1], arr[high] = arr[high], arr[i + 1]\n        return i + 1\n\n    def quick_sort_rec(low: int, high: int):\n        if low < high:\n            pi = partition(low, high)\n            quick_sort_rec(low, pi - 1)\n            quick_sort_rec(pi + 1, high)\n\n    quick_sort_rec(0, len(arr) - 1)\n    return arr\n\narr = [10, 7, 15, 8, 9, 1, 5, 13, 6, 2, 11, 4, 3, 12, 14]\nlow = 0\nhigh = 0\nset_debug(True)\nquick_sort(arr)",
+  "breakpoints": [
+    40,
+    42,
+    45,
+    37,
+    35,
+    18,
+    19,
+    16,
+    28
+  ],
+  "textBoxes": []
+}

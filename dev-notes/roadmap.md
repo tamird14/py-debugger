@@ -59,11 +59,8 @@ available during interactive mode.
 
 ## Cleanup / Small Tasks
 
-- ~~**R instance caching:** `R.__new__` now returns a cached instance per `orig_id` via `R._instance_cache`, so the same original object always maps to the same `R` Python object across steps. Builder code can use `R` objects as dict keys. Cache is cleared in `_reset_exec_state()`. Dev notes (`python-engine.md`) should be updated to document this guarantee.~~
 
 - **text boxes:** when pressing inside a text in a text box, update the styles in the bar above to match the current pressed text.
-
-- ~~**clear when loading:** Add a clear feature which clears the code from both editors, the variable panel, the output terminals, and the grid. Use this when loading a file.~~
 
 - **setDebugCallSuffix location:** Check if `setDebugCallSuffix` can be handled at `CodeEditorArea` level instead of `App.tsx` (see [sharp-edges.md → debugCallSuffix](./sharp-edges.md)).
 
@@ -72,10 +69,14 @@ available during interactive mode.
 - **Python-defined import schemas:** Builder/debugger import files (`array_utils.py`, `graphs.py`, `list_helpers.py`) currently have their ObjDoc schemas hand-written in separate `.schema.ts` files. These should be defined in the Python files themselves (e.g. as a `SCHEMA` dict) and extracted/generated into TypeScript at build time, so the single source of truth for each library lives with its implementation.
 
 - **Unify userZ + zOrder:** Consider merging `userZ` and `zOrder` in `RenderableObjectData` into a single `depth: [number, number]` tuple — they always travel and sort together in `Grid.tsx`.
-
-- **Arrow orientation and rotation:** Should only have one of those. At most have a single property `rotation` and allow setting `up`,`down`,`left`,`right` there which automatically transform to the angle.
 - **Unify event-handler position relativity:** `on_click` position is relative to the shape's containing panel (or the grid if top-level), but `on_drag` position is the absolute grid cell. Decide whether to unify them (both panel-relative is the more consistent choice).
 - **Clear editors button**
+
+- ~~**R instance caching:** `R.__new__` now returns a cached instance per `orig_id` via `R._instance_cache`, so the same original object always maps to the same `R` Python object across steps. Builder code can use `R` objects as dict keys. Cache is cleared in `_reset_exec_state()`. Dev notes (`python-engine.md`) should be updated to document this guarantee.~~
+
+- ~~**clear when loading:** Add a clear feature which clears the code from both editors, the variable panel, the output terminals, and the grid. Use this when loading a file.~~
+
+- ~~**Arrow orientation and rotation:** Should only have one of those. At most have a single property `rotation` and allow setting `up`,`down`,`left`,`right` there which automatically transform to the angle.~~
 - ~~**break points:** main bugs fixed (stale state, doubling, jumps-back). Minor: Monaco's default stickiness doesn't move a decoration when Enter is pressed at col 1 — worked around via manual edit-event tracking, but could revisit if Monaco exposes a cleaner stickiness option.~~
 - ~~**Keyboard shortcut — advance mode:** Use Ctrl+Enter (or Shift+Enter) to advance to the next mode (edit→analyze, trace→interactive).~~
 - ~~**Keyboard shortcut — save:** Use Ctrl+S to auto-save.~~
