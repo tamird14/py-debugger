@@ -33,6 +33,7 @@ export function DebuggerCodeEditor({
   // Tracks the latest breakpoints inside the mouse-down closure without re-registering it
   const breakpointsRef = useRef<Set<number>>(new Set());
   const onBreakpointsChangeRef = useRef(onBreakpointsChange);
+  const isProgrammaticChange = useRef(false);
   const [editorReady, setEditorReady] = useState(false);
 
   useEffect(() => {
@@ -48,7 +49,9 @@ export function DebuggerCodeEditor({
   useEffect(() => {
     const ed = editorRef.current;
     if (ed && ed.getValue() !== code) {
+      isProgrammaticChange.current = true;
       ed.setValue(code);
+      isProgrammaticChange.current = false;
     }
   }, [code]);
 
@@ -75,6 +78,7 @@ export function DebuggerCodeEditor({
     // a newline is inserted at col 1, whereas the code—and the breakpoint—should
     // follow the content to line N+1.
     ed.onDidChangeModelContent((event) => {
+      if (isProgrammaticChange.current) return;
       const initialBps = breakpointsRef.current;
       if (initialBps.size === 0) return;
 
