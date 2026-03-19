@@ -1,7 +1,7 @@
-import { loadPyodide } from '../python-engine/code-builder/services/pythonExecutor';
+import { loadPyodide } from '../../python-engine/code-builder/services/pythonExecutor';
 
-import type { VisualBuilderElementBase } from '../api/visualBuilder';
-import VISUAL_BUILDER_PYTHON from '../python-engine/code-builder/services/visualBuilder.py?raw';
+import type { VisualBuilderElementBase } from '../../api/visualBuilder';
+import VISUAL_BUILDER_PYTHON from './visualBuilder.py?raw';
 
 export interface CombinedVariable {
   type: string;

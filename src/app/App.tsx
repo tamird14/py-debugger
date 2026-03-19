@@ -12,7 +12,7 @@ import { TimelineControls } from '../timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
 import { getStateAt, getMaxTime, getTimeline, clearTimeline, hydrateTimelineFromArray } from '../timeline/timelineState';
 import { getCodeStepAt, clearCodeTimeline, setCodeTimeline } from '../python-engine/debugger-panel/codeTimelineState';
-import { executeCombinedCode, type CombinedStep } from '../services/combinedExecutor';
+import { executeCombinedCode, type CombinedStep } from '../components/combined-editor/combinedExecutor';
 import type { TextBox } from '../text-boxes/types';
 import { migrateTextBox } from '../text-boxes/types';
 
