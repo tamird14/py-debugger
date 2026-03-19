@@ -16,7 +16,7 @@ function localSavePlugin(): Plugin {
         req.on('end', () => {
           try {
             const { name, content } = JSON.parse(body) as { name: string; content: string }
-            const filePath = resolve(__dirname, 'src/samples', `${name}.json`)
+            const filePath = resolve(__dirname, 'src/components/combined-editor/samples', `${name}.json`)
             writeFileSync(filePath, content, 'utf8')
             res.writeHead(200, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ ok: true }))

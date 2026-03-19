@@ -22,9 +22,9 @@ const USE_COMBINED_EDITOR = true;
 
 // TODO: split samples into "public" (shipped in prod) and "dev" (local-only, e.g. rich-text-demo).
 // Dev samples should only appear when import.meta.env.DEV is true.
-const SAMPLE_MODULES = import.meta.glob('../samples/*.json', { eager: true }) as Record<
+const SAMPLE_MODULES = import.meta.glob('../components/combined-editor/samples/*.json', { eager: true }) as Record<
   string,
-  { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }
+  { combinedCode?: string; textBoxes?: TextBox[] }
 >;
 const SAMPLES = Object.entries(SAMPLE_MODULES).map(([path, data]) => {
   const filename = path.split('/').pop() ?? path;
@@ -290,12 +290,7 @@ function App() {
 
   const handleSave = useCallback(() => {
     const name = projectName.trim() || 'untitled';
-    const data = {
-      builderCode: visualBuilderCode,
-      debuggerCode,
-      breakpoints: [...breakpoints],
-      textBoxes,
-    };
+    const data = { combinedCode, textBoxes };
     const content = JSON.stringify(data, null, 2);
     const blob = new Blob([content], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -306,16 +301,11 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [visualBuilderCode, debuggerCode, breakpoints, textBoxes, projectName]);
+  }, [combinedCode, textBoxes, projectName]);
 
   const handleSaveToSamples = useCallback(async () => {
     const name = projectName.trim() || 'untitled';
-    const data = {
-      builderCode: visualBuilderCode,
-      debuggerCode,
-      breakpoints: [...breakpoints],
-      textBoxes,
-    };
+    const data = { combinedCode, textBoxes };
     const content = JSON.stringify(data, null, 2);
     setSaveSampleStatus('saving');
     try {
@@ -329,18 +319,16 @@ function App() {
       setSaveSampleStatus('error');
     }
     setTimeout(() => setSaveSampleStatus('idle'), 2000);
-  }, [visualBuilderCode, debuggerCode, breakpoints, textBoxes, projectName]);
+  }, [combinedCode, textBoxes, projectName]);
 
-  const handleLoad = useCallback((data: { builderCode?: string; debuggerCode?: string; breakpoints?: number[]; textBoxes?: TextBox[] }, name: string) => {
-    if (!data.builderCode) {
-      appendError('Invalid file: missing builderCode field');
+  const handleLoad = useCallback((data: { combinedCode?: string; textBoxes?: TextBox[] }, name: string) => {
+    if (!data.combinedCode) {
+      appendError('Invalid file: missing combinedCode field');
       return;
     }
     handleReset();
     setProjectName(name);
-    setVisualBuilderCode(data.builderCode);
-    setDebuggerCode(data.debuggerCode ?? '');
-    setBreakpoints(data.breakpoints ? new Set(data.breakpoints) : new Set());
+    setCombinedCode(data.combinedCode);
     setTextBoxes((data.textBoxes ?? [] as unknown[]).map((raw) => migrateTextBox(raw as Record<string, unknown>)));
   }, [handleReset]);
 

@@ -1,0 +1,4 @@
+{
+  "combinedCode": "arr = [5, 7, 2, 6, 3, 1]\nmin_index = 0\nj = 0\n\n# @viz\nclass LabeledArrow(Panel):\n    def __init__(self, label: str, color: tuple[int, int, int], **kwargs):\n        super().__init__(**kwargs)\n        self.add(\n            Arrow(angle=Arrow.DOWN, color=color, position=(1, 0)),\n            Label(label=label, color=color)\n        )\n\npanel = Panel(position=(2, 2))\npanel.add(\n    Array(cells=arr),\n    Rect(width=V(\"i\"), alpha=0.7),\n    LabeledArrow(label='min index', color=(220, 70, 120), position=V('(-2, min_index)')),\n    LabeledArrow(label='j', color=(120, 70, 220), position=V('(-2, j)'))\n)\n# @end\n\nn = len(arr)\n\nfor i in range(n):\n    min_index = i\n\n    for j in range(i + 1, n):\n        if arr[j] < arr[min_index]:\n            min_index = j\n\n    arr[i], arr[min_index] = arr[min_index], arr[i]\n",
+  "textBoxes": []
+}
