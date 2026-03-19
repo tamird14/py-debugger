@@ -69,7 +69,7 @@ function App() {
   const [debugCallSuffix, setDebugCallSuffix] = useState<string | null>(null);
   const [textBoxes, setTextBoxes] = useState<TextBox[]>([]);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
-  const [animationDuration, setAnimationDuration] = useState(600); // ms
+  const [animationDuration, setAnimationDuration] = useState(500); // ms
 
   type AppMode = 'idle' | 'trace' | 'interactive' | 'debug_in_event';
   const [appMode, setAppMode] = useState<AppMode>('idle');
@@ -138,6 +138,11 @@ function App() {
     setCurrentStep(0);
     setStepCount(0);
     gridAreaRef.current?.loadVisualBuilderObjects([]);
+    setProjectName('untitled');
+    setVisualBuilderCode('');
+    setDebuggerCode('');
+    setBreakpoints(new Set());
+    setTextBoxes([]);
   }, [handleEdit]);
 
   const isCodeEmpty = (code: string) =>
@@ -283,12 +288,12 @@ function App() {
       appendError('Invalid file: missing builderCode field');
       return;
     }
+    handleReset();
     setProjectName(name);
     setVisualBuilderCode(data.builderCode);
     setDebuggerCode(data.debuggerCode ?? '');
     setBreakpoints(data.breakpoints ? new Set(data.breakpoints) : new Set());
     setTextBoxes((data.textBoxes ?? [] as unknown[]).map((raw) => migrateTextBox(raw as Record<string, unknown>)));
-    handleReset();
   }, [handleReset]);
 
   // Auto-load first sample and return to edit mode
@@ -364,6 +369,7 @@ function App() {
           />
 
           {/* Save / Load / Samples */}
+          <button type="button" onClick={handleReset} className={buttonNeutral}>New</button>
           <button type="button" onClick={handleSave} className={buttonNeutral}>Save</button>
           <button type="button" onClick={() => fileInputRef.current?.click()} className={buttonNeutral}>Load</button>
           {IS_LOCAL && (
