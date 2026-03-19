@@ -4,6 +4,61 @@ Project management file — not linked from dev-notes.md.
 
 ---
 
+## Product Vision
+
+**Name: AlgoPlay** — emphasizes interactive exploration of algorithms, not passive watching.
+
+Most algorithm visualizers show pre-built demos you watch. AlgoPlay lets you:
+- Write **your own Python algorithm** and visualize it
+- **Step through** a recorded timeline with animated data structures
+- **Interact** with the running visualization — click elements, trigger traced sub-runs, accumulate state across clicks
+- Build structures like trees and graphs, then **manipulate them interactively** (insert, delete, rotate, search)
+
+The **interactive mode** (`on_click`, `DebugCall`, `RunCall`) is the core differentiator. No other tool in this space has it.
+
+---
+
+## Branch Strategy
+
+| Branch | Status | Purpose |
+|--------|--------|---------|
+| `main` | active | stable base |
+| `tutorial-pages` | parked | tutorial pages (Getting Started, Features, Bubble Sort) — merge after combine-editors |
+| `combine-editors` | in progress | single combined editor with collapsible viz blocks |
+
+---
+
+## Immediate: combine-editors
+
+The two-editor model (separate Debugger Code + Builder Code tabs) is the main UX blocker. Replacing it with a single editor using collapsible `# @viz … # @end` blocks makes the tool more approachable and enables line-specific visualization.
+
+**Status:** `combinedExecutor`, `vizBlockParser`, and `CombinedEditor` are implemented and wired into `App.tsx` behind `USE_COMBINED_EDITOR = true`.
+
+**Remaining on this branch:**
+- Polish CombinedEditor UX (folding UX, decoration colors, error line mapping)
+- Migrate/update existing samples to combined format
+- Fix any rough edges before merging to main
+
+---
+
+## After combine-editors
+
+1. **Search tree hero sample** — BST/AVL with interactive search, insert, delete, rotations via `DebugCall`
+2. **Fix/migrate existing samples** to combined editor format
+3. **Merge tutorial-pages** and update tutorials for new editor
+4. **More interactive examples** — heap insert, graph BFS click-to-start
+5. **Rename** Math-Insight → AlgoPlay across codebase and tutorials
+6. **Beta launch** (see Beta Launch section below)
+
+---
+
+## Future Features (interactive-first emphasis)
+
+- **Input elements** — Button, TextInput, Slider as first-class visual elements (enables typed input without hacking Rect subclasses)
+- **More emphasis on interactive mode UI** — larger "Finish & Interact" button, in-app discovery hint for new users
+
+---
+
 ## Beta Launch
 
 ### Critical
