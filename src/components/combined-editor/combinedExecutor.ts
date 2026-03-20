@@ -4,6 +4,7 @@ import type { VisualBuilderElementBase } from '../../api/visualBuilder';
 import VB_ENGINE_PYTHON from './_vb_engine.py?raw';
 import USER_API_PYTHON from './user_api.py?raw';
 import VISUAL_BUILDER_PYTHON from './vb_serializer.py?raw';
+import type { VizRange } from './vizBlockParser';
 
 export interface CombinedVariable {
   type: string;
@@ -13,13 +14,22 @@ export interface CombinedVariable {
 export interface CombinedStep {
   visual: VisualBuilderElementBase[];
   variables: Record<string, CombinedVariable>;
+  line?: number;
 }
 
 export interface CombinedResult {
   success: boolean;
   timeline: CombinedStep[];
+  handlers: Record<string, string[]>;  // elem_id (string key) → handler names
   error?: string;
   output?: string;
+}
+
+export interface CombinedClickResult {
+  interactiveTimeline: CombinedStep[];
+  finalSnapshot: VisualBuilderElementBase[];
+  handlers: Record<string, string[]>;
+  output: string;
 }
 
 /**
@@ -109,13 +119,62 @@ _sys.stdout = _stdout_capture
     const timelineJson: string = await py.runPythonAsync(`_json.dumps(_combined_timeline)`);
     const timeline = JSON.parse(timelineJson) as CombinedStep[];
 
-    return { success: true, timeline, output };
+    const handlersJson: string = await py.runPythonAsync('_serialize_combined_handlers()');
+    const handlers = JSON.parse(handlersJson) as Record<string, string[]>;
+
+    return { success: true, timeline, handlers, output };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     let cleanError = errorMessage;
     if (errorMessage.includes('PythonError:')) {
       cleanError = errorMessage.split('PythonError:')[1]?.trim() || errorMessage;
     }
-    return { success: false, timeline: [], error: cleanError };
+    return { success: false, timeline: [], handlers: {}, error: cleanError };
+  }
+}
+
+/**
+ * Dispatch an on_click event to a combined-editor element with viz-aware tracing.
+ *
+ * Algorithm functions called from the handler (defined outside viz blocks) are
+ * automatically traced and returned as interactiveTimeline steps.
+ * Use no_debug(fn)(...) in the handler to suppress tracing for specific calls.
+ *
+ * vizRanges must be the viz block ranges for the current code (from getVizRanges).
+ */
+export async function executeCombinedClickHandler(
+  elemId: number,
+  row: number,
+  col: number,
+  vizRanges: VizRange[],
+): Promise<CombinedClickResult | null> {
+  try {
+    const py = await loadPyodide();
+    const vizRangesJson = JSON.stringify(vizRanges);
+    // Use a Python variable to avoid quoting issues with JSON in string interpolation
+    await py.runPythonAsync(`_viz_ranges_json = '${escapeTripleQuote(vizRangesJson)}'`);
+    const resultJson: string = await py.runPythonAsync(
+      `_exec_combined_click_traced(${elemId}, ${row}, ${col}, _viz_ranges_json)`
+    );
+    const result = JSON.parse(resultJson) as {
+      interactive_timeline: CombinedStep[];
+      final_snapshot: VisualBuilderElementBase[];
+      handlers: Record<string, string[]>;
+      output: string;
+      error?: string;
+    };
+    if (result.error) {
+      console.error('Combined click handler error:', result.error);
+      return null;
+    }
+    return {
+      interactiveTimeline: result.interactive_timeline,
+      finalSnapshot: result.final_snapshot,
+      handlers: result.handlers,
+      output: result.output,
+    };
+  } catch (error) {
+    console.error('executeCombinedClickHandler error:', error);
+    return null;
   }
 }
