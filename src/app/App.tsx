@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { CodeEditorArea } from './CodeEditorArea';
 import { CombinedEditor, COMBINED_SAMPLE } from '../components/combined-editor/CombinedEditor';
 import { useTheme } from '../contexts/ThemeContext';
 import { AnimationContext } from '../animation/animationContext';
@@ -19,8 +18,6 @@ import type { TextBox } from '../text-boxes/types';
 import { migrateTextBox } from '../text-boxes/types';
 
 const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-const USE_COMBINED_EDITOR = true;
 
 // TODO: split samples into "public" (shipped in prod) and "dev" (local-only, e.g. rich-text-demo).
 // Dev samples should only appear when import.meta.env.DEV is true.
@@ -506,9 +503,9 @@ function App() {
               currentStep={currentStep}
               stepCount={stepCount}
               onGoToStep={goToStep}
-              appMode={USE_COMBINED_EDITOR ? appMode : undefined}
-              onEnterInteractive={USE_COMBINED_EDITOR ? handleEnterInteractive : undefined}
-              onBackToInteractive={USE_COMBINED_EDITOR ? handleBackToInteractive : undefined}
+              appMode={appMode}
+              onEnterInteractive={handleEnterInteractive}
+              onBackToInteractive={handleBackToInteractive}
             />
           </div>
 
@@ -561,8 +558,7 @@ function App() {
           {/* Left panel - Code Editor */}
           <Panel defaultSize={50} minSize={20}>
             <div className="h-full border-r border-gray-300 dark:border-gray-600">
-              {USE_COMBINED_EDITOR ? (
-                <CombinedEditor
+              <CombinedEditor
                   code={combinedCode}
                   onChange={setCombinedCode}
                   isEditable={isCombinedEditable}
@@ -577,28 +573,6 @@ function App() {
                   onAnalyze={handleAnalyzeCombined}
                   onEdit={handleEditCombined}
                 />
-              ) : (
-              <CodeEditorArea
-                code={visualBuilderCode}
-                onChange={setVisualBuilderCode}
-                debuggerCode={debuggerCode + (debugCallSuffix ?? '')}
-                onDebuggerCodeChange={appMode === 'debug_in_event' ? () => {} : setDebuggerCode}
-                onAnalyze={handleAnalyze}
-                onEdit={handleEdit}
-                isAnalyzing={isAnalyzing}
-                analyzeStatus={analyzeStatus}
-
-                currentVariables={currentVariables}
-                highlightedLines={highlightedLines}
-                breakpoints={breakpoints}
-                onBreakpointsChange={setBreakpoints}
-                appMode={appMode}
-                readOnly={analyzeStatus === 'success' || appMode !== 'idle'}
-                onEnterInteractive={handleEnterInteractive}
-                onBackToInteractive={handleBackToInteractive}
-                currentStep={currentStep}
-              />
-              )}
             </div>
           </Panel>
 
@@ -614,8 +588,8 @@ function App() {
                 onDebugCall={handleDebugCall}
                 textBoxes={textBoxes}
                 onTextBoxesChange={setTextBoxes}
-                combinedVizRanges={USE_COMBINED_EDITOR ? combinedVizRanges : undefined}
-                onCombinedTrace={USE_COMBINED_EDITOR ? handleCombinedTrace : undefined}
+                combinedVizRanges={combinedVizRanges}
+                onCombinedTrace={handleCombinedTrace}
               />
 
               {apiReferenceOpen && (
