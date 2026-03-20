@@ -170,3 +170,9 @@ available during interactive mode.
 ## Documentation
 
 - Find a better diagramming format for the mode state machine and other dev-notes diagrams. Requirements: text-based (version-controllable, AI-readable), renders in VSCode without extra setup. Mermaid was tried but output was inferior to ASCII art. Options: D2, PlantUML, or improved ASCII diagrams.
+
+
+
+- current executed line
+- move samples to new format
+- check that viz blocks are actually blocks

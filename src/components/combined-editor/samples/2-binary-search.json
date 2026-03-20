@@ -1,0 +1,296 @@
+{
+  "combinedCode": "arr = [2, 3, 7, 9, 11, 16, 19, 21, 24, 28, 31, 35, 38, 42, 45, 50]\nvalue = 28\n\n# Initializing variables before start debugging\nstart = 0\nend = len(arr)\nmid = (start + end)//2\n\n# @viz\n\nclass LabeledArrow(Panel):\n    def __init__(self, label: str, color: tuple[int, int, int], **kwargs):\n        super().__init__(**kwargs)\n        self.add(\n            Arrow(angle=Arrow.DOWN, color=color, x=0, y=1),\n            Label(label=label, color=color)\n        )\n\npanel = Panel(x=2, y=2)\npanel.add(\n    Array(cells=V('arr')),\n    LabeledArrow(label='start', y=-2, x=V('start'), color=(80,150,220)),\n    LabeledArrow(label='end', y=-2, x=V('end'), color=(220,150,80)),\n    Rect(color=(80,220,150), x=V('start'), width=V('end-start'),alpha=0.6)\n)\n# @end\n\nwhile start + 1 < end:\n    mid = (start + end)//2\n    if value < arr[mid]:\n        end = mid\n    else:\n        start = mid\n\nif arr[start] == value:\n    print(f'Found the number at arr[{start}]={value}')\nelse:\n    print(f'Could not find the value')\\n\\n",
+  "textBoxes": [
+    {
+      "id": "text-1773908495261",
+      "row": 4,
+      "col": 2,
+      "widthCells": 12,
+      "heightCells": 8,
+      "content": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#ffb43f",
+                      "fontSize": "24px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "Binary Search Algorithm:"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#ff8c82",
+                      "fontSize": "18px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "Problem"
+              },
+              {
+                "type": "text",
+                "text": ":"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#d6d6d6",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "In a sorted array, search for a given value."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#96d35f",
+                      "fontSize": "18px"
+                    }
+                  },
+                  {
+                    "type": "bold"
+                  }
+                ],
+                "text": "Algorithm"
+              },
+              {
+                "type": "text",
+                "text": ":"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "Start with the full array, indicated by "
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#74a7fe",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "[start, end)"
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": " arrows."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "Work under the assumption that if the value is in the array, then its index must be inside "
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(116, 167, 254)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "[start, end)"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "At each step, look at the mid point. If "
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#74a7fe",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "value<array[mid]"
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": ", then we can restrict the search to "
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "#74a7fe",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "[start,mid)"
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": " because the array is sorted. Similarly, otherwise we can restrict to "
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(116, 167, 254)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "[mid, end)"
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "textStyle",
+                    "attrs": {
+                      "color": "rgb(214, 214, 214)",
+                      "fontSize": "16px"
+                    }
+                  }
+                ],
+                "text": "As each time we divide the range by half, it takes log(n) steps to finish and remain with only one possible cell to check."
+              }
+            ]
+          }
+        ]
+      },
+      "bgColor": "#444444"
+    }
+  ]
+}
