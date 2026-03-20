@@ -305,3 +305,25 @@ def on_click(self, position: tuple[int, int]):
 
 def on_drag(self, position: tuple[int, int], drag_type: str):
     pass
+
+
+# ── Interactive mode helpers ──────────────────────────────────────────────────
+
+def no_debug(fn):
+    """Execute fn without auto-tracing (silent execute, visual refresh only).
+
+    Use when you want a function call to modify state without producing trace steps
+    in the interactive timeline. The visual state is still refreshed after the call.
+
+    Example:
+        arr.on_click = lambda pos: no_debug(sort)(arr)
+    """
+    import sys as _sys
+    def wrapper(*args, **kwargs):
+        old_trace = _sys.gettrace()
+        _sys.settrace(None)
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            _sys.settrace(old_trace)
+    return wrapper
