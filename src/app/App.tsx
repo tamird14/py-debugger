@@ -152,6 +152,10 @@ function App() {
     setDebuggerCode('');
     setBreakpoints(new Set());
     setTextBoxes([]);
+    setCombinedCode('');
+    setCombinedTimeline([]);
+    setIsCombinedEditable(true);
+    setHandlers({});
   }, [handleEdit]);
 
   const isCodeEmpty = (code: string) =>
