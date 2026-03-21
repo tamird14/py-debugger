@@ -114,6 +114,9 @@ available during interactive mode.
 
 ## Cleanup / Small Tasks
 
+- **Unify App/EmbedPage state logic:** `App.tsx` and `EmbedPage.tsx` duplicate timeline state (`currentStep`, `stepCount`, `hasInteractiveElements`), analysis result wiring (`setHandlers`, `hydrateTimelineFromArray`, auto-advance logic), and mode transition handlers. Extract into a shared hook (e.g. `useAppSession`) so both entry points share a single source of truth and future changes only need to be made once.
+
+
 
 - **text boxes:** when pressing inside a text in a text box, update the styles in the bar above to match the current pressed text.
 

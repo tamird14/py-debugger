@@ -10,6 +10,10 @@ interface TimelineControlsProps {
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
   canAnalyze?: boolean;
+  /** False = show the Go-Interactive button disabled (no interactive elements exist) */
+  hasInteractiveElements?: boolean;
+  /** True = gray out entire timeline nav (single-frame, no interaction — "photo" mode) */
+  isStaticSnapshot?: boolean;
 }
 
 export function TimelineControls({
@@ -22,6 +26,8 @@ export function TimelineControls({
   onAnalyze,
   isAnalyzing,
   canAnalyze,
+  hasInteractiveElements,
+  isStaticSnapshot,
 }: TimelineControlsProps) {
   const [inputValue, setInputValue] = useState(String(currentStep));
 
@@ -35,8 +41,10 @@ export function TimelineControls({
   const hasSteps = stepCount > 0;
   const maxStep = hasSteps ? stepCount - 1 : 0;
   const isInactive = appMode === 'idle' || appMode === 'interactive';
-  const canGoPrev = hasSteps && currentStep > 0 && !isInactive;
-  const canGoNext = hasSteps && currentStep < maxStep && !isInactive;
+  const isPhoto = isStaticSnapshot ?? false;
+  const canEnterInteractive = hasInteractiveElements !== false;
+  const canGoPrev = hasSteps && currentStep > 0 && !isInactive && !isPhoto;
+  const canGoNext = hasSteps && currentStep < maxStep && !isInactive && !isPhoto;
 
   const btnBase =
     'px-2 py-1 rounded text-sm font-medium transition-colors border';
@@ -89,8 +97,8 @@ export function TimelineControls({
         </button>
       )}
 
-      {/* Step navigation — always visible, grayed out when idle or interactive */}
-      <div className={`flex items-center gap-1 px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 ${isInactive ? 'opacity-40' : ''}`}>
+      {/* Step navigation — always visible, grayed out when idle/interactive or photo */}
+      <div className={`flex items-center gap-1 px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 ${(isInactive || isPhoto) ? 'opacity-40' : ''}`}>
         <button
           onClick={() => onGoToStep(0)}
           disabled={!canGoPrev}
@@ -143,9 +151,10 @@ export function TimelineControls({
           <>
             <div className="w-px h-5 bg-gray-300 dark:bg-gray-500 mx-0.5" />
             <button
-              onClick={onEnterInteractive}
-              className={btnActive}
-              title="Finish trace and enter interactive mode"
+              onClick={canEnterInteractive ? onEnterInteractive : undefined}
+              disabled={!canEnterInteractive}
+              className={canEnterInteractive ? btnActive : btnDisabled}
+              title={canEnterInteractive ? "Finish trace and enter interactive mode" : "No interactive elements"}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4 0v20l4.5-4.5 2.8 6.5 2-.9-2.8-6.6H16Z" />

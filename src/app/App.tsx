@@ -13,7 +13,7 @@ import { GridArea, type GridAreaHandle } from './GridArea';
 import { getStateAt, getMaxTime, clearTimeline, hydrateTimelineFromArray } from '../timeline/timelineState';
 import { clearCodeTimeline, setCodeTimeline } from '../python-engine/debugger-panel/codeTimelineState';
 import { executeCombinedCode, type CombinedStep, type CombinedClickResult } from '../components/combined-editor/combinedExecutor';
-import { setHandlers } from '../visual-panel/handlersState';
+import { setHandlers, hasAnyClickHandler } from '../visual-panel/handlersState';
 import { getVizRanges } from '../components/combined-editor/vizBlockParser';
 import type { TextBox } from '../text-boxes/types';
 import { migrateTextBox } from '../text-boxes/types';
@@ -83,6 +83,7 @@ function App() {
   // Timeline state
   const [currentStep, setCurrentStep] = useState(0);
   const [stepCount, setStepCount] = useState(0);
+  const [hasInteractiveElements, setHasInteractiveElements] = useState(false);
   // Preload Pyodide on mount
   useEffect(() => {
     if (!isPyodideLoaded()) {
@@ -131,6 +132,7 @@ function App() {
     setCombinedTimeline([]);
     setIsCombinedEditable(true);
     setHandlers({});
+    setHasInteractiveElements(false);
     setAppMode('idle');
   }, []);
 
@@ -159,6 +161,9 @@ function App() {
         hydrateTimelineFromArray(result.timeline.map(s => s.visual));
         setCodeTimeline(result.timeline.map(s => ({ variables: s.variables, scope: [] })));
         setHandlers(result.handlers ?? {});
+        const hasInteractive = hasAnyClickHandler();
+        setHasInteractiveElements(hasInteractive);
+        const isOneFrame = getMaxTime() === 0;
         setStepCount(getMaxTime() + 1);
         setCurrentStep(0);
         gridAreaRef.current?.loadVisualBuilderObjects(getStateAt(0) ?? []);
@@ -166,7 +171,12 @@ function App() {
           result.timeline.map(s => ({ text: s.output ?? '', isViz: s.isViz ?? false }))
         );
         setIsCombinedEditable(false);
-        setAppMode('trace');
+        if (isOneFrame && hasInteractive) {
+          commitCurrentSegment('----- end trace -----');
+          setAppMode('interactive');
+        } else {
+          setAppMode('trace');
+        }
       } else {
         appendError(result.error ?? 'Unknown error');
       }
@@ -184,6 +194,7 @@ function App() {
     clearTimeline();
     clearCodeTimeline();
     setHandlers({});
+    setHasInteractiveElements(false);
     setCurrentStep(0);
     setStepCount(0);
     gridAreaRef.current?.loadVisualBuilderObjects([]);
@@ -305,7 +316,7 @@ function App() {
         if (appMode === 'idle' && !isAnalyzingCombined) {
           e.preventDefault();
           handleAnalyzeCombined();
-        } else if (appMode === 'trace') {
+        } else if (appMode === 'trace' && hasInteractiveElements) {
           e.preventDefault();
           handleEnterInteractive();
         }
@@ -390,6 +401,8 @@ function App() {
             onAnalyze={handleAnalyzeCombined}
             isAnalyzing={isAnalyzingCombined}
             canAnalyze={!!combinedCode.trim()}
+            hasInteractiveElements={hasInteractiveElements}
+            isStaticSnapshot={stepCount === 1 && !hasInteractiveElements && appMode !== 'idle'}
           />
         </div>
 

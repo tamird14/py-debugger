@@ -6,7 +6,7 @@ import { TimelineControls } from '../timeline/TimelineControls';
 import { GridArea, type GridAreaHandle } from './GridArea';
 import { getStateAt, getMaxTime, clearTimeline, hydrateTimelineFromArray } from '../timeline/timelineState';
 import { executeCombinedCode, type CombinedStep, type CombinedClickResult } from '../components/combined-editor/combinedExecutor';
-import { setHandlers } from '../visual-panel/handlersState';
+import { setHandlers, hasAnyClickHandler } from '../visual-panel/handlersState';
 import { getVizRanges } from '../components/combined-editor/vizBlockParser';
 import { migrateTextBox, type TextBox } from '../text-boxes/types';
 
@@ -65,6 +65,7 @@ export function EmbedPage() {
   const [appMode, setAppMode] = useState<AppMode>('idle');
   const [currentStep, setCurrentStep] = useState(0);
   const [stepCount, setStepCount] = useState(0);
+  const [hasInteractiveElements, setHasInteractiveElements] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_combinedTimeline, setCombinedTimeline] = useState<CombinedStep[]>([]);
   const [textBoxes, setTextBoxes] = useState<TextBox[]>([]);
@@ -119,10 +120,17 @@ export function EmbedPage() {
         setCombinedTimeline(result.timeline);
         hydrateTimelineFromArray(result.timeline.map((s) => s.visual));
         setHandlers(result.handlers ?? {});
+        const hasInteractive = hasAnyClickHandler();
+        setHasInteractiveElements(hasInteractive);
+        const isOneFrame = getMaxTime() === 0;
         setStepCount(getMaxTime() + 1);
         setCurrentStep(0);
         gridAreaRef.current?.loadVisualBuilderObjects(getStateAt(0) ?? []);
-        setAppMode('trace');
+        if (isOneFrame && hasInteractive) {
+          setAppMode('interactive');
+        } else {
+          setAppMode('trace');
+        }
       } else {
         setAnalysisError(result.error ?? 'Analysis failed.');
       }
@@ -247,6 +255,8 @@ export function EmbedPage() {
           appMode={appMode}
           onEnterInteractive={handleEnterInteractive}
           onBackToInteractive={handleBackToInteractive}
+          hasInteractiveElements={hasInteractiveElements}
+          isStaticSnapshot={stepCount === 1 && !hasInteractiveElements && appMode !== 'idle'}
         />
       </div>
     </EmbedShell>

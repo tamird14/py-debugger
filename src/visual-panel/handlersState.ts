@@ -10,3 +10,7 @@ export function setHandlers(raw: Record<string, string[]>) {
 export function hasHandler(elemId: number, handlerName: string): boolean {
   return handlers[elemId]?.includes(handlerName) ?? false;
 }
+
+export function hasAnyClickHandler(): boolean {
+  return Object.values(handlers).some(h => h.includes('on_click'));
+}
