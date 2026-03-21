@@ -1,6 +1,6 @@
 # Developer Notes
 
-A browser-based visual algorithm debugger. Users write Python code in a single editor, click Analyze, step through execution watching data structures animate on a grid, then enter interactive mode to click on elements that trigger Python handlers.
+**AlgoPlay** — a browser-based interactive algorithm visualizer. Users write Python code in a single editor, click Analyze, step through execution watching data structures animate on a grid, then enter interactive mode to click on elements that trigger Python handlers.
 
 ---
 
