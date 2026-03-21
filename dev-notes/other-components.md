@@ -107,15 +107,13 @@ interface TextBox {
 
 ## Save / Load
 
-Projects are saved as JSON files. Loading a project restores both editors, breakpoints, text boxes, and triggers an automatic re-analyze.
+Projects are saved as JSON files. Loading a project restores the combined code editor, text boxes, and triggers an automatic re-analyze.
 
 ### JSON Format
 
 ```json
 {
-  "builderCode": "panel = Panel('main')\n...",
-  "debuggerCode": "arr = [5,3,8,1]\n...",
-  "breakpoints": [7, 12],
+  "combinedCode": "arr = [5,3,8,1]\n# @viz\npanel = Panel(row=0, col=0)\n# @end\n...",
   "textBoxes": [
     {
       "id": "text-1234",
@@ -145,39 +143,38 @@ Projects are saved as JSON files. Loading a project restores both editors, break
 }
 ```
 
-**Old format (pre-rich-text):** saves with `text`/`fontSize`/`color` fields at the box level are automatically migrated to `content: JSONContent` via `migrateTextBox()` on load.
+**Old format (two-editor):** saves with `builderCode` + `debuggerCode` + `breakpoints` fields are no longer generated. Old files can be migrated manually — there is no automatic migration path currently.
+
+**Old format (pre-rich-text text boxes):** saves with `text`/`fontSize`/`color` fields at the box level are automatically migrated to `content: JSONContent` via `migrateTextBox()` on load.
 
 ### Fields
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `builderCode` | `string` | Builder Code editor content |
-| `debuggerCode` | `string` | Debugger Code editor content |
-| `breakpoints` | `number[]` | Restored as `new Set(...)` on load |
+| `combinedCode` | `string` | Combined Code editor content |
 | `textBoxes` | `TextBox[]` | Defaults to `[]` for saves that predate this field; old format auto-migrated |
 
 ### Local Save Mode
 
-`IS_LOCAL = hostname === 'localhost' || '127.0.0.1'`. When running locally, Save POSTs to `/api/save-sample` (served by a Vite dev plugin) to write directly into `src/samples/`. A separate **Save to Samples** button (only visible locally) saves with the current project name as the filename. In non-local mode, Save downloads a `.json` file as usual.
+`IS_LOCAL = hostname === 'localhost' || '127.0.0.1'`. When running locally, Save POSTs to `/api/save-sample` (served by a Vite dev plugin) to write directly into `src/components/combined-editor/samples/`. A separate **Save to Samples** button (only visible locally) saves with the current project name as the filename. In non-local mode, Save downloads a `.json` file as usual.
 
 The app header always shows a project name input (`projectName` state in `App.tsx`). On load, the name is set from the loaded filename.
 
 ### On Load Behavior
 
-1. Both editors are updated with loaded code
-2. Breakpoints are restored
-3. Text boxes are restored
-4. `runAnalyze()` is called automatically
+1. Combined Code editor is updated with loaded code
+2. Text boxes are restored
+3. `runAnalyze()` is called automatically
 
 ### Samples
 
-Bundled sample projects live in `src/samples/*.json`. They are loaded at build time via Vite's `import.meta.glob`:
+Bundled sample projects live in `src/components/combined-editor/samples/*.json`. They are loaded at build time via Vite's `import.meta.glob`:
 
 ```typescript
-const modules = import.meta.glob('../samples/*.json', { eager: true });
+const modules = import.meta.glob('../components/combined-editor/samples/*.json', { eager: true });
 ```
 
-The filename (without `.json`) becomes the sample name shown in the Samples dropdown.
+The filename (without `.json`) becomes the sample name. Files prefixed with `feature-` appear in the *Features* category in the dropdown; others appear in *Algorithms*.
 
 ### Key Files
 
@@ -185,8 +182,7 @@ The filename (without `.json`) becomes the sample name shown in the Samples drop
 |------|---------|
 | `src/app/App.tsx` | `handleSave`, `handleLoad` — JSON serialization/deserialization |
 | `src/text-boxes/types.ts` | `TextBox` interface + `migrateTextBox()` |
-| `src/text-boxes/FontSizeExtension.ts` | Custom TipTap font-size extension |
-| `src/samples/*.json` | Bundled sample projects |
+| `src/components/combined-editor/samples/*.json` | Bundled sample projects |
 
 ---
 
@@ -194,34 +190,31 @@ The filename (without `.json`) becomes the sample name shown in the Samples drop
 
 The Output Terminal captures Python `print()` output and errors, displayed at the bottom of the Code Panel.
 
-### Segmentation
+### How It Works
 
-Output is segmented into three tabs:
-- **Builder** — output from `exec(visualBuilderCode)` (builder code run)
-- **Debugger** — output from `_visual_code_trace(debuggerCode)` (tracer run)
-- **Combined** — both together in order
+In the combined editor, output is captured incrementally. Each timeline step carries a `output` field containing the stdout delta since the previous snapshot. The terminal replays these deltas up to the current step, so as you step forward/backward through the timeline, the terminal shows what was printed at or before the current point.
 
 ### State
 
 **File:** `src/output-terminal/terminalState.ts`
 
-Stores the captured output segments. `pythonExecutor.ts` writes to it before/after each Python execution phase by redirecting `sys.stdout` in Pyodide.
+Stores the captured output. `combinedExecutor.ts` writes to it after each Analyze run via `setCombinedEditorSteps`.
 
 ### Components
 
 | Component | File | Responsibility |
 |-----------|------|----------------|
-| `OutputTerminal` | `src/output-terminal/OutputTerminal.tsx` | Renders terminal with tab selector and scrollable output |
+| `OutputTerminal` | `src/output-terminal/OutputTerminal.tsx` | Renders terminal with scrollable output |
 
 ---
 
 ## API Reference Panel
 
-The API Reference Panel is a floating overlay showing available visual builder functions and their signatures. It is not a tab inside the Code Panel — it is rendered directly by `App.tsx` and toggled by a button.
+The API Reference Panel is a floating overlay showing available visual builder functions and their signatures. It is not a tab inside the Code Panel — it is rendered directly by `App.tsx` and toggled by a button in the Visual Panel header.
 
 ### What It Shows
 
-Schema for all available builder functions: `Panel`, `Rect`, `Circle`, `Arrow`, `Label`, `Array`, `Array2D` — their constructor parameters, types, and descriptions.
+Schema for all available builder functions: `Panel`, `Rect`, `Circle`, `Arrow`, `Label`, `Array`, `Array2D`, `Input` — their constructor parameters, types, and descriptions.
 
 ### Implementation
 

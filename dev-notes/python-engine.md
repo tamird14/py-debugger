@@ -8,58 +8,50 @@ Python runs entirely in-browser via **Pyodide** (WebAssembly, loaded once per pa
 
 ## Part 1: General Description
 
+### Combined Execution Model
+
+The user writes a single Python file. It contains two kinds of code interleaved:
+
+- **Algorithm code** — runs normally; the V() change detection tracer records a snapshot whenever any bound V() expression changes value.
+- **Viz blocks** (`# @viz … # @end`) — visual builder code that declares and updates visual elements. Before execution, they are preprocessed into engine calls:
+  - `# @viz` → `__viz_begin__()` (pauses V() detection)
+  - `# @end` → `__viz_end__(dict(locals()))` (resumes detection and records a snapshot)
+
+The two kinds of code share one namespace (`_combined_ns`). Variables declared in algorithm code are visible inside viz blocks and vice versa.
+
 ### Three-Layer Architecture
 
-The Python side is split into three layers, each in a separate file:
+The Python side is split into three layers, each in a separate file — all under `src/components/combined-editor/`:
 
 | Layer | File | What lives here |
 |-------|------|-----------------|
-| **Hidden engine types** | `_vb_engine.py` | `VisualElem`, `V`, `R`, `TrackedDict`, `PopupException` |
-| **User-facing API** | `user_api.py` | `Panel`, all shapes, `DebugCall`, `RunCall`, `on_click`, `on_drag`, `update`, `function_call`, `function_exit`, `V` shorthand |
-| **Engine** | `visualBuilder.py`, `event_handling.py`, `pythonTracer.py` | Serialization, tracing, click dispatch, sandbox execution |
+| **Hidden engine types** | `_vb_engine.py` | `VisualElem`, `V`, `R`, `TrackedDict`, `PopupException`, `make_step_guard` |
+| **User-facing API** | `user_api.py` | `Panel`, all shapes, `Input`, `no_debug` |
+| **Engine** | `vb_serializer.py` | Execution, snapshot recording, interactive click/input dispatch |
 
-`_vb_engine.py` and `user_api.py` are **Python VFS modules** — written to `/home/pyodide/` at startup and imported via standard `import`. They are never exec'd into globals.
+`_vb_engine.py` and `user_api.py` are **Python VFS modules** — written to `/home/pyodide/` at startup and imported via standard `import`. `vb_serializer.py` is exec'd into Pyodide globals.
 
-The three engine files are exec'd into **Pyodide globals** and share that namespace with each other. User builder code runs in a completely separate **`_user_code_ns`** dict (a sandbox) that contains only the `user_api` items. User code cannot reach engine functions in Pyodide globals.
+### Persistent Namespace: `_combined_ns`
 
-### The Two Python Sides
-
-**Builder side** defines the visual elements and how they animate:
-- User writes builder code declaring `Panel`, `Rect`, `Circle`, etc., binding properties to `V("expression")` objects
-- At Analyze time, builder code runs via `exec()` in `_user_code_ns` (a sandbox seeded from `user_api`) — this populates `VisualElem._registry` with live element objects
-- The builder code is re-run at every Analyze (the registry is cleared first)
-
-**Debugger side** traces the algorithm:
-- User writes debugger code (the algorithm being visualized)
-- `pythonTracer.py` runs it with `sys.settrace`, recording variables and call stack at every line
-- For each traced line, `_serialize_visual_builder()` is called to capture a visual snapshot with all `V()` expressions evaluated against current variables
-- The result is two parallel timelines: a visual timeline and a code timeline
-
-### Persistent Memory: `_exec_context`
-
-`_exec_context` is a Python dict that serves as the execution namespace for all debugger code. It persists across interactions:
-- Survives between Analyze calls (variables from a previous run remain until overwritten)
-- Reused as-is during debug-call sub-runs — the handler sees all prior variables and functions
-- Only destroyed on page reload
-
-This is intentional: it allows interactive mode handlers to read and mutate the algorithm's state across multiple clicks.
+`_combined_ns` is a Python dict that serves as the execution namespace for combined code. It persists across interactions:
+- Re-created at the start of each Analyze (fresh namespace seeded from `user_api` exports)
+- Preserved between `_exec_combined_click_traced` calls — handlers see all variables from the last run
+- Only destroyed on page reload or next Analyze
 
 ### Python ↔ TypeScript Bridge
 
-All TypeScript-to-Python calls go through `src/code-builder/services/pythonExecutor.ts`. It manages Pyodide initialization, string escaping, and JSON parsing of results.
+All TypeScript-to-Python calls go through `src/components/combined-editor/combinedExecutor.ts`. It manages Pyodide initialization, code preprocessing, and JSON parsing of results.
 
 ---
 
-## Part 2: Builder Side
+## Part 2: Visual Elements
 
 ### Files
 
 | File | Purpose |
 |------|---------|
-| `src/python-engine/code-builder/services/_vb_engine.py` | Hidden engine types: `VisualElem`, `V`, `R`, `TrackedDict`, `PopupException` |
-| `src/python-engine/code-builder/services/user_api.py` | User-facing API: `Panel`, all shapes, `DebugCall`, `RunCall`, event stubs, hook stubs, `V` shorthand |
-| `src/python-engine/code-builder/services/visualBuilder.py` | Sandbox exec (`_exec_builder_code`), `_user_code_ns`, `_serialize_visual_builder`, `_execute_run_call` |
-| `src/python-engine/code-builder/services/event_handling.py` | Click/drag dispatch, handler serialization |
+| `src/components/combined-editor/_vb_engine.py` | Hidden engine types: `VisualElem`, `V`, `R`, `TrackedDict`, `PopupException` |
+| `src/components/combined-editor/user_api.py` | User-facing API: `Panel`, all shapes, `Input`, `no_debug` |
 
 ### `VisualElem` — Base Class
 
@@ -73,12 +65,12 @@ class VisualElem:
 
 **`_elem_id`** — assigned at construction, stable for the lifetime of the element. This is the identity that bridges Python and TypeScript for click dispatch.
 
-**`_clear_registry()`** — called at the start of every Analyze. Clears `_registry` and resets the `_vis_elem_id` counter. Does **not** reset `_exec_context`.
+**`_clear_registry()`** — called at the start of every Analyze. Clears `_registry` and resets the `_vis_elem_id` counter.
 
 **`_serialize_base()`** — fields every element emits:
 ```python
 {
-    "position": [row, col],   # Panel-relative if element has a panelId
+    "position": [row, col],   # Panel-relative if element has a parent panel
     "visible": bool,
     "alpha": float,
     "z": int,                 # Depth layer; lower z = closer = rendered on top (default 0)
@@ -87,377 +79,159 @@ class VisualElem:
 }
 ```
 
-**`__getattribute__` patch** — `pythonTracer.py` replaces `VisualElem.__getattribute__` with `get_v_attr`. Any property access on a `VisualElem` subclass automatically calls `.eval()` on `V()` objects. This is what makes `V("i+1")` bindings work during serialization.
+**`__getattribute__` patch** — `_vb_engine.py` replaces `VisualElem.__getattribute__` with `get_v_attr`. Any property access on a `VisualElem` subclass automatically calls `.eval()` on `V()` objects and `.resolve()` on `R` objects. This is what makes V() and R bindings work during serialization.
 
 ### Shape Classes (`user_api.py`)
 
-All shape constructors accept `z=0` as a keyword argument (see z-depth ordering below).
+All shapes use schema-driven serialization via `_ShapeBase`. Constructor args are keyword-only.
 
 | Class | Key constructor args | Clickable |
 |-------|---------------------|-----------|
 | `Rect` | `panel, row, col, width, height, color` | Yes (extends BasicShape in TS) |
 | `Circle` | `panel, row, col, radius, color` | Yes |
-| `Arrow` | `panel, start_row, start_col, end_row, end_col` | Yes |
-| `Line` | `start, end, color, stroke_weight, start_offset, end_offset, start_cap, end_cap` | No (implements `VisualBuilderElementBase` directly in TS) |
+| `Arrow` | `panel, row, col, end_row, end_col` | Yes |
+| `Line` | `start, end, color, stroke_weight, start_offset, end_offset, start_cap, end_cap` | No |
 | `Label` | `panel, row, col, text` | No (TS does not set `_elemId`) |
 | `Array` | `panel, row, col, values` | No |
 | `Array2D` | `panel, row, col, arr` (2D list) | No |
+| `Input` | `panel, row, col, width, height` | Special — dispatches `input_changed` |
 
 `Line` has no `panel` argument — it specifies absolute start/end grid cells. `start_offset` and `end_offset` are `(row_frac, col_frac)` fractions within the cell (0.0–1.0). `start_cap`/`end_cap` can be `'none'` or `'arrow'`.
 
-`Array2D` takes `arr=[[...]]`, a 2D list of primitives. Dimensions are derived at render time from the data — there are no `num_rows`, `num_cols`, or `set_dims()`. The `rectangular` property (default `True`) controls jagged-row rendering: `True` pads shorter rows to the bounding rectangle; `False` only draws cells that exist, leaving the rest bare (and hides the panel background). Values serialize via `list2d_r` (a serialization type that R-unwraps each row).
+`Array2D` takes `arr=[[...]]`, a 2D list of primitives. The `rectangular` property (default `True`) controls jagged-row rendering.
+
+`Input` is an interactive text field. Override `input_changed(self, text)` to handle user input. Call `get_input()` to read the current value.
 
 ### `Panel`
 
 Container element. Children store positions relative to the panel's top-left corner in Python serialization. TypeScript resolves them to absolute grid coordinates in `loadVisualBuilderObjects()`. See [visual-elements.md](./visual-elements.md).
 
-### `DebugCall` and `RunCall` Sentinels
+### `no_debug(fn)` Decorator
 
 ```python
-class DebugCall:
-    def __init__(self, expression: str):
-        self.expression = expression
-
-class RunCall:
-    def __init__(self, expression: str):
-        self.expression = expression
+@no_debug
+def my_helper():
+    ...
 ```
 
-If `on_click` returns a **`DebugCall`** instance, the expression is wrapped into a function and traced as a sub-run. TypeScript enters `debug_in_event` mode with a full navigable timeline.
+Marks a function so the viz-aware interactive tracer skips local tracing for it. Useful for functions defined inside viz blocks that should not produce trace steps when called from click handlers. Implemented by setting `fn._no_debug = True`; the interactive tracer checks `co_firstlineno` against viz ranges to achieve the same effect without needing this decorator explicitly.
 
-If `on_click` returns a **`RunCall`** instance, `_execute_run_call(expression)` is called: the expression is `exec()`-d silently in `_exec_context` (no tracing), and the resulting visual snapshot is returned for an immediate visual refresh. No mode change, no timeline — cheaper than `DebugCall` when you just want to mutate state and redraw.
+### Serialization
 
-Returning anything else (or `None`) is a simple handler — Python updates element state, the snapshot is re-serialized, and the grid re-renders.
+**`_serialize_visual_builder()`** — walks `VisualElem._registry` and returns JSON array of all serialized elements.
 
-### `PopupException`
-
-A user-facing error. Raised when `MAX_TRACE_STEPS` is exceeded or for other user-visible errors. Caught by TypeScript and displayed as a popup message.
-
-### Serialization Functions
-
-**`_serialize_visual_builder()`**:
-1. Sorts panels to the front (so children can reference their parent's `_elem_id` via `panelId`)
-2. Calls `_serialize()` on each element, assembling a JSON array
-
-**`_serialize_handlers() → dict`** — returns a Python dict `{ elem_id: ["on_click"] }`. Used **only** inside `_visual_code_trace` where the whole result is wrapped in a single `json.dumps`.
-
-**`_serialize_handlers_json() → str`** — returns `json.dumps(...)` of the same dict. Used by TypeScript direct calls (`executeClickHandler`). **Never embed this inside another `json.dumps`** — it would double-encode. See [sharp-edges.md](./sharp-edges.md).
-
-**`_handle_click(elemId, row, col)`** — finds the element with matching `_elem_id`, calls its `on_click(row, col)`, returns `('debug', expression)`, `('run', expression)`, or `('none', None)`.
-
-**`_handle_click_with_output(elemId, row, col)`** — wrapper that captures stdout during the handler. Returns JSON `{ debugCall, runCall, output }`. Called by TypeScript's `executeClickHandler`.
-
-**`_execute_run_call(expression)`** — executes expression silently in `_exec_context`, re-serializes visual state, returns JSON `{ snapshot, handlers, output }`.
+**`_serialize_combined_handlers() → str`** — returns `json.dumps({elem_id: ["on_click"]})` for elements that have an `on_click` method or are an `Input` instance.
 
 ---
 
-## Part 3: Debugger Side
+## Part 3: Tracing & Snapshots
 
 ### File
 
 | File | Purpose |
 |------|---------|
-| `src/python-engine/debugger-panel/pythonTracer.py` | Tracer, `_exec_context`, `V()` class, timeline building |
+| `src/components/combined-editor/vb_serializer.py` | Combined execution, V() tracer, snapshot recording, interactive dispatch |
 
-### `_exec_context` — The Persistent Namespace
+### `_exec_combined_code(code)` — Main Entry Point
 
-```python
-_exec_context: dict = {}
+Called by TypeScript for each Analyze run.
+
+```
+1. Reset combined timeline and namespace
+2. Preprocess code (# @viz → __viz_begin__(), # @end → __viz_end__(dict(locals())))
+3. Seed namespace: user_api exports + __viz_begin__ + __viz_end__
+4. sys.settrace(_make_v_aware_tracer())
+5. exec(compile(code, '<combined_code>', 'exec'), _combined_ns)
+6. sys.settrace(None)
+7. _combined_ns = ns  # persist for interactive mode
+8. Return json.dumps({ timeline: _combined_timeline, handlers, error? })
 ```
 
-The execution namespace for all debugger code. Separate from Pyodide globals (which hold `Panel`, `Rect`, `V`, etc. from the builder side).
+### Snapshot Triggers
 
-| Event | What happens to `_exec_context` |
-|-------|----------------------------------|
-| First Analyze | Re-created: `{'__builtins__': __builtins__}` |
-| Subsequent Analyzes (same session) | Re-created — but old functions that were removed from the code may still be callable via closures. See [sharp-edges.md](./sharp-edges.md). |
-| Debug-call sub-run | **Reused as-is** (`persistent=True`) — all prior variables and functions are visible |
-| Back to Interactive | Unchanged — mutations from sub-run accumulate |
-| Page reload | Destroyed — only full reset |
+Two conditions cause a snapshot to be recorded into `_combined_timeline`:
 
-What lives here: all module-level variables and functions from debugger code, `__builtins__`, and after a debug-call sub-run: the injected `debug_call` function.
+1. **Viz block exit** — `__viz_end__(dict(locals()))` is called. Snapshot includes the visual state, current locals, and the line number. `is_viz=True` in the step.
 
-### `sys.settrace` — Line-by-Line Tracing
+2. **V() value change** — `_make_v_aware_tracer()` sets up a `sys.settrace` tracer that fires on every `'line'` event. If `_tracing_active` (i.e., not inside a viz block) and any V() expression has changed value since the last check, a snapshot is recorded.
 
-```python
-sys.settrace(_trace_function)
-exec(compiled, _exec_context)   # fires _trace_function on each line
-sys.settrace(None)              # always restored in finally block
-```
+`__viz_begin__()` sets `_tracing_active = False` to suppress V() snapshots during viz block execution. `__viz_end__()` sets it back to `True` then records the snapshot.
 
-**`_trace_function(frame, event, arg)`** — dispatches on `event` type:
+### `_collect_variables(frame_locals)`
 
-**`'line'` events** — records a `_trace_steps` entry when:
-1. `frame.f_code.co_filename in ('<exec>', '<string>')` — only user code, not stdlib
-2. `frame.f_code.co_name` does not start with `_` — skips internal helpers
+Extracts serializable variables from a frame's locals dict. Skips names starting with `_`. Converts:
+- Primitives (`int`, `float`, `str`, `bool`) → `{ type, value }`
+- Lists of primitives → `{ type: 'list', value: [...] }`
+- Lists of lists → `{ type: 'list2d', value: [[...]] }`
+- Dicts → `{ type: 'dict', value: {str(k): v, ...} }` (capped)
 
-Per step records:
-```python
-{
-    'variables': _capture_variables(frame),  # All visible variables, raw Python values
-    'scope': [(funcName, lineNumber), ...]   # Call stack, innermost last; <module> → _main_
-}
-```
-
-**`'call'` and `'return'` events** — records a `_function_events` entry (separate list) when:
-1. `frame.f_code.co_filename in ('<exec>', '<string>')` — only user code
-2. `_is_traceable_func(name)` — keeps dunder methods (`__init__` etc.) and public functions; skips single-underscore private helpers
-
-Each entry is a tuple `(step_index, event_type, func_name, data)` where:
-- `step_index = len(_trace_steps)` at the time of the event (associates the event with the *next* upcoming line step)
-- `data` for `'call'`: dict of function arguments excluding `self`
-- `data` for `'return'` from `__init__`: `frame.f_locals['self']` (the constructed object); for all other functions: `copy.deepcopy(arg)` (the return value)
-
-**`MAX_TRACE_STEPS = 1000`** — after 1000 steps, raises `PopupException` to prevent infinite loops from hanging the browser.
-
-### `_capture_variables(frame, exclude_vars, memo)`
-
-Collects all visible variables from a frame as **raw Python values**: `{ name: raw_python_value }`.
-
-**Scope walk (function frames):**
-1. `frame.f_locals` — function locals
-2. Walk `frame.f_back` chain for enclosing scopes (closures), innermost wins
-3. `frame.f_globals` for module-level variables not yet captured
-
-This ensures `V("arr[i]")` inside a nested function correctly sees `arr` from the outer module scope.
-
-Variables starting with `_` are excluded. Callables and class objects are silently skipped.
-
-**`memo` parameter:** an optional dict shared across all `deepcopy` calls in one step. Passing the same `memo` ensures the same original object always maps to the same copy within a step. The trace loop passes a fresh `memo` each step and exposes it as `R.registry` afterwards.
-
-### Two-Step Variable Serialization
-
-`TraceStep.variables` holds **raw Python objects** throughout the trace (backfill pass, V-expressions, builder `update()` call). Type conversion to JSON-safe `VariableValue` dicts happens only at the TypeScript boundary, right before `json.dumps`, via `_serialize_variables_for_ts()`.
-
-This means V-expressions and builder code receive actual Python objects — `V("d[0]")` works on int-keyed dicts, `V("obj.attr")` works on custom objects.
-
-**`_serialize_value_for_ts(value)`** — converts one value to `{ type, value }`:
-
-| Python type | `type` label | `value` in JSON |
-|---|---|---|
-| `bool` | `'int'` | `1` or `0` |
-| `int`, `float` | `'int'`, `'float'` | value |
-| `str` | `'str'` | value |
-| `None` | `'none'` | `null` |
-| `list[int/float/bool]` | `'arr[int]'` | `[int, ...]` |
-| `list[str]` | `'arr[str]'` | `[str, ...]` |
-| `list[list[int]]` | `'arr2d[int]'` | `[[int, ...], ...]` |
-| `tuple` | `'tuple'` | `list(value)` |
-| `dict` | `'dict'` | `{str(k): json_leaf(v), ...}` (capped at 50) |
-| `set` | `'set'` | sorted array |
-| any other object | `type(value).__name__` | `repr(value)[:200]` |
-
-Custom objects use the Python class name as the type label and `repr()` as the value — the class's `__repr__` controls display. `VariablePanel.tsx` displays known type labels with Python-syntax formatting; unknown type labels (class names) fall through to `String(value)`.
+Note: simpler than the old `_serialize_variables_for_ts` — no `R`-object unwrapping or custom class handling. The combined model captures variables only at snapshot boundaries, not every line.
 
 ### `V()` — Lazy Expression Evaluation
 
 ```python
 class V:
-    params = {}    # class variable: current step's variables (see sharp-edges.md)
-    scope = []
+    params = {}    # class variable: current frame locals (see sharp-edges.md)
 
-    SAFE_GLOBALS = { "len": len, "sum": sum, "min": min, "max": max,
-                     "abs": abs, "round": round, "sorted": sorted }
-
-    def __init__(self, expr: str):
-        self.expr = expr     # Stored, not evaluated at construction
+    def __init__(self, expr: str, default=None):
+        self.expr = expr
+        self.default = default
 
     def eval(self):
-        # V.params holds raw Python values (not VariableValue wrappers)
-        return eval(self.expr, {"__builtins__": {}}, {**V.SAFE_GLOBALS, **V.params})
-        # On any exception: returns self.expr (the expression string unchanged)
+        return eval(self.expr, {"__builtins__": {}}, {**SAFE_GLOBALS, **V.params})
+        # On any exception: returns self.default (or self.expr if no default)
 ```
 
-`V.params` is a **class variable** shared across all `V()` instances. It is set once per step before `_serialize_visual_builder()` is called. The `__getattribute__` patch on `VisualElem` triggers `.eval()` automatically whenever a property is accessed during serialization.
-
-Example: `rect.width = V("i + 1")` → at step where `i=3`, accessing `rect.width` returns `4`.
+`V.params` is set from `frame.f_locals` at each line event by the V() change detection tracer. The `__getattribute__` patch on `VisualElem` triggers `.eval()` automatically whenever a property is accessed during serialization.
 
 ### `R` — Stable Object Reference Across Steps
 
-Each `deepcopy` step creates new Python objects, so an object captured at step 3 and an object at step 5 have different `id()`s even if they represent the same logical node. `R` bridges this by storing the **original id** and re-resolving to the current step's copy on every attribute access.
+Same as before: `R` stores the `id` of the original Python object and resolves to the current step's copy via `R.registry`. See the original description in the old [python-engine.md history] for details. Still documented fully in `_vb_engine.py`.
 
-```python
-# Builder never constructs R directly — it receives R from params (a TrackedDict)
-slow_ref = None
+### Interactive Tracing
 
-def update(params, scope):
-    global slow_ref
-    slow_r = params.get('slow')   # params is a TrackedDict; values are R objects
-    if slow_r is not None:
-        slow_ref = slow_r          # store once — re-resolves every step automatically
+When an element is clicked, `_exec_combined_click_traced(elem_id, row, col, viz_ranges_json)` runs:
 
-    if slow_ref is not None:
-        node = slow_ref.resolve()  # current step's copy of the tracked node
-        if node is not None:
-            highlight.position = panels[node.val].position
-```
+1. Finds the element by `_elem_id` in `_combined_ns` namespace (not re-exec'd)
+2. Sets up `_make_interactive_tracer(viz_ranges)`:
+   - Same V() change-detection logic as the initial trace
+   - **Per-frame skipping**: if a function's `co_firstlineno` falls inside a viz block range, returns `None` on the `'call'` event — skipping local tracing for that frame only. Algorithm functions called from within that frame still get traced (their `co_firstlineno` is outside viz ranges).
+3. Calls `target.on_click(row, col)` with the tracer active
+4. Returns `{ interactive_timeline, final_snapshot, handlers, output }`
 
-**How it works:**
-
-| Component | Role |
-|-----------|------|
-| `R.registry` | `{id(original_obj): current_step_copy}` — set per step from `deepcopy` memo |
-| `R.inv_registry` | `{id(current_step_copy): id(original_obj)}` — used to wrap objects into R |
-| `R._wrap(obj)` | Returns `R(orig_id)` if obj is in registry, raw value for primitives |
-| `R.resolve()` | Returns `R.registry[self._orig_id]` — the copy for the current step |
-| `R.__getattr__` | Resolves, then calls `R._wrap()` on the result — auto-wraps traversal |
-| `TrackedDict` | Wraps the `params` dict passed to `update()`; values auto-wrapped in R |
-
-**Attribute traversal is transparent:**
-```python
-val = params['root'].left.right.val   # each step: resolves root → left → right → .val
-```
-Primitives (`int`, `float`, `str`, `bool`, `None`) are always returned unwrapped.
-
-**`R` vs `V`:**
-
-| | `V("expr")` | `R` (from params) |
-|---|---|---|
-| Stored | expression string | `id` of original object |
-| Resolved via | `eval(expr, V.params)` | `R.registry[orig_id]` |
-| Good for | computed properties (`V("i+1")`) | tracking a specific object |
-| Lives on element property | Yes | Yes (unwrapped at serialization) |
-
-The `__getattribute__` patch on `VisualElem` handles both: `V` objects call `.eval()`; `R` objects call `.resolve()`.
-
-See `src/samples/r-tracking-demo.json` for a working example.
-
-### Builder Hooks: `update`, `function_call`, `function_exit`
-
-Three stubs in `pythonTracer.py` can be overridden by builder code:
-
-```python
-def update(params, scope):           pass   # called on every line step
-def function_call(function_name, **kwargs): pass   # called on function entry
-def function_exit(function_name, value):   pass   # called on function return
-```
-
-**`update(params, scope)`** — called for every traced line. `params` is a `TrackedDict` wrapping the raw variables dict. Accessing any key returns an `R` object (or a raw primitive) so the builder can hold references that re-resolve automatically each step.
-
-**`function_call(function_name, **kwargs)`** — called just before the first line inside a function executes:
-- `function_name`: the function's `__name__` (e.g. `'__init__'`, `'sort'`)
-- `kwargs`: each argument value is R-wrapped (or a raw primitive); excluding `self`
-- Dunder methods (`__init__`, `__str__`, etc.) are included; single-underscore helpers are not
-
-**`function_exit(function_name, value)`** — called when a function returns:
-- `value` for `__init__`: the constructed `self` object, R-wrapped
-- `value` for all other functions: the return value, R-wrapped (or raw primitive)
-
-**R-wrapping in function hooks:** all non-primitive values received in `function_call` kwargs and `function_exit` value are `R` objects, consistent with `update()`'s `TrackedDict`. Attribute access works transparently (`value.val`, `kwargs['node'].next`). The R objects are registered in the live registry so any R stored in a hook will resolve correctly in future `update()` calls.
-
-**`isinstance` does not work on R objects** — use `hasattr` or check `function_name` instead:
-```python
-# Wrong:
-if isinstance(value, Node): ...
-
-# Right:
-if function_name == 'Node.__init__' and hasattr(value, 'val'): ...
-```
-
-**Timing:** both function hooks are called *before* `update()` for the same line step, so any visual elements they create appear in that step's snapshot. `code_timeline` and `visual_timeline` stay parallel — no extra steps are added.
-
-**Typical use — track object creation:**
-```python
-def function_exit(function_name, value):
-    if function_name == 'Node.__init__' and hasattr(value, 'val'):
-        r = Rect()
-        r.position = (len(created), 0)
-        panel.add(r)
-        created.append(r)
-```
-
-See `src/samples/linked-list-creation.json` for a working example.
-
-### `_visual_code_trace(code, persistent=False)` — Main Entry Point
-
-Called by TypeScript for both initial trace and debug-call sub-runs.
-
-```
-1. _run_with_trace(code, persistent)
-       → fills _trace_steps (line events) and _function_events (call/return events)
-2. Back-fill pass (reverse):
-       next_params = {}
-       for step in code_trace[::-1]:
-           next_params.update(step['variables'])
-           step['variables'].update(next_params)
-   (Makes variables visible at steps before they're first assigned)
-3. Build visual timeline:
-       for step_idx, step in enumerate(code_trace):
-           drain _function_events with step_index == step_idx:
-               → calls function_call() or function_exit()
-           update(step['variables'], step['scope'])   # builder code; raw Python values
-           V.params = step['variables']               # raw Python values
-           V.scope  = step['scope']
-           snapshot = _serialize_visual_builder()
-           timeline.append(json.loads(snapshot))
-       drain any remaining _function_events (after the last line step)
-4. Fallback: if no traceable lines → one-step timeline with current visual state
-5. Serialize variables for TypeScript:
-       for step in code_trace:
-           step['variables'] = _serialize_variables_for_ts(step['variables'])
-6. Return json.dumps({ code_timeline, visual_timeline, handlers })
-```
-
-**Note on `handlers` in return:** `_serialize_handlers()` (Python dict) is embedded directly in the outer `json.dumps` — do not replace with `_serialize_handlers_json()`.
-
-### `_prepare_and_trace_debug_call(expression, line_offset)`
-
-Wraps a user expression as a function, shifts AST line numbers so Monaco highlights land on the correct rows in the combined editor view, then traces it.
-
-```python
-func_source = f"def debug_call():\n    {expression}"
-tree = ast.parse(func_source)
-ast.increment_lineno(tree, line_offset)   # line_offset = len(debuggerCode lines) + 2
-exec(compile(tree, '<exec>', 'exec'), _exec_context)
-return _visual_code_trace('debug_call()', True)
-```
-
-TypeScript computes the offset: `const lineOffset = debuggerCode.split('\n').length + 2`.
+Input changes use `_exec_combined_input_changed(elem_id, text, viz_ranges_json)` — same pattern, calls `target.input_changed(text)`.
 
 ---
 
 ## Part 4: Python ↔ TypeScript Bridge
 
-All calls go through `src/python-engine/code-builder/services/pythonExecutor.ts`.
+All calls go through `src/components/combined-editor/combinedExecutor.ts`.
 
 | TypeScript function | Python call | Returns |
 |--------------------|-------------|---------|
-| `executePythonCode(vbCode, dbgCode)` | `exec(vbCode)` then `_visual_code_trace(dbgCode)` | `{ code_timeline, visual_timeline, handlers }` JSON |
-| `executeClickHandler(elemId, row, col)` | `_handle_click_with_output` → if `runCall`: `_execute_run_call`; else `_serialize_visual_builder` + `_serialize_handlers_json` | `{ snapshot, debugCall?: string }` |
-| `executeDebugCall(expression, lineOffset)` | `_prepare_and_trace_debug_call(expr, offset)` | Same shape as `executePythonCode` |
+| `executeCombinedCode(code)` | `_exec_combined_code(preprocessedCode)` | `CombinedResult: { timeline, handlers, error? }` |
+| `executeCombinedClickHandler(elemId, row, col, vizRanges)` | `_exec_combined_click_traced(...)` | `CombinedClickResult: { interactiveTimeline, finalSnapshot }` |
+| `executeCombinedInputChanged(elemId, text, vizRanges)` | `_exec_combined_input_changed(...)` | `CombinedClickResult: { interactiveTimeline, finalSnapshot }` |
+
+Pyodide initialization (`loadPyodide()`) still lives in `src/python-engine/code-builder/services/pythonExecutor.ts` — loaded once per session. `combinedExecutor.ts` calls it before any Python execution.
 
 ### Output Capture
 
-Python `print()` output is captured by redirecting `sys.stdout` before each execution. Output is segmented in `src/output-terminal/terminalState.ts`:
-- **Builder** tab: output from `exec(visualBuilderCode)`
-- **Debugger** tab: output from `_visual_code_trace(debuggerCode)`
-- **Combined** tab: both together
+Python `print()` output is captured by redirecting `sys.stdout` before execution. The combined editor captures output incrementally: each snapshot records the stdout delta since the previous snapshot (`output` field in `CombinedStep`). The `OutputTerminal` displays the accumulated output from the current step.
 
-### Output Capture — Import Files
+### Import Files
 
-Both builder and debugger import files are bundled at build time and written to Pyodide's VFS during `loadPythonRuntime()`, making them importable with standard Python `import` syntax.
+Builder and debugger import files (in `src/python-engine/builder-imports/*.py` and `debugger-imports/*.py`) are still bundled at build time and written to the Pyodide VFS during `loadPyodide()`. They are importable from combined editor code with standard `import`.
 
-**How it works:**
-- Files in `src/python-engine/builder-imports/*.py` → importable in builder code
-- Files in `src/python-engine/debugger-imports/*.py` → importable in debugger code
-- Vite's `import.meta.glob('.../*.py', { eager: true, as: 'raw' })` bundles the files at build time
-- `py.FS.writeFile('/home/pyodide/<filename>', content)` writes each file to the Pyodide VFS
-- `/home/pyodide` is in `sys.path` by default, so `import my_module` works normally
-
-**Tracer behavior with debugger imports:** The tracer only records steps for frames where `co_filename in ('<exec>', '<string>')`. Functions from import files have a real filepath (`/home/pyodide/...`) and are silently skipped — they execute normally but produce no trace steps.
-
-**Future work (TODO):** Allow uploading import files directly in the app while running. At that point, uploaded files would also be persisted in the JSON save/load format.
+**Tracer behavior:** The V() tracer only records steps for frames where `co_filename == '<combined_code>'`. Functions from import files have a real filepath and are silently skipped — they execute normally but produce no trace steps.
 
 ### Key Files Summary
 
 | File | Type | Purpose |
 |------|------|---------|
-| `src/python-engine/code-builder/services/_vb_engine.py` | VFS module | Hidden engine types: VisualElem, V, R, TrackedDict, PopupException |
-| `src/python-engine/code-builder/services/user_api.py` | VFS module | User-facing API: Panel, shapes, hooks, event stubs, V shorthand |
-| `src/python-engine/code-builder/services/visualBuilder.py` | exec'd | Sandbox exec, _user_code_ns, serialization, _execute_run_call |
-| `src/python-engine/code-builder/services/event_handling.py` | exec'd | Click/drag dispatch, handler serialization |
-| `src/python-engine/debugger-panel/pythonTracer.py` | exec'd | Tracer, _exec_context, variable serialization, timeline building |
-| `src/python-engine/code-builder/services/pythonExecutor.ts` | TypeScript | All TypeScript↔Pyodide calls |
-| `src/output-terminal/terminalState.ts` | TypeScript | Output capture and tab segmentation |
-| `src/python-engine/builder-imports/*.py` | VFS | User-extendable Python helpers importable in builder code |
-| `src/python-engine/debugger-imports/*.py` | VFS | User-extendable Python helpers importable in debugger code |
+| `src/components/combined-editor/_vb_engine.py` | VFS module | Hidden engine types: VisualElem, V, R, TrackedDict, PopupException |
+| `src/components/combined-editor/user_api.py` | VFS module | User-facing API: Panel, shapes, Input, no_debug |
+| `src/components/combined-editor/vb_serializer.py` | exec'd | Execution, snapshot recording, interactive dispatch |
+| `src/components/combined-editor/combinedExecutor.ts` | TypeScript | All TypeScript↔Pyodide calls; code preprocessing |
+| `src/components/combined-editor/vizBlockParser.ts` | TypeScript | Parse & validate # @viz / # @end blocks |
+| `src/python-engine/code-builder/services/pythonExecutor.ts` | TypeScript | Pyodide init (`loadPyodide()`); VFS file writes |
