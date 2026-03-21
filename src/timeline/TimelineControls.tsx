@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { MousePointerClick } from 'lucide-react';
 
 interface TimelineControlsProps {
   currentStep: number;
@@ -156,9 +157,7 @@ export function TimelineControls({
               className={canEnterInteractive ? btnActive : btnDisabled}
               title={canEnterInteractive ? "Finish trace and enter interactive mode" : "No interactive elements"}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M4 0v20l4.5-4.5 2.8 6.5 2-.9-2.8-6.6H16Z" />
-              </svg>
+              <MousePointerClick size={14} />
             </button>
           </>
         )}
@@ -171,10 +170,7 @@ export function TimelineControls({
               className={btnActive}
               title="Back to interactive mode"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-                <circle cx="12" cy="12" r="10" strokeWidth="1.5" />
-              </svg>
+              <MousePointerClick size={14} />
             </button>
           </>
         )}

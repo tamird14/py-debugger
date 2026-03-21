@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MousePointerClick } from 'lucide-react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { CodeEditor } from '../python-engine/code-builder/CodeEditor';
 import { DebuggerCodeEditor } from '../python-engine/debugger-panel/DebuggerCodeEditor';
@@ -102,10 +103,11 @@ export function CodeEditorArea({
             <button
               type="button"
               onClick={onEnterInteractive}
-              className="px-3 py-1 text-sm rounded transition-colors bg-indigo-500 text-white hover:bg-indigo-600"
+              className="flex items-center gap-1.5 px-3 py-1 text-sm rounded transition-colors bg-indigo-500 text-white hover:bg-indigo-600"
               title="Finish trace and enter mouse interaction mode"
             >
-              Finish &amp; Interact
+              <MousePointerClick size={14} />
+              Interact
             </button>
           )}
 
@@ -114,10 +116,11 @@ export function CodeEditorArea({
             <button
               type="button"
               onClick={onBackToInteractive}
-              className="px-3 py-1 text-sm rounded transition-colors bg-amber-500 text-white hover:bg-amber-600"
+              className="flex items-center gap-1.5 px-3 py-1 text-sm rounded transition-colors bg-amber-500 text-white hover:bg-amber-600"
               title="Return to interactive mode"
             >
-              Back to Interactive
+              <MousePointerClick size={14} />
+              Interact
             </button>
           )}
 
