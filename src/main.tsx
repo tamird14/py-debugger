@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext.tsx'
 import './index.css'
 import App from './app/App.tsx'
 import { PlanPage } from './pages/PlanPage.tsx'
+import { EmbedPage } from './app/EmbedPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/plan" element={<PlanPage />} />
+          <Route path="/embed" element={<EmbedPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
