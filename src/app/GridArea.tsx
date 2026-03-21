@@ -182,11 +182,11 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
 
     /** Called when a region is drawn — either triggers screenshot or GIF depending on pendingGifRef. */
     const handleCaptureRegionDrawn = useCallback(async (region: CaptureRegion) => {
-      setCaptureRegion(region);
       setCapturingRegionMode(false);
 
       if (pendingGifRef.current) {
         pendingGifRef.current = false;
+        setCaptureRegion(null);
         onCreateGif?.(region);
         return;
       }
@@ -204,6 +204,7 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
         console.error('Screenshot failed:', err);
       } finally {
         setIsCapturing(false);
+        setCaptureRegion(null);
       }
     }, [isCapturing, captureFrameData, onCreateGif]);
 
@@ -215,7 +216,9 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
 
     const handleGifClick = useCallback(() => {
       if (captureRegion) {
-        onCreateGif?.(captureRegion);
+        const region = captureRegion;
+        setCaptureRegion(null);
+        onCreateGif?.(region);
       } else {
         pendingGifRef.current = true;
         setCapturingRegionMode(true);
