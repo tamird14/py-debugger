@@ -194,13 +194,12 @@ export const CombinedEditor = forwardRef<CombinedEditorHandle, CombinedEditorPro
         const partial = word.word;
         if (isNewWord || partial.length > 0) {
           for (const cls of VISUAL_ELEM_SCHEMA) {
-            if (partial && !cls.className.toLowerCase().startsWith(partial.toLowerCase())) continue;
+            if (partial && !cls.objName.toLowerCase().startsWith(partial.toLowerCase())) continue;
             items.push({
-              label: cls.className,
+              label: cls.objName,
               kind: monaco.languages.CompletionItemKind.Class,
-              detail: `(${cls.constructorParams})`,
               documentation: cls.docstring,
-              insertText: cls.className,
+              insertText: cls.objName,
               range,
             });
           }
@@ -221,9 +220,9 @@ export const CombinedEditor = forwardRef<CombinedEditorHandle, CombinedEditorPro
         const name = word.word;
 
         for (const cls of VISUAL_ELEM_SCHEMA) {
-          if (cls.className === name) {
+          if (cls.objName === name) {
             const content = [
-              `**${cls.className}**(${cls.constructorParams})`,
+              `**${cls.objName}**`,
               cls.docstring,
               ...cls.properties.map((p) => `- \`${p.name}\`: ${p.type} — ${p.description}`),
               ...(cls.methods ?? []).map((m) => `- \`${m.signature}\` — ${m.docstring}`),

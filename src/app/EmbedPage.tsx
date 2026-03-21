@@ -133,7 +133,7 @@ export function EmbedPage() {
     if (!pyodideReady || !sample) return;
     const code = sample.data.combinedCode;
     if (!code) return;
-    const boxes = (sample.data.textBoxes ?? []).map((raw) => migrateTextBox(raw as Record<string, unknown>));
+    const boxes = (sample.data.textBoxes ?? []).map((raw) => migrateTextBox(raw as unknown as Record<string, unknown>));
     runAnalysis(code, boxes);
   // Only run once when pyodide becomes ready for the current sample
   // eslint-disable-next-line react-hooks/exhaustive-deps
