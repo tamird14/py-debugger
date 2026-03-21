@@ -2,7 +2,15 @@
 
 [← dev-notes](./dev-notes.md)
 
-Covers: text boxes (user annotations), save/load, the output terminal, and the API reference panel.
+Covers: text boxes (user annotations), save/load, the output terminal, the API reference panel, and embed mode.
+
+## Contents
+
+- [Text Boxes](#text-boxes)
+- [Save / Load](#save--load)
+- [Output Terminal](#output-terminal)
+- [API Reference Panel](#api-reference-panel)
+- [Embed Mode](#embed-mode)
 
 ---
 
@@ -227,3 +235,69 @@ The schema is defined in `src/api/functionsSchema.ts` and `src/api/visualBuilder
 | `src/api/ApiReferencePanel.tsx` | Floating overlay component |
 | `src/api/functionsSchema.ts` | Available function schemas for display |
 | `src/api/visualBuilder.ts` | `VisualBuilderElementBase` type + `VISUAL_ELEM_SCHEMA`; triggers element registry side effects |
+
+---
+
+## Embed Mode
+
+Embed mode is a stripped-down, read-only view of a single sample — no code editor, no save/load, no text box drawing. Designed to be embedded in an `<iframe>` on external pages or linked to directly.
+
+### Route
+
+```
+/embed?sample=<name>&dark=0|1
+```
+
+| Query param | Values | Behavior |
+|-------------|--------|----------|
+| `sample` | sample filename without `.json` | Required. Loads that bundled sample. Shows an error if not found. |
+| `dark` | `0` or `1` | Forces light or dark mode. Absent → follows system `prefers-color-scheme`. |
+
+**Entry point:** `src/app/EmbedPage.tsx`, registered at `/embed` in `src/main.tsx`.
+
+### What It Shows
+
+- Minimal header: AlgoPlay logo + sample name on the left; "Open full app ↗" link on the right (links to `/?sample=<name>`)
+- Full-screen Grid (same `GridArea` as the main app, including text boxes from the save file)
+- Timeline controls footer (same `TimelineControls`)
+- Loading spinner overlay while Pyodide boots or analysis runs
+- Error banner if analysis fails
+
+No code editor, no project name input, no Analyze/Edit buttons, no API reference toggle, no screenshot button.
+
+### Auto-Analyze Behavior
+
+As soon as Pyodide finishes loading, the sample's `combinedCode` is analyzed automatically — the user never needs to click anything. If the result has only one frame and interactive elements, it jumps straight to `interactive` mode; otherwise it starts in `trace` mode as normal.
+
+### Embedding in an `<iframe>`
+
+```html
+<iframe
+  src="https://py-debugger.vercel.app/embed?sample=2-binary-search&dark=0"
+  width="800"
+  height="500"
+  style="border: none; border-radius: 8px;"
+  allow="cross-origin-isolated"
+  title="Bubble Sort — AlgoPlay"
+></iframe>
+```
+
+> **`allow="cross-origin-isolated"`** — Pyodide (WebAssembly) requires `SharedArrayBuffer`, which in turn requires the page to be cross-origin isolated (`COOP: same-origin` + `COEP: require-corp`). The host page must set these headers, or Pyodide will fall back to a slower single-threaded mode. The AlgoPlay server already sets them; embedding sites must do the same if they host the iframe themselves.
+
+### Direct Link
+
+You can also link users directly to the embed URL (opens full-screen in a browser tab):
+
+```
+https://py-debugger.vercel.app/embed?sample=2-binary-search
+https://py-debugger.vercel.app/embed?sample=2-binary-search&dark=1
+```
+
+The "Open full app ↗" button in the embed header always links back to `/?sample=<name>` so users can switch to the full editor.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/app/EmbedPage.tsx` | Full embed page component: Pyodide init, auto-analyze, mode state, layout |
+| `src/main.tsx` | Registers `/embed` route → `EmbedPage` |
