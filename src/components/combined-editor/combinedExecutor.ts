@@ -147,6 +147,45 @@ _sys.stdout = _stdout_capture
 }
 
 /**
+ * Dispatch an input_changed event to a combined-editor Input element with viz-aware tracing.
+ */
+export async function executeCombinedInputChanged(
+  elemId: number,
+  text: string,
+  vizRanges: VizRange[],
+): Promise<CombinedClickResult | null> {
+  try {
+    const py = await loadPyodide();
+    const vizRangesJson = JSON.stringify(vizRanges);
+    await py.runPythonAsync(`_viz_ranges_json = '${escapeTripleQuote(vizRangesJson)}'`);
+    await py.runPythonAsync(`_input_text = ${JSON.stringify(text)}`);
+    const resultJson: string = await py.runPythonAsync(
+      `_exec_combined_input_changed(${elemId}, _input_text, _viz_ranges_json)`
+    );
+    const result = JSON.parse(resultJson) as {
+      interactive_timeline: CombinedStep[];
+      final_snapshot: VisualBuilderElementBase[];
+      handlers: Record<string, string[]>;
+      output: string;
+      error?: string;
+    };
+    if (result.error) {
+      console.error('Combined input_changed error:', result.error);
+      return null;
+    }
+    setHandlers(result.handlers ?? {});
+    if (result.output) appendClickOutput(result.output);
+    return {
+      interactiveTimeline: result.interactive_timeline,
+      finalSnapshot: result.final_snapshot,
+    };
+  } catch (error) {
+    console.error('executeCombinedInputChanged error:', error);
+    return null;
+  }
+}
+
+/**
  * Dispatch an on_click event to a combined-editor element with viz-aware tracing.
  *
  * Algorithm functions called from the handler (defined outside viz blocks) are

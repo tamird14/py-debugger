@@ -26,6 +26,7 @@ interface GridProps {
   mouseEnabled?: boolean;
   onElementClick?: (elemId: number, x: number, y: number) => void;
   onElementDrag?: (elemId: number, x: number, y: number, dragType: 'start' | 'mid' | 'end') => Promise<void> | void;
+  onElementInput?: (elemId: number, text: string) => void;
   // Text box props
   textBoxes?: TextBox[];
   selectedTextBoxId?: string | null;
@@ -69,26 +70,38 @@ const GridSingleObject = memo(function GridSingleObject({
   mouseEnabled,
   onElementClick,
   onElementDragStart,
+  onElementInput,
 }: {
   obj: RenderableObject;
   mouseEnabled: boolean;
   onElementClick?: (elemId: number, x: number, y: number) => void;
   onElementDragStart?: (elemId: number, x: number, y: number) => void; // internal: Grid handles drag type
+  onElementInput?: (elemId: number, text: string) => void;
 }) {
   const { widthCells, heightCells } = obj;
   const [flashing, setFlashing] = useState(false);
+  const [inputActive, setInputActive] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const globalAnimationsEnabled = useAnimationEnabled();
   const animationDuration = useAnimationDuration();
   // Per-element animate flag: false overrides the global toggle to force jump mode.
   const animationsEnabled = globalAnimationsEnabled && obj.cellData.animate !== false;
 
+  useEffect(() => {
+    if (inputActive && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [inputActive]);
+
   if (widthCells <= 0 || heightCells <= 0) return null;
 
   const elemVisible = obj.cellData.elementInfo?.visible !== false;
 
-  const { clickData, dragData } = obj.cellData;
+  const { clickData, dragData, inputData } = obj.cellData;
   const isClickable = mouseEnabled && !!clickData && !!onElementClick;
   const isDraggable = mouseEnabled && !!dragData && !!onElementDragStart;
+  const isInput = mouseEnabled && !!inputData && !!onElementInput;
 
   const handleClick = isClickable
     ? (e: React.MouseEvent<HTMLDivElement>) => {
@@ -98,7 +111,12 @@ const GridSingleObject = memo(function GridSingleObject({
         setFlashing(true);
         setTimeout(() => setFlashing(false), 300);
       }
-    : undefined;
+    : isInput
+      ? () => {
+          setInputText('');
+          setInputActive(true);
+        }
+      : undefined;
 
   const handleMouseDown = isDraggable
     ? (e: React.MouseEvent<HTMLDivElement>) => {
@@ -109,7 +127,17 @@ const GridSingleObject = memo(function GridSingleObject({
       }
     : undefined;
 
-  const cursorClass = isDraggable ? ' cursor-grab pointer-events-auto' : isClickable ? ' cursor-pointer pointer-events-auto' : '';
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setInputActive(false);
+      onElementInput!(inputData!.elemId, inputText);
+    } else if (e.key === 'Escape') {
+      setInputActive(false);
+    }
+  };
+
+  const cursorClass = isDraggable ? ' cursor-grab pointer-events-auto' : (isClickable || isInput) ? ' cursor-pointer pointer-events-auto' : '';
   const transition = animationsEnabled
     ? { duration: animationDuration / 1000, ease: 'easeOut' as const }
     : { duration: 0 };
@@ -138,6 +166,17 @@ const GridSingleObject = memo(function GridSingleObject({
         width={CELL_SIZE * widthCells}
         height={CELL_SIZE * heightCells}
       />
+      {inputActive && (
+        <input
+          ref={inputRef}
+          className="absolute inset-0 w-full h-full bg-white/90 dark:bg-gray-900/90 text-gray-900 dark:text-gray-100 font-mono text-sm px-2 rounded outline-none ring-2 ring-white"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={handleInputKeyDown}
+          onBlur={() => setInputActive(false)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
       {flashing && (
         <div className="absolute inset-0 bg-white/60 rounded pointer-events-none" />
       )}
@@ -158,6 +197,7 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
   mouseEnabled = false,
   onElementClick,
   onElementDrag,
+  onElementInput,
   textBoxes = [],
   selectedTextBoxId = null,
   addingTextBox = false,
@@ -297,9 +337,10 @@ export const Grid = forwardRef<GridHandle, GridProps>(function Grid({
         mouseEnabled={mouseEnabled}
         onElementClick={onElementClick}
         onElementDragStart={handleDragStart}
+        onElementInput={onElementInput}
       />
     ));
-  }, [objectsToRender, mouseEnabled, onElementClick, handleDragStart]);
+  }, [objectsToRender, mouseEnabled, onElementClick, handleDragStart, onElementInput]);
 
   const getPanelClasses = (panel: PanelInfo): string => {
     const base = 'absolute transition-all ease-out';

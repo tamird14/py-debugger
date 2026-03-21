@@ -440,9 +440,12 @@ export function useGridState() {
             const dragData: InteractionData | undefined = hasDrag
               ? { elemId: elemId!, x: el.x, y: el.y }
               : undefined;
+            const inputData: InteractionData | undefined = elemId != null && hasHandler(elemId, 'input_changed')
+              ? { elemId, x: el.x, y: el.y }
+              : undefined;
             next.set(gridId, {
               id: gridId,
-              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z, userZ: (el as any).z ?? 0, animate: (el as { animate?: boolean }).animate, clickData, dragData },
+              data: { ...(drawResult as RenderableObjectData), objectId: gridId, panelId: parentPanelId, zOrder: z, userZ: (el as any).z ?? 0, animate: (el as { animate?: boolean }).animate, clickData, dragData, inputData },
               position: targetPosition,
               zOrder: z++,
             });

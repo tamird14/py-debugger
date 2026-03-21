@@ -80,6 +80,8 @@ export interface RenderableObjectData {
   clickData?: InteractionData;
   // Set when the Python element has any on_drag_* handler
   dragData?: InteractionData;
+  // Set when the Python element is an Input (accepts text entry)
+  inputData?: InteractionData;
   // When false, this element always uses jump mode regardless of the global toggle.
   animate?: boolean;
 }

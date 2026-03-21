@@ -4,7 +4,7 @@ import { Grid, type GridHandle } from '../visual-panel/components/Grid';
 import { useGridState } from '../visual-panel/hooks/useGridState';
 import type { VisualBuilderElementBase } from '../api/visualBuilder';
 import { executeEventHandler, type ClickHandlerResult, type DragType } from '../python-engine/code-builder/services/pythonExecutor';
-import { executeCombinedClickHandler, type CombinedClickResult } from '../components/combined-editor/combinedExecutor';
+import { executeCombinedClickHandler, executeCombinedInputChanged, type CombinedClickResult } from '../components/combined-editor/combinedExecutor';
 import { hydrateElement } from '../visual-panel/types/elementRegistry';
 import type { TextBox } from '../text-boxes/types';
 import type { VizRange } from '../components/combined-editor/vizBlockParser';
@@ -80,6 +80,17 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
           loadVisualBuilderObjects(result.finalSnapshot.map((el) => hydrateElement(el)));
         }
         return;
+      }
+    }, [combinedVizRanges, loadVisualBuilderObjects, onCombinedTrace]);
+
+    const handleElementInput = useCallback(async (elemId: number, text: string) => {
+      if (!combinedVizRanges) return;
+      const result = await executeCombinedInputChanged(elemId, text, combinedVizRanges);
+      if (!result) return;
+      if (result.interactiveTimeline.length > 0) {
+        onCombinedTrace?.(result);
+      } else {
+        loadVisualBuilderObjects(result.finalSnapshot.map((el) => hydrateElement(el)));
       }
     }, [combinedVizRanges, loadVisualBuilderObjects, onCombinedTrace]);
 
@@ -212,6 +223,7 @@ export const GridArea = forwardRef<GridAreaHandle, GridAreaProps>(
             mouseEnabled={mouseEnabled}
             onElementClick={handleElementClick}
             onElementDrag={handleElementDrag}
+            onElementInput={handleElementInput}
             textBoxes={textBoxes}
             selectedTextBoxId={selectedTextBoxId}
             addingTextBox={addingTextBox}
