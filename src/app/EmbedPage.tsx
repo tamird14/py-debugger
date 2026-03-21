@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimationContext } from '../animation/animationContext';
 import { loadPyodide, isPyodideLoaded } from '../python-engine/code-builder/services/pythonExecutor';
@@ -41,6 +41,11 @@ export function EmbedPage() {
     if (darkParam === '0') return false;
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   }, [darkParam]);
+
+  // Apply dark class to <html> so Tailwind dark: variants work globally
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle('dark', prefersDark);
+  }, [prefersDark]);
 
   // Resolve sample
   const sample = SAMPLES.find((s) => s.rawName === sampleParam);
@@ -188,7 +193,7 @@ export function EmbedPage() {
 
   if (!sample) {
     return (
-      <EmbedShell prefersDark={prefersDark} sampleName={sampleParam || '(none)'}>
+      <EmbedShell sampleName={sampleParam || '(none)'}>
         <div className="flex flex-1 items-center justify-center text-red-500 dark:text-red-400 text-sm">
           {sampleParam
             ? `Sample "${sampleParam}" not found.`
@@ -199,7 +204,7 @@ export function EmbedPage() {
   }
 
   return (
-    <EmbedShell prefersDark={prefersDark} sampleName={sample.rawName}>
+    <EmbedShell sampleName={sample.rawName}>
       {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-900/80 gap-3">
@@ -253,18 +258,16 @@ export function EmbedPage() {
 // ---------------------------------------------------------------------------
 
 function EmbedShell({
-  prefersDark,
   sampleName,
   children,
 }: {
-  prefersDark: boolean;
   sampleName: string;
   children: React.ReactNode;
 }) {
   const appUrl = window.location.origin + `/?sample=${encodeURIComponent(sampleName)}`;
 
   return (
-    <div className={`${prefersDark ? 'dark' : ''} flex flex-col h-screen w-screen overflow-hidden bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100`}>
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       {/* Header */}
       <header className="flex-shrink-0 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
