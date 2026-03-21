@@ -1,0 +1,4 @@
+{
+  "combinedCode": "# @viz\ninp_a = Input(x=2, y=1, width=4, placeholder=\"enter a\")\ninp_b = Input(x=7, y=1, width=4, placeholder=\"enter b\")\nresult = Label(label=\"\", x=2, y=5, width=9, font_size=16)\n\nclass SumButton(Rect):\n    def on_click(self, x, y):\n        a_str = inp_a.get_input()\n        b_str = inp_b.get_input()\n        try:\n            total = float(a_str) + float(b_str)\n            if total == int(total):\n                total = int(total)\n            result.label = f\"= {total}\"\n            print(f\"{a_str} + {b_str} = {total}\")\n        except ValueError:\n            result.label = \"enter valid numbers\"\n            print(\"enter valid numbers in both fields\")\n\nbtn = SumButton(x=2, y=3, width=9, height=1, color=(59, 130, 246), z=1)\nbtn_label = Label(label=\"  sum \\u2192\", x=2, y=3, width=9, z=0)\n# @end\n",
+  "textBoxes": []
+}
